@@ -59,6 +59,11 @@
             <a href="{{ url_for('ekle') }}" class="{{ 'active' if request.endpoint == 'ekle' }}">
                 <i class="fas fa-plus"></i> Yeni Ekle
             </a>
+            {% if current_user.email == 'eguldr@gmail.com' %}
+            <a href="{{ url_for('admin') }}" class="{{ 'active' if request.endpoint == 'admin' }}">
+                <i class="fas fa-cog"></i> Admin
+            </a>
+            {% endif %}
             <div style="position:absolute; bottom:20px; width:100%; padding: 0 20px;">
                 <small style="color:#ffffff55;">{{ current_user.firma_adi }}</small><br>
                 <a href="{{ url_for('logout') }}" style="color:#ff6b6b; padding:0;">
