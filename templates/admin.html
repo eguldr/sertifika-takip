@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4>🔧 Admin Paneli</h4>
+    <div>
+        <span class="badge bg-primary fs-6">{{ kullanicilar|length }} Firma</span>
+        <span class="badge bg-secondary fs-6 ms-2">{{ toplam_sertifika }} Sertifika</span>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-dark">
+                <tr>
+                    <th>Firma</th>
+                    <th>E-posta</th>
+                    <th>Kayıt Tarihi</th>
+                    <th>Sertifika</th>
+                    <th>Durum</th>
+                    <th>İşlem</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for u in kullanicilar %}
+            <tr>
+                <td><strong>{{ u.firma_adi }}</strong></td>
+                <td>{{ u.email }}</td>
+                <td>{{ u.kayit_tarihi.strftime('%d.%m.%Y') }}</td>
+                <td>{{ u.sertifikalar|length }} adet</td>
+                <td>
+                    {% if u.aktif %}
+                        <span class="badge bg-success">Aktif</span>
+                    {% else %}
+                        <span class="badge bg-danger">Pasif</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if u.email != current_user.email %}
+                    <a href="{{ url_for('kullanici_toggle', id=u.id) }}"
+                       class="btn btn-sm {{ 'btn-warning' if u.aktif else 'btn-success' }}">
+                        {{ 'Pasif Et' if u.aktif else 'Aktif Et' }}
+                    </a>
+                    <a href="{{ url_for('kullanici_sil', id=u.id) }}"
+                       class="btn btn-sm btn-danger ms-1"
+                       onclick="return confirm('{{ u.firma_adi }} hesabını silmek istediğinize emin misiniz?')">
+                        Sil
+                    </a>
+                    {% else %}
+                    <span class="text-muted">Admin</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
