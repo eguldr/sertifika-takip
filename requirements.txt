@@ -6,3 +6,4 @@ flask-mail
 apscheduler
 werkzeug
 python-dotenv
+psycopg2-binary
