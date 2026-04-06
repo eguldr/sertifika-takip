@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4>📋 Tüm Sertifikalar</h4>
+    <a href="{{ url_for('ekle') }}" class="btn btn-primary"><i class="fas fa-plus"></i> Yeni Ekle</a>
+</div>
+
+{% if sertifikalar %}
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Sertifika Adı</th>
+                    <th>Tür</th>
+                    <th>Veren Kuruluş</th>
+                    <th>Başlangıç</th>
+                    <th>Bitiş</th>
+                    <th>Kalan</th>
+                    <th>Durum</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for s in sertifikalar %}
+            <tr>
+                <td><strong>{{ s.sertifika_adi }}</strong></td>
+                <td>{{ s.sertifika_turu }}</td>
+                <td>{{ s.veren_kuruluş or '—' }}</td>
+                <td>{{ s.baslangic.strftime('%d.%m.%Y') }}</td>
+                <td>{{ s.bitis.strftime('%d.%m.%Y') }}</td>
+                <td>
+                    {% if s.kalan_gun < 0 %}
+                        <span class="text-danger">{{ s.kalan_gun * -1 }} gün geçti</span>
+                    {% else %}
+                        {{ s.kalan_gun }} gün
+                    {% endif %}
+                </td>
+                <td>
+                    {% if s.durum == 'expired' %}
+                        <span class="badge badge-expired">Dolmuş</span>
+                    {% elif s.durum == 'critical' %}
+                        <span class="badge badge-critical">Kritik</span>
+                    {% elif s.durum == 'warning' %}
+                        <span class="badge badge-warning">Uyarı</span>
+                    {% elif s.durum == 'notice' %}
+                        <span class="badge badge-notice">Yaklaşıyor</span>
+                    {% else %}
+                        <span class="badge badge-ok">Geçerli</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('duzenle', id=s.id) }}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <a href="{{ url_for('sil', id=s.id) }}" class="btn btn-sm btn-outline-danger"
+                       onclick="return confirm('Silmek istediğinize emin misiniz?')">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body text-center py-5 text-muted">
+        <i class="fas fa-certificate fa-3x mb-3"></i>
+        <h5>Henüz sertifika eklenmemiş.</h5>
+        <a href="{{ url_for('ekle') }}" class="btn btn-primary mt-2">İlk Sertifikayı Ekle</a>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

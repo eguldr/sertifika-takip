@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="row justify-content-center mt-5">
+<div class="col-md-4">
+    <div class="text-center mb-4">
+        <i class="fas fa-certificate fa-3x text-primary"></i>
+        <h3 class="mt-2">SertifikaTakip</h3>
+    </div>
+    <div class="card">
+        <div class="card-body p-4">
+            <h5 class="mb-4">Hesap Oluştur</h5>
+            <form method="POST">
+                <div class="mb-3">
+                    <label class="form-label">Firma Adı</label>
+                    <input type="text" name="firma_adi" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">E-posta</label>
+                    <input type="email" name="email" class="form-control" required>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">Şifre</label>
+                    <input type="password" name="password" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Kayıt Ol</button>
+            </form>
+            <hr>
+            <div class="text-center">
+                <small>Zaten hesabınız var mı? <a href="{{ url_for('login') }}">Giriş Yap</a></small>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+{% endblock %}
