@@ -1,10 +1,6 @@
-flask
-gunicorn
-flask-login
-flask-sqlalchemy
-flask-mail
-apscheduler
-werkzeug
-python-dotenv
+Flask
+Flask-SQLAlchemy
+Flask-Login
 psycopg2-binary
-requests
+gunicorn
+werkzeug
