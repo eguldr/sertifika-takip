@@ -113,9 +113,6 @@ def sil(id):
 def logout():
     logout_user()
     return redirect(url_for('login'))
-
-with app.app_context():
     with app.app_context():
-    db.drop_all() # Mevcut tabloları siler
-    db.create_all() # Yeni yapıyla (4 sekme) tekrar oluşturur
+    db.drop_all()
     db.create_all()
