@@ -113,6 +113,5 @@ def sil(id):
 def logout():
     logout_user()
     return redirect(url_for('login'))
-    with app.app_context():
-    db.drop_all()
+with app.app_context():
     db.create_all()
