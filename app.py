@@ -21,9 +21,11 @@ login_manager = LoginManager()
 login_manager.login_view = 'login'
 login_manager.init_app(app)
 
-# Veritabanı tablolarını oluşturma
 with app.app_context():
-    db.create_all()
+    db.reflect() # Mevcut durumu kontrol et
+    db.drop_all() # Her şeyi tamamen temizle (Sıfırla)
+    db.create_all() # Tabloları tertemiz, yeniden oluştur
+    print("Tablolar başarıyla sıfırlandı ve kuruldu.")
 class User(UserMixin, db.Model):
     __tablename__ = 'kullanici_tablosu'
     id = db.Column(db.Integer, primary_key=True)
