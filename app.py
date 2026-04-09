@@ -30,7 +30,7 @@ class User(UserMixin, db.Model):
     __tablename__ = 'kullanici_tablosu'
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(100), unique=True)
-    password = db.Column(db.String(100))
+    password = db.Column(db.String(256))
     company_name = db.Column(db.String(100))
     is_admin = db.Column(db.Boolean, default=False)
 class Entry(db.Model):
@@ -127,4 +127,5 @@ def logout():
     return redirect(url_for('login'))
 @app.before_request
 def create_tables():
+    db.drop_all()
     db.create_all()
