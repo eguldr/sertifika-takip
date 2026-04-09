@@ -73,7 +73,7 @@ def kayit():
             
         new_user = User(
             email=email,
-            password=generate_password_hash(password, method='sha256'),
+            password=generate_password_hash(password),
             company_name=company
         )
         db.session.add(new_user)
