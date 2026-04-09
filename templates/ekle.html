@@ -1,75 +1,26 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% block content %}
-
-<div class="row justify-content-center">
-<div class="col-md-8">
-
-<div class="card">
-    <div class="card-header">
-        <h5 class="mb-0">
-            {% if sertifika %}
-                <i class="fas fa-edit"></i> Sertifika Düzenle
-            {% else %}
-                <i class="fas fa-plus"></i> Yeni Sertifika Ekle
-            {% endif %}
-        </h5>
-    </div>
-    <div class="card-body">
-        <form method="POST">
-            <div class="mb-3">
-                <label class="form-label">Sertifika Adı *</label>
-                <input type="text" name="sertifika_adi" class="form-control" required
-                    placeholder="Örn: GOTS Sertifikası 2024"
-                    value="{{ sertifika.sertifika_adi if sertifika else '' }}">
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Sertifika Türü *</label>
-                <select name="sertifika_turu" class="form-select" required>
-                    <option value="">Seçiniz...</option>
-                    {% set turler = ['Oeko-Tex Standard 100', 'GOTS', 'GRS', 'Fair Trade', 'ISO 9001', 'ISO 14001', 'BSCI', 'SMETA', 'Diğer'] %}
-                    {% for tur in turler %}
-                        <option value="{{ tur }}" {{ 'selected' if sertifika and sertifika.sertifika_turu == tur }}>{{ tur }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label">Veren Kuruluş</label>
-                <input type="text" name="veren_kurulus" class="form-control"
-                    placeholder="Örn: Bureau Veritas, SGS, TÜV"
-                    value="{{ sertifika.veren_kuruluş if sertifika else '' }}">
-            </div>
-
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Başlangıç Tarihi *</label>
-                    <input type="date" name="baslangic" class="form-control" required
-                        value="{{ sertifika.baslangic.strftime('%Y-%m-%d') if sertifika else '' }}">
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Bitiş Tarihi *</label>
-                    <input type="date" name="bitis" class="form-control" required
-                        value="{{ sertifika.bitis.strftime('%Y-%m-%d') if sertifika else '' }}">
-                </div>
-            </div>
-
-            <div class="mb-4">
-                <label class="form-label">Notlar</label>
-                <textarea name="notlar" class="form-control" rows="3"
-                    placeholder="Belge numarası, kapsam, hatırlatıcı notlar...">{{ sertifika.notlar if sertifika else '' }}</textarea>
-            </div>
-
-            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save"></i> Kaydet
-                </button>
-                <a href="{{ url_for('sertifikalar') }}" class="btn btn-outline-secondary">İptal</a>
-            </div>
-        </form>
-    </div>
-</div>
-
-</div>
+<h2>Yeni Kayıt Ekle</h2>
+<div class="card p-4 shadow-sm">
+    <form method="POST">
+        <div class="mb-3">
+            <label class="form-label">Kategori</label>
+            <select name="category" class="form-select" required>
+                <option value="Urun" {% if request.args.get('cat') == 'Urun' %}selected{% endif %}>🏭 Üretim & Ürün</option>
+                <option value="Arac" {% if request.args.get('cat') == 'Arac' %}selected{% endif %}>🚚 Araç & Filo</option>
+                <option value="Personel" {% if request.args.get('cat') == 'Personel' %}selected{% endif %}>👥 Personel & SRC</option>
+                <option value="Tesis" {% if request.args.get('cat') == 'Tesis' %}selected{% endif %}>🏢 Tesis & Mekan</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Başlık (Belge Adı, Plaka veya Personel Adı)</label>
+            <input type="text" name="title" class="form-control" placeholder="Örn: K1 Belgesi, 34 ABC 123 veya SRC-4" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Bitiş Tarihi</label>
+            <input type="date" name="expiry_date" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-success w-100">Sisteme Kaydet</button>
+    </form>
 </div>
 {% endblock %}
