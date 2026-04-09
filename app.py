@@ -22,10 +22,9 @@ login_manager.login_view = 'login'
 login_manager.init_app(app)
 
 with app.app_context():
-    db.reflect() # Mevcut durumu kontrol et
-    db.drop_all() # Her şeyi tamamen temizle (Sıfırla)
-    db.create_all() # Tabloları tertemiz, yeniden oluştur
-    print("Tablolar başarıyla sıfırlandı ve kuruldu.")
+    db.reflect()
+    db.create_all()
+    # Sistem her başladığında zorla tabloyu kontrol eder
 class User(UserMixin, db.Model):
     __tablename__ = 'kullanici_tablosu'
     id = db.Column(db.Integer, primary_key=True)
