@@ -9,10 +9,13 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'gizli-anahtar-123')
 
 # Veritabanı Bağlantısı
+# Veritabanı yapılandırması
 uri = os.environ.get('DATABASE_URL')
 if uri and uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
-app.config['SQLALCHEMY_DATABASE_URI'] = uri
+
+app.config['SQLALCHEMY_DATABASE_URI'] = uri # Buradaki URL kelimesini URI yapıyoruz
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -24,7 +27,8 @@ login_manager.init_app(app)
 with app.app_context():
     db.reflect()
     db.create_all()
-    # Sistem her başladığında zorla tabloyu kontrol eder
+
+# Buradan sonra 2 satır boşluk bırak
 class User(UserMixin, db.Model):
     __tablename__ = 'kullanici_tablosu'
     id = db.Column(db.Integer, primary_key=True)
