@@ -23,18 +23,14 @@ login_manager.init_app(app)
 
 # Veritabanı tablolarını oluşturma
 with app.app_context():
-    try:
-        db.drop_all()
-        db.create_all()
-    except Exception as e:
-        print(f"Veritabanı hatası: {e}")
+    db.create_all()
 class User(UserMixin, db.Model):
+    __tablename__ = 'kullanici_tablosu'
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(100), unique=True)
     password = db.Column(db.String(100))
     company_name = db.Column(db.String(100))
     is_admin = db.Column(db.Boolean, default=False)
-
 class Entry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer)
