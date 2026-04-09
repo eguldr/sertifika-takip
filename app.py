@@ -111,15 +111,14 @@ def sil(id):
         db.session.commit()
         return redirect(url_for('sertifikalar', cat=cat))
     return redirect(url_for('dashboard'))
-
 @app.route('/logout')
 @login_required
 def logout():
-    # Dosyanın en sonuna, her şeyin bittiği yere ekle
+    logout_user()
+    return redirect(url_for('login'))
+
+# Veritabanı tablolarını en sonda, her şey tanımlandıktan sonra oluşturuyoruz
 with app.app_context():
     print("Tablolar oluşturuluyor...")
     db.create_all()
     print("Tablolar başarıyla oluşturuldu!")
-    logout_user()
-    return redirect(url_for('login'))
-    
