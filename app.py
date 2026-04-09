@@ -114,8 +114,8 @@ def sil(id):
 @app.route('/logout')
 @login_required
 def logout():
-    logout_user()
-    return redirect(url_for('login'))
+        logout_user()
+        return redirect(url_for('login'))
 
 with app.app_context():
-    db.create_all()
+        db.create_all()
