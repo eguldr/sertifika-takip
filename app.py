@@ -12,7 +12,7 @@ if uri and uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
 app.config['SQLALCHEMY_DATABASE_URI'] = uri
 db = SQLAlchemy(app)
-with app.app_context():
+
     db.create_all()
 login_manager = LoginManager()
 login_manager.login_view = 'login'
@@ -115,6 +115,11 @@ def sil(id):
 @app.route('/logout')
 @login_required
 def logout():
+    # Dosyanın en sonuna, her şeyin bittiği yere ekle
+with app.app_context():
+    print("Tablolar oluşturuluyor...")
+    db.create_all()
+    print("Tablolar başarıyla oluşturuldu!")
     logout_user()
     return redirect(url_for('login'))
     
