@@ -55,7 +55,7 @@ def register():
     if request.method == 'POST':
         email = request.form.get('email')
         company = request.form.get('company_name')
-        password = generate_password_hash(request.form.get('password'), method='pbkdf2:sha256')
+        password = generate_password_hash(request.form.get('password'), password = generate_password_hash(request.form.get('password'))
         new_user = User(email=email, company_name=company, password=password)
         if email == os.environ.get('ADMIN_EMAIL'):
             new_user.is_admin = True
@@ -113,6 +113,4 @@ def sil(id):
 def logout():
     logout_user()
     return redirect(url_for('login'))
-with app.app_context():
-        db.create_all()
     
