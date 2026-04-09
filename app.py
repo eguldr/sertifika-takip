@@ -24,9 +24,6 @@ login_manager = LoginManager()
 login_manager.login_view = 'login'
 login_manager.init_app(app)
 
-with app.app_context():
-    
-    db.create_all()
 
 # Buradan sonra 2 satır boşluk bırak
 class User(UserMixin, db.Model):
@@ -128,3 +125,6 @@ def sil(id):
 def logout():
     logout_user()
     return redirect(url_for('login'))
+    @app.before_request
+def create_tables():
+    db.create_all()
