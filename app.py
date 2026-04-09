@@ -117,8 +117,5 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-# Veritabanı tablolarını en sonda, her şey tanımlandıktan sonra oluşturuyoruz
 with app.app_context():
-    print("Tablolar oluşturuluyor...")
     db.create_all()
-    print("Tablolar başarıyla oluşturuldu!")
