@@ -24,6 +24,7 @@ login_manager.init_app(app)
 # Veritabanı tablolarını oluşturma
 with app.app_context():
     try:
+        db.drop_all()
         db.create_all()
     except Exception as e:
         print(f"Veritabanı hatası: {e}")
