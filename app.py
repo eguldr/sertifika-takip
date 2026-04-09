@@ -125,6 +125,6 @@ def sil(id):
 def logout():
     logout_user()
     return redirect(url_for('login'))
-    @app.before_request
+@app.before_request
 def create_tables():
     db.create_all()
