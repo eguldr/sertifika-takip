@@ -10,6 +10,8 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'gizli-anahtar-123')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 db = SQLAlchemy(app)
 with app.app_context():
+    db.create_all()
+with app.app_context():
     db.drop_all()
     db.create_all()
 
