@@ -10,11 +10,10 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'gizli-anahtar-123')
 uri = os.environ.get('DATABASE_URL')
 if uri and uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
-app.config['SQLALCHEMY_DATABASE_URL'] = uri
+app.config['SQLALCHEMY_DATABASE_URI'] = uri
 db = SQLAlchemy(app)
 with app.app_context():
     db.create_all()
-
 login_manager = LoginManager()
 login_manager.login_view = 'login'
 login_manager.init_app(app)
