@@ -128,7 +128,7 @@ def logout():
     return redirect(url_for('login'))
 @app.before_request
 def create_tables():
-    @app.before_request
-def create_tables():
-    db.drop_all()  # <--- BU SATIRI EKLE (Eskiyi siler)
-    db.create_all() # <--- BU SATIR ZATEN VAR (Yeniyi kurar)
+    db.drop_all()
+    db.create_all()
+
+# Kodun burada bittiğinden ve aşağıda başka boş satır kalmadığından emin ol.
