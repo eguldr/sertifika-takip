@@ -12,7 +12,7 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'gizli-anahtar-123')
 # Veritabanı yapılandırması
 uri = os.environ.get('DATABASE_URL')
 if uri and uri.startswith("postgres://"):
-    uri = uri.replace("postgres://", "postgresql://", 1)
+    uri = uri.replace("postdropgres://", "postgresql://", 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = uri # Buradaki URL kelimesini URI yapıyoruz
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -128,4 +128,7 @@ def logout():
     return redirect(url_for('login'))
 @app.before_request
 def create_tables():
-    db.create_all()
+    @app.before_request
+def create_tables():
+    db.drop_all()  # <--- BU SATIRI EKLE (Eskiyi siler)
+    db.create_all() # <--- BU SATIR ZATEN VAR (Yeniyi kurar)
