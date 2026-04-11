@@ -36,9 +36,10 @@ class User(UserMixin, db.Model):
 class Entry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer)
-    category = db.Column(db.String(50)) # Üretim, Araç, Personel, Tesis
+    category = db.Column(db.String(50)) # Üretim, Arac, Personel, Tesis
     title = db.Column(db.String(100))
-    expiry_date = db.Column(db.Date)
+    start_date = db.Column(db.Date) # Yeni: Bakanlık 6 ay kuralı için başlangıç
+    expiry_date = db.Column(db.Date) # Bitiş tarihi
     risk_value = db.Column(db.String(100))
     whatsapp_notif = db.Column(db.Boolean, default=False)
 
