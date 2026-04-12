@@ -1,24 +1,21 @@
 <div class="mb-3">
     <label class="form-label">Sertifika / Belge Seçin</label>
     <select name="title" id="sertifikaSelect" class="form-select" onchange="toggleOther(this)" required>
-        <option value="">-- Bir Belge Seçin --</option>
-        
-        <optgroup label="Sık Kullanılan Belgeler">
-            <option value="CE İŞARETİ">CE İŞARETİ [cite: 28]</option>
-            <option value="ISO 9001:2015">ISO 9001:2015 [cite: 104]</option>
-            <option value="HELAL BELGESİ">HELAL BELGESİ [cite: 92]</option>
-            <option value="EAC GÜMRÜK BİRLİĞİ">EAC GÜMRÜK BİRLİĞİ [cite: 42, 43]</option>
-        </optgroup>
-
-        <optgroup label="Sektörel Belgeler [cite: 15, 86, 120]">
-            <option value="ATEX SERTİFİKASI">ATEX SERTİFİKASI [cite: 15]</option>
-            <option value="GMP SERTİFİKASI">GMP SERTİFİKASI [cite: 86]</option>
-            <option value="MDR TIBBİ CİHAZ">MDR TIBBİ CİHAZ [cite: 120]</option>
-            <option value="UKCA İŞARETİ">UKCA İŞARETİ [cite: 174]</option>
-        </optgroup>
-
-        <option value="Diger" style="color: blue; font-weight: bold;">➕ LİSTEDE YOK (KENDİM YAZACAĞIM)</option>
-    </select>
+    <option value="">-- Bir Belge Seçin --</option>
+    <optgroup label="Sık Kullanılan Belgeler">
+        <option value="CE İŞARETİ">CE İŞARETİ</option>
+        <option value="ISO 9001:2015">ISO 9001:2015</option>
+        <option value="HELAL BELGESİ">HELAL BELGESİ</option>
+        <option value="EAC GÜMRÜK BİRLİĞİ">EAC GÜMRÜK BİRLİĞİ</option>
+    </optgroup>
+    <optgroup label="Sektörel Belgeler">
+        <option value="ATEX SERTİFİKASI">ATEX SERTİFİKASI</option>
+        <option value="GMP SERTİFİKASI">GMP SERTİFİKASI</option>
+        <option value="MDR TIBBİ CİHAZ">MDR TIBBİ CİHAZ</option>
+        <option value="UKCA İŞARETİ">UKCA İŞARETİ</option>
+    </optgroup>
+    <option value="Diger">➕ LİSTEDE YOK (KENDİM YAZACAĞIM)</option>
+</select>
 </div>
 
 <div id="otherInputDiv" class="mb-3" style="display:none;">
