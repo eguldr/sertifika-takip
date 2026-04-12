@@ -5,64 +5,49 @@
     <input type="hidden" name="category" value="{{ request.args.get('cat', '') }}">
 
     {% if request.args.get('cat') == 'Arac' %}
-    
-    <!-- ARAÇ FORMU -->
-    <div class="alert alert-warning">
-        ⚠️ <strong>Hatırlatma:</strong> Araç muayenesiz kullanım cezası: 
-        <strong>115.021 TL (1. seferinde)</strong>, 191.867 TL (2.), 383.842 TL (3.)
-        | K2 belgesi olmadan faaliyet: <strong>21.333 TL</strong>
-    </div>
 
+    <!-- ARAÇ FORMU -->
     <div class="mb-3">
-        <label class="form-label">Belge / İşlem Türü</label>
-        <select name="title" id="aracSelect" class="form-select" onchange="aracSecimDegisti(this)" required>
-            <option value="">-- Seçiniz --</option>
-            <optgroup label="Zorunlu Belgeler">
-                <option value="Araç Muayenesi">🔧 Araç Muayenesi</option>
-                <option value="Trafik Sigortası">🛡️ Trafik Sigortası (Zorunlu)</option>
-                <option value="K2 Yetki Belgesi">📋 K2 Yetki Belgesi</option>
-            </optgroup>
-            <optgroup label="İsteğe Bağlı">
-                <option value="Kasko">🚗 Kasko</option>
-                <option value="Egzoz Muayenesi">💨 Egzoz Muayenesi</option>
-                <option value="Takoğraf Kalibrasyonu">⏱️ Takoğraf Kalibrasyonu</option>
-                <option value="Araç Ruhsatı Yenileme">📄 Araç Ruhsatı Yenileme</option>
-                <option value="Lastik Değişimi">🔄 Lastik Değişimi</option>
-            </optgroup>
-            <option value="Diger">➕ Listede Yok</option>
+        <label class="form-label">Araç Tipi</label>
+        <select id="aracTipi" class="form-select" onchange="aracTipiDegisti(this)">
+            <option value="">-- Önce araç tipini seçin --</option>
+            <option value="binek">🚗 Binek Otomobil</option>
+            <option value="ticari_hafif">🚐 Hafif Ticari (Minibüs/Kamyonet ≤3.5t)</option>
+            <option value="ticari_agir">🚛 Ağır Ticari (Kamyon/TIR >3.5t)</option>
         </select>
     </div>
 
-    <div id="aracDigerDiv" class="mb-3" style="display:none;">
-        <label class="form-label text-primary">Belge Adını Yazın</label>
-        <input type="text" id="aracDigerInput" class="form-control border-primary" placeholder="Örn: ÖZEL SİGORTA">
-    </div>
+    <div id="aracBelgeDiv" style="display:none;">
+        <div id="uyariKutusu" class="alert alert-warning" style="display:none;"></div>
 
-    <div class="mb-3">
-        <label class="form-label">Plaka / Araç Adı</label>
-        <input type="text" name="risk_value" class="form-control" placeholder="Örn: 34 ABC 123">
-    </div>
+        <div class="mb-3">
+            <label class="form-label">Belge / İşlem Türü</label>
+            <select name="title" id="aracSelect" class="form-select" onchange="aracSecimDegisti(this)" required>
+                <option value="">-- Seçiniz --</option>
+            </select>
+        </div>
 
-    <div id="k2BilgiNotu" class="alert alert-info" style="display:none;">
-        ℹ️ <strong>K2 Yetki Belgesi:</strong> 5 yıl geçerlidir. 
-        90 gün öncesinden yenileme başlar. Süre bitiminden itibaren 
-        540 gün içinde başvurulmazsa belge <strong>iptal</strong> olur. 
-        Yeni araçlar 15 gün içinde belgeye eklenmelidir.
-    </div>
+        <div id="aracDigerDiv" class="mb-3" style="display:none;">
+            <label class="form-label text-primary">Belge Adını Yazın</label>
+            <input type="text" id="aracDigerInput" class="form-control border-primary">
+        </div>
 
-    <div id="muayeneBilgiNotu" class="alert alert-danger" style="display:none;">
-        ⛔ <strong>Muayene Cezaları (2026):</strong> 
-        1. seferinde 115.021 TL | 2. seferinde 191.867 TL | 3. seferinde 383.842 TL
-    </div>
+        <div class="mb-3">
+            <label class="form-label">Plaka / Araç Adı</label>
+            <input type="text" name="risk_value" class="form-control" placeholder="Örn: 34 ABC 123">
+        </div>
 
-    <div class="mb-3">
-        <label class="form-label">Bitiş Tarihi</label>
-        <input type="date" name="expiry_date" class="form-control" required>
+        <div id="belgeBilgiNotu" class="alert alert-info" style="display:none;"></div>
+
+        <div class="mb-3">
+            <label class="form-label">Bitiş Tarihi</label>
+            <input type="date" name="expiry_date" class="form-control" required>
+        </div>
     </div>
 
     {% else %}
 
-    <!-- DİĞER KATEGORİLER İÇİN SERTİFİKA FORMU -->
+    <!-- SERTİFİKA FORMU -->
     <div class="mb-3">
         <label class="form-label">Sertifika / Belge Seçin</label>
         <input type="text" id="searchInput" class="form-control mb-2" placeholder="Belge adını yazın (örn: CE, ISO, HELAL...)">
@@ -189,46 +174,102 @@
 </form>
 
 <script>
-// Araç formu
-function aracSecimDegisti(sel) {
-    document.getElementById('k2BilgiNotu').style.display = 'none';
-    document.getElementById('muayeneBilgiNotu').style.display = 'none';
-    document.getElementById('aracDigerDiv').style.display = 'none';
+const aracBelgeleri = {
+    binek: [
+        {grup: 'Zorunlu', belgeler: ['Araç Muayenesi', 'Trafik Sigortası (Zorunlu)']},
+        {grup: 'İsteğe Bağlı', belgeler: ['Kasko', 'Egzoz Muayenesi', 'Araç Ruhsatı Yenileme']}
+    ],
+    ticari_hafif: [
+        {grup: 'Zorunlu', belgeler: ['Araç Muayenesi', 'Trafik Sigortası (Zorunlu)', 'K2 Yetki Belgesi']},
+        {grup: 'İsteğe Bağlı', belgeler: ['Kasko', 'Egzoz Muayenesi', 'Takoğraf Kalibrasyonu', 'Araç Ruhsatı Yenileme', 'Lastik Değişimi']}
+    ],
+    ticari_agir: [
+        {grup: 'Zorunlu', belgeler: ['Araç Muayenesi', 'Trafik Sigortası (Zorunlu)', 'K2 Yetki Belgesi', 'Takoğraf Kalibrasyonu', 'ADR Uygunluk Belgesi']},
+        {grup: 'İsteğe Bağlı', belgeler: ['Kasko', 'Egzoz Muayenesi', 'Araç Ruhsatı Yenileme']}
+    ]
+};
 
-    if (sel.value === 'K2 Yetki Belgesi') {
-        document.getElementById('k2BilgiNotu').style.display = 'block';
-    } else if (sel.value === 'Araç Muayenesi') {
-        document.getElementById('muayeneBilgiNotu').style.display = 'block';
-    } else if (sel.value === 'Diger') {
-        document.getElementById('aracDigerDiv').style.display = 'block';
-        document.getElementById('aracDigerInput').name = 'title';
-        sel.name = '';
+const uyarilar = {
+    binek: '⚠️ <strong>Binek Araç Muayene Cezaları (2026):</strong><br>• Trafikte muayenesiz yakalanma: <strong>2.719 TL</strong> (15 günde ödenirse %25 indirimle 2.039 TL)<br>• Her gecikilen ay için muayene ücretine <strong>%5 gecikme faizi</strong> eklenir<br>• Ruhsatta belirtilen tarihten 1 gün sonra bile %5 faiz işler<br>• 7 gün süre verilir, muayene yapılmazsa araç <strong>trafikten men</strong> edilir',
+    ticari_hafif: '⚠️ <strong>Hafif Ticari Araç Cezaları (2026):</strong><br>• Muayenesiz trafikte: <strong>2.719 TL</strong> + araç men<br>• Her gecikilen ay: muayene ücretine <strong>%5 faiz</strong><br>• <strong>K2 olmadan faaliyet: 21.333 TL</strong><br>• Araç K2\'ye kaydedilmezse: <strong>10.666 TL</strong>',
+    ticari_agir: '⚠️ <strong>Ağır Ticari Araç Cezaları (2026):</strong><br>• Muayenesiz: <strong>115.021 TL</strong> (1.) / 191.867 TL (2.) / 383.842 TL (3.)<br>• <strong>K2 olmadan faaliyet: 21.333 TL</strong><br>• Araç K2\'ye kaydedilmezse: <strong>10.666 TL</strong><br>• Takoğraf eksikliği: ağır ceza'
+};
+
+const belgeBilgileri = {
+    'K2 Yetki Belgesi': 'ℹ️ <strong>K2 Yetki Belgesi:</strong> 5 yıl geçerlidir. 90 gün öncesinden yenileme süreci başlar. Süre bitiminden 540 gün içinde başvurulmazsa belge <strong>iptal</strong> olur. Yeni alınan araçlar 15 gün içinde belgeye eklenmelidir.',
+    'Araç Muayenesi': '🔧 <strong>Araç Muayenesi:</strong> Ruhsatta belirtilen tarihten 1 gün bile gecikse %5 faiz işlemeye başlar. Trafikte yakalanırsa 2.719 TL ceza + araç men riski.',
+    'Takoğraf Kalibrasyonu': '⏱️ <strong>Takoğraf:</strong> 2 yılda bir kalibrasyon zorunludur. Eksik veya manipüle takoğraf ağır cezaya yol açar.',
+    'Trafik Sigortası (Zorunlu)': '🛡️ <strong>Zorunlu Trafik Sigortası:</strong> Sigortasız araçla trafiğe çıkmak hem para cezasına hem de aracın trafikten men edilmesine neden olur.',
+    'ADR Uygunluk Belgesi': '☢️ <strong>ADR:</strong> Tehlikeli madde taşıyan araçlar için zorunludur. Eksikliği halinde ağır idari para cezası uygulanır.'
+};
+
+function aracTipiDegisti(sel) {
+    if (!sel.value) {
+        document.getElementById('aracBelgeDiv').style.display = 'none';
+        return;
     }
-    if (sel.value !== 'Diger') {
+    document.getElementById('aracBelgeDiv').style.display = 'block';
+
+    const uyariKutusu = document.getElementById('uyariKutusu');
+    uyariKutusu.innerHTML = uyarilar[sel.value];
+    uyariKutusu.style.display = 'block';
+
+    const aracSelect = document.getElementById('aracSelect');
+    aracSelect.innerHTML = '<option value="">-- Seçiniz --</option>';
+    aracBelgeleri[sel.value].forEach(grup => {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = grup.grup;
+        grup.belgeler.forEach(belge => {
+            const opt = document.createElement('option');
+            opt.value = belge;
+            opt.text = belge;
+            optgroup.appendChild(opt);
+        });
+        aracSelect.appendChild(optgroup);
+    });
+    const digerOpt = document.createElement('option');
+    digerOpt.value = 'Diger';
+    digerOpt.text = '➕ Listede Yok';
+    aracSelect.appendChild(digerOpt);
+
+    document.getElementById('belgeBilgiNotu').style.display = 'none';
+    document.getElementById('aracDigerDiv').style.display = 'none';
+}
+
+function aracSecimDegisti(sel) {
+    const bilgiNotu = document.getElementById('belgeBilgiNotu');
+    const digerDiv = document.getElementById('aracDigerDiv');
+    const digerInput = document.getElementById('aracDigerInput');
+
+    digerDiv.style.display = 'none';
+    bilgiNotu.style.display = 'none';
+
+    if (sel.value === 'Diger') {
+        digerDiv.style.display = 'block';
+        digerInput.name = 'title';
+        sel.name = '';
+    } else {
         sel.name = 'title';
-        document.getElementById('aracDigerInput') && (document.getElementById('aracDigerInput').name = '');
+        digerInput.name = '';
+        if (belgeBilgileri[sel.value]) {
+            bilgiNotu.innerHTML = belgeBilgileri[sel.value];
+            bilgiNotu.style.display = 'block';
+        }
     }
 }
 
-// Sertifika arama
 const searchInput = document.getElementById('searchInput');
 if (searchInput) {
     searchInput.addEventListener('input', function() {
         const filter = this.value.toUpperCase();
-        const options = document.getElementById('sertifikaSelect').querySelectorAll('option');
-        options.forEach(opt => {
-            if (opt.value === '' || opt.value === 'Diger') {
-                opt.style.display = '';
-            } else if (opt.text.toUpperCase().includes(filter)) {
-                opt.style.display = '';
-            } else {
-                opt.style.display = 'none';
-            }
+        document.getElementById('sertifikaSelect').querySelectorAll('option').forEach(opt => {
+            if (opt.value === '' || opt.value === 'Diger') opt.style.display = '';
+            else if (opt.text.toUpperCase().includes(filter)) opt.style.display = '';
+            else opt.style.display = 'none';
         });
     });
 }
 
-// Sertifika diğer seçeneği
 const sertifikaSelect = document.getElementById('sertifikaSelect');
 if (sertifikaSelect) {
     sertifikaSelect.addEventListener('change', function() {
