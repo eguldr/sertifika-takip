@@ -1,45 +1,58 @@
-<div class="mb-3">
-    <label class="form-label">Sertifika / Belge Seçin</label>
-    <select name="title" id="sertifikaSelect" class="form-select" onchange="toggleOther(this)" required>
-    <option value="">-- Bir Belge Seçin --</option>
-    <optgroup label="Sık Kullanılan Belgeler">
-        <option value="CE İŞARETİ">CE İŞARETİ</option>
-        <option value="ISO 9001:2015">ISO 9001:2015</option>
-        <option value="HELAL BELGESİ">HELAL BELGESİ</option>
-        <option value="EAC GÜMRÜK BİRLİĞİ">EAC GÜMRÜK BİRLİĞİ</option>
-    </optgroup>
-    <optgroup label="Sektörel Belgeler">
-        <option value="ATEX SERTİFİKASI">ATEX SERTİFİKASI</option>
-        <option value="GMP SERTİFİKASI">GMP SERTİFİKASI</option>
-        <option value="MDR TIBBİ CİHAZ">MDR TIBBİ CİHAZ</option>
-        <option value="UKCA İŞARETİ">UKCA İŞARETİ</option>
-    </optgroup>
-    <option value="Diger">➕ LİSTEDE YOK (KENDİM YAZACAĞIM)</option>
-</select>
-</div>
+{% extends "base.html" %}
+{% block content %}
+<h4>Yeni Belge Ekle</h4>
+<form method="POST" action="/ekle">
+    <input type="hidden" name="category" value="{{ request.args.get('cat', '') }}">
 
-<div id="otherInputDiv" class="mb-3" style="display:none;">
-    <label class="form-label text-primary">Belge / Sertifika Adını Yazın</label>
-    <input type="text" id="otherTitleInput" class="form-control border-primary" placeholder="Örn: ÖZEL PAZAR BELGESİ">
-</div>
+    <div class="mb-3">
+        <label class="form-label">Sertifika / Belge Seçin</label>
+        <select name="title" id="sertifikaSelect" class="form-select" onchange="toggleOther(this)" required>
+            <option value="">-- Bir Belge Seçin --</option>
+            <optgroup label="Sık Kullanılan Belgeler">
+                <option value="CE İŞARETİ">CE İŞARETİ</option>
+                <option value="ISO 9001:2015">ISO 9001:2015</option>
+                <option value="HELAL BELGESİ">HELAL BELGESİ</option>
+                <option value="EAC GÜMRÜK BİRLİĞİ">EAC GÜMRÜK BİRLİĞİ</option>
+            </optgroup>
+            <optgroup label="Sektörel Belgeler">
+                <option value="ATEX SERTİFİKASI">ATEX SERTİFİKASI</option>
+                <option value="GMP SERTİFİKASI">GMP SERTİFİKASI</option>
+                <option value="MDR TIBBİ CİHAZ">MDR TIBBİ CİHAZ</option>
+                <option value="UKCA İŞARETİ">UKCA İŞARETİ</option>
+            </optgroup>
+            <option value="Diger">➕ LİSTEDE YOK (KENDİM YAZACAĞIM)</option>
+        </select>
+    </div>
+
+    <div id="otherInputDiv" class="mb-3" style="display:none;">
+        <label class="form-label text-primary">Belge / Sertifika Adını Yazın</label>
+        <input type="text" id="otherTitleInput" class="form-control border-primary" placeholder="Örn: ÖZEL PAZAR BELGESİ">
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Bitiş Tarihi</label>
+        <input type="date" name="expiry_date" class="form-control" required>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Kaydet</button>
+    <a href="/sertifikalar?cat={{ request.args.get('cat', '') }}" class="btn btn-secondary">İptal</a>
+</form>
 
 <script>
 function toggleOther(selectElement) {
     const otherDiv = document.getElementById('otherInputDiv');
     const otherInput = document.getElementById('otherTitleInput');
-    
     if (selectElement.value === 'Diger') {
         otherDiv.style.display = 'block';
         otherInput.required = true;
-        otherInput.name = 'title'; // Sunucuya bu ismi gönder
-        selectElement.name = '';   // Select değerini gönderme
+        otherInput.name = 'title';
+        selectElement.name = '';
     } else {
         otherDiv.style.display = 'none';
         otherInput.required = false;
         otherInput.name = '';
-        selectElement.name = 'title'; // Sunucuya seçilen değeri gönder
+        selectElement.name = 'title';
     }
 }
 </script>
-
-           
+{% endblock %}
