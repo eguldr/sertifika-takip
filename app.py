@@ -130,6 +130,13 @@ def logout():
     return redirect(url_for('login'))
 @app.before_request
 def create_tables():
+@app.route('/admin')
+@login_required
+def admin():
+    if not current_user.is_admin:
+        return redirect(url_for('dashboard'))
+    users = User.query.all()
+    return render_template('admin.html', users=users)
     
     db.create_all()
 
