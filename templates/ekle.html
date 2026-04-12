@@ -1,9 +1,68 @@
 {% extends "base.html" %}
 {% block content %}
-<h4>Yeni Belge Ekle</h4>
+<h4>Yeni Kayıt Ekle</h4>
 <form method="POST" action="/ekle">
     <input type="hidden" name="category" value="{{ request.args.get('cat', '') }}">
 
+    {% if request.args.get('cat') == 'Arac' %}
+    
+    <!-- ARAÇ FORMU -->
+    <div class="alert alert-warning">
+        ⚠️ <strong>Hatırlatma:</strong> Araç muayenesiz kullanım cezası: 
+        <strong>115.021 TL (1. seferinde)</strong>, 191.867 TL (2.), 383.842 TL (3.)
+        | K2 belgesi olmadan faaliyet: <strong>21.333 TL</strong>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Belge / İşlem Türü</label>
+        <select name="title" id="aracSelect" class="form-select" onchange="aracSecimDegisti(this)" required>
+            <option value="">-- Seçiniz --</option>
+            <optgroup label="Zorunlu Belgeler">
+                <option value="Araç Muayenesi">🔧 Araç Muayenesi</option>
+                <option value="Trafik Sigortası">🛡️ Trafik Sigortası (Zorunlu)</option>
+                <option value="K2 Yetki Belgesi">📋 K2 Yetki Belgesi</option>
+            </optgroup>
+            <optgroup label="İsteğe Bağlı">
+                <option value="Kasko">🚗 Kasko</option>
+                <option value="Egzoz Muayenesi">💨 Egzoz Muayenesi</option>
+                <option value="Takoğraf Kalibrasyonu">⏱️ Takoğraf Kalibrasyonu</option>
+                <option value="Araç Ruhsatı Yenileme">📄 Araç Ruhsatı Yenileme</option>
+                <option value="Lastik Değişimi">🔄 Lastik Değişimi</option>
+            </optgroup>
+            <option value="Diger">➕ Listede Yok</option>
+        </select>
+    </div>
+
+    <div id="aracDigerDiv" class="mb-3" style="display:none;">
+        <label class="form-label text-primary">Belge Adını Yazın</label>
+        <input type="text" id="aracDigerInput" class="form-control border-primary" placeholder="Örn: ÖZEL SİGORTA">
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Plaka / Araç Adı</label>
+        <input type="text" name="risk_value" class="form-control" placeholder="Örn: 34 ABC 123">
+    </div>
+
+    <div id="k2BilgiNotu" class="alert alert-info" style="display:none;">
+        ℹ️ <strong>K2 Yetki Belgesi:</strong> 5 yıl geçerlidir. 
+        90 gün öncesinden yenileme başlar. Süre bitiminden itibaren 
+        540 gün içinde başvurulmazsa belge <strong>iptal</strong> olur. 
+        Yeni araçlar 15 gün içinde belgeye eklenmelidir.
+    </div>
+
+    <div id="muayeneBilgiNotu" class="alert alert-danger" style="display:none;">
+        ⛔ <strong>Muayene Cezaları (2026):</strong> 
+        1. seferinde 115.021 TL | 2. seferinde 191.867 TL | 3. seferinde 383.842 TL
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Bitiş Tarihi</label>
+        <input type="date" name="expiry_date" class="form-control" required>
+    </div>
+
+    {% else %}
+
+    <!-- DİĞER KATEGORİLER İÇİN SERTİFİKA FORMU -->
     <div class="mb-3">
         <label class="form-label">Sertifika / Belge Seçin</label>
         <input type="text" id="searchInput" class="form-control mb-2" placeholder="Belge adını yazın (örn: CE, ISO, HELAL...)">
@@ -123,40 +182,70 @@
         <input type="date" name="expiry_date" class="form-control" required>
     </div>
 
+    {% endif %}
+
     <button type="submit" class="btn btn-primary">Kaydet</button>
     <a href="/sertifikalar?cat={{ request.args.get('cat', '') }}" class="btn btn-secondary ms-2">İptal</a>
 </form>
 
 <script>
-document.getElementById('searchInput').addEventListener('input', function() {
-    const filter = this.value.toUpperCase();
-    const select = document.getElementById('sertifikaSelect');
-    const options = select.querySelectorAll('option');
-    options.forEach(opt => {
-        if (opt.value === '' || opt.value === 'Diger') {
-            opt.style.display = '';
-        } else if (opt.text.toUpperCase().includes(filter)) {
-            opt.style.display = '';
+// Araç formu
+function aracSecimDegisti(sel) {
+    document.getElementById('k2BilgiNotu').style.display = 'none';
+    document.getElementById('muayeneBilgiNotu').style.display = 'none';
+    document.getElementById('aracDigerDiv').style.display = 'none';
+
+    if (sel.value === 'K2 Yetki Belgesi') {
+        document.getElementById('k2BilgiNotu').style.display = 'block';
+    } else if (sel.value === 'Araç Muayenesi') {
+        document.getElementById('muayeneBilgiNotu').style.display = 'block';
+    } else if (sel.value === 'Diger') {
+        document.getElementById('aracDigerDiv').style.display = 'block';
+        document.getElementById('aracDigerInput').name = 'title';
+        sel.name = '';
+    }
+    if (sel.value !== 'Diger') {
+        sel.name = 'title';
+        document.getElementById('aracDigerInput') && (document.getElementById('aracDigerInput').name = '');
+    }
+}
+
+// Sertifika arama
+const searchInput = document.getElementById('searchInput');
+if (searchInput) {
+    searchInput.addEventListener('input', function() {
+        const filter = this.value.toUpperCase();
+        const options = document.getElementById('sertifikaSelect').querySelectorAll('option');
+        options.forEach(opt => {
+            if (opt.value === '' || opt.value === 'Diger') {
+                opt.style.display = '';
+            } else if (opt.text.toUpperCase().includes(filter)) {
+                opt.style.display = '';
+            } else {
+                opt.style.display = 'none';
+            }
+        });
+    });
+}
+
+// Sertifika diğer seçeneği
+const sertifikaSelect = document.getElementById('sertifikaSelect');
+if (sertifikaSelect) {
+    sertifikaSelect.addEventListener('change', function() {
+        const otherDiv = document.getElementById('otherInputDiv');
+        const otherInput = document.getElementById('otherTitleInput');
+        if (this.value === 'Diger') {
+            otherDiv.style.display = 'block';
+            otherInput.required = true;
+            otherInput.name = 'title';
+            this.name = '';
         } else {
-            opt.style.display = 'none';
+            otherDiv.style.display = 'none';
+            otherInput.required = false;
+            otherInput.name = '';
+            this.name = 'title';
         }
     });
-});
-
-document.getElementById('sertifikaSelect').addEventListener('change', function() {
-    const otherDiv = document.getElementById('otherInputDiv');
-    const otherInput = document.getElementById('otherTitleInput');
-    if (this.value === 'Diger') {
-        otherDiv.style.display = 'block';
-        otherInput.required = true;
-        otherInput.name = 'title';
-        this.name = '';
-    } else {
-        otherDiv.style.display = 'none';
-        otherInput.required = false;
-        otherInput.name = '';
-        this.name = 'title';
-    }
-});
+}
 </script>
 {% endblock %}
