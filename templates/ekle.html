@@ -1,46 +1,48 @@
-{% extends "base.html" %}
-{% block content %}
-<h2>Yeni Kayıt Ekle</h2>
-<div class="card p-4 shadow-sm">
-    <form method="POST">
-        <div class="mb-3">
-            <label class="form-label">Kategori</label>
-            <select name="category" class="form-select" required>
-                <option value="Urun" {% if request.args.get('cat') == 'Urun' %}selected{% endif %}>🏭 Üretim & Ürün</option>
-                <option value="Arac" {% if request.args.get('cat') == 'Arac' %}selected{% endif %}>🚚 Araç & Filo</option>
-                <option value="Personel" {% if request.args.get('cat') == 'Personel' %}selected{% endif %}>👥 Personel & SRC</option>
-                <option value="Tesis" {% if request.args.get('cat') == 'Tesis' %}selected{% endif %}>🏢 Tesis & Mekan</option>
-            </select>
-        </div>
 <div class="mb-3">
     <label class="form-label">Sertifika / Belge Seçin</label>
-    <select name="title" class="form-select" required>
-        <option value="">-- Bir Sertifika Seçin --</option>
-        <optgroup label="Ticaret Bakanlığı Destekleri">
-            <option value="Küresel Tedarik Zinciri">Küresel Tedarik Zinciri (KTZ)</option>
-            <option value="Birim Marka Tescil">Birim Marka Tescil</option>
-            <option value="Pazara Giriş Belgesi">Pazara Giriş Belgesi</option>
+    <select name="title" id="sertifikaSelect" class="form-select" onchange="toggleOther(this)" required>
+        <option value="">-- Bir Belge Seçin --</option>
+        
+        <optgroup label="Sık Kullanılan Belgeler">
+            <option value="CE İŞARETİ">CE İŞARETİ [cite: 28]</option>
+            <option value="ISO 9001:2015">ISO 9001:2015 [cite: 104]</option>
+            <option value="HELAL BELGESİ">HELAL BELGESİ [cite: 92]</option>
+            <option value="EAC GÜMRÜK BİRLİĞİ">EAC GÜMRÜK BİRLİĞİ [cite: 42, 43]</option>
         </optgroup>
-        <optgroup label="Diğer Belgeler">
-            <option value="Kapasite Raporu">Kapasite Raporu</option>
-            <option value="ISO 9001">ISO 9001</option>
-            <option value="CE Belgesi">CE Belgesi</option>
-            <option value="Yerli Malı Belgesi">Yerli Malı Belgesi</option>
+
+        <optgroup label="Sektörel Belgeler [cite: 15, 86, 120]">
+            <option value="ATEX SERTİFİKASI">ATEX SERTİFİKASI [cite: 15]</option>
+            <option value="GMP SERTİFİKASI">GMP SERTİFİKASI [cite: 86]</option>
+            <option value="MDR TIBBİ CİHAZ">MDR TIBBİ CİHAZ [cite: 120]</option>
+            <option value="UKCA İŞARETİ">UKCA İŞARETİ [cite: 174]</option>
         </optgroup>
+
+        <option value="Diger" style="color: blue; font-weight: bold;">➕ LİSTEDE YOK (KENDİM YAZACAĞIM)</option>
     </select>
-</div>    
 </div>
-        <div class="mb-3">
-    <label class="form-label">Başlangıç Tarihi (Bakanlık Teşvik Takibi İçin)</label>
-    <input type="date" name="start_date" class="form-control" required>
+
+<div id="otherInputDiv" class="mb-3" style="display:none;">
+    <label class="form-label text-primary">Belge / Sertifika Adını Yazın</label>
+    <input type="text" id="otherTitleInput" class="form-control border-primary" placeholder="Örn: ÖZEL PAZAR BELGESİ">
 </div>
-        <div class="mb-3">
-            <label class="form-label">Bitiş Tarihi</label>
-            <input type="date" name="expiry_date" class="form-control" required>
-        </div>
-        <button type="submit" class="btn btn-success w-100">Sisteme Kaydet</button>
-    </form>
-</div>
-{% endblock %}
+
+<script>
+function toggleOther(selectElement) {
+    const otherDiv = document.getElementById('otherInputDiv');
+    const otherInput = document.getElementById('otherTitleInput');
+    
+    if (selectElement.value === 'Diger') {
+        otherDiv.style.display = 'block';
+        otherInput.required = true;
+        otherInput.name = 'title'; // Sunucuya bu ismi gönder
+        selectElement.name = '';   // Select değerini gönderme
+    } else {
+        otherDiv.style.display = 'none';
+        otherInput.required = false;
+        otherInput.name = '';
+        selectElement.name = 'title'; // Sunucuya seçilen değeri gönder
+    }
+}
+</script>
 
            
