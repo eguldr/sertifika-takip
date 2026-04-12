@@ -130,20 +130,14 @@ def logout():
     return redirect(url_for('login'))
 @app.before_request
 def create_tables():
-@app.route('/admin/') # Sona bir slash eklemek bazen Not Found hatasını önler
-@login_required
-def admin():
-    if not current_user.is_admin:
-        return redirect(url_for('dashboard'))
-    users = User.query.all()
-    return render_template('admin.html', users=users)
-@login_required
-def admin():
-    if not current_user.is_admin:
-        return redirect(url_for('dashboard'))
-    users = User.query.all()
-    return render_template('admin.html', users=users)
-    
     db.create_all()
 
-# Kodun burada bittiğinden ve aşağıda başka boş satır kalmadığından emin ol.
+@app.route('/admin/')
+@login_required
+def admin():
+    if not current_user.is_admin:
+        return redirect(url_for('dashboard'))
+    users = User.query.all()
+    return render_template('admin.html', users=users)
+
+# Kod burada biter.
