@@ -18,15 +18,16 @@
         <div class="col-md-2 sidebar">
             <h4 class="px-3">EG Optimal</h4>
             <hr>
-            <a href="/dashboard" class="nav-link text-white">📊 Dashboard</a>
-<a href="/sertifikalar?cat=Urun" class="nav-link text-white">📦 Üretim & Ürün</a>
-<a href="/sertifikalar?cat=Arac" class="nav-link text-white">🚚 Araç & Filo</a>
-<a href="/sertifikalar?cat=Personel" class="nav-link text-white">👤 Personel & SRC</a>
-<a href="/sertifikalar?cat=Tesis" class="nav-link text-white">🏢 Tesis & Mekan</a>
+            <a href="{{ url_for('dashboard') }}" class="nav-link text-white">📊 Dashboard</a>
+<a href="{{ url_for('sertifikalar', cat='Urun') }}" class="nav-link text-white">📦 Üretim & Ürün</a>
+<a href="{{ url_for('sertifikalar', cat='Arac') }}" class="nav-link text-white">🚚 Araç & Filo</a>
+<a href="{{ url_for('sertifikalar', cat='Personel') }}" class="nav-link text-white">👤 Personel & SRC</a>
+<a href="{{ url_for('sertifikalar', cat='Tesis') }}" class="nav-link text-white">🏢 Tesis & Mekan</a>
 
 {% if current_user.is_admin %}
 <hr>
-<a href="/admin" class="nav-link text-info">🛡️ Admin Paneli</a>
+<a href="{{ url_for('admin') }}" class="nav-link text-info">🛡️ Admin Paneli</a>
+{% endif %}
 {% endif %}
 {% endif %}
             <hr>
