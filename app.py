@@ -128,8 +128,8 @@ def sil(id):
 def logout():
     logout_user()
     return redirect(url_for('login'))
-@app.before_request
-# Mevcut create_tables kısmını bununla değiştir
+
+# Bu kısımlar en solda (hiç boşluksuz) başlamalı
 with app.app_context():
     db.create_all()
 
