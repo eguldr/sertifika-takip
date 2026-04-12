@@ -129,7 +129,8 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 @app.before_request
-def create_tables():
+# Mevcut create_tables kısmını bununla değiştir
+with app.app_context():
     db.create_all()
 
 @app.route('/admin/')
