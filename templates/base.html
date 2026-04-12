@@ -23,7 +23,10 @@
             <a href="/sertifikalar?cat=Arac">🚚 Araç & Filo</a>
             <a href="/sertifikalar?cat=Personel">👥 Personel & SRC</a>
             <a href="/sertifikalar?cat=Tesis">🏢 Tesis & Mekan</a>
-            {% if current_user.is_admin %}<a href="/admin" class="text-info">🛡️ Admin Paneli</a>{% endif %}
+{% if current_user.is_admin %}            
+<hr>
+<a href="/admin" class="text-info px-3 d-block py-2">🛡️ Admin Paneli</a>
+{% endif %}
             <hr>
             <a href="/logout" class="text-danger">🚪 Çıkış</a>
         </div>
