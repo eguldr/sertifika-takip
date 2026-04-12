@@ -6,53 +6,39 @@
 
     <div class="mb-3">
         <label class="form-label">Sertifika / Belge Seçin</label>
-        <select name="title" id="sertifikaSelect" class="form-select" onchange="toggleOther(this)" required>
-            <option value="">-- Bir Belge Seçin --</option>
-            <optgroup label="Sık Kullanılan Belgeler">
-                <option value="CE İŞARETİ">CE İŞARETİ</option>
-                <option value="ISO 9001:2015">ISO 9001:2015</option>
-                <option value="HELAL BELGESİ">HELAL BELGESİ</option>
-                <option value="EAC GÜMRÜK BİRLİĞİ">EAC GÜMRÜK BİRLİĞİ</option>
-            </optgroup>
-            <optgroup label="Sektörel Belgeler">
-                <option value="ATEX SERTİFİKASI">ATEX SERTİFİKASI</option>
-                <option value="GMP SERTİFİKASI">GMP SERTİFİKASI</option>
-                <option value="MDR TIBBİ CİHAZ">MDR TIBBİ CİHAZ</option>
-                <option value="UKCA İŞARETİ">UKCA İŞARETİ</option>
-            </optgroup>
-            <option value="Diger">➕ LİSTEDE YOK (KENDİM YAZACAĞIM)</option>
-        </select>
-    </div>
-
-    <div id="otherInputDiv" class="mb-3" style="display:none;">
-        <label class="form-label text-primary">Belge / Sertifika Adını Yazın</label>
-        <input type="text" id="otherTitleInput" class="form-control border-primary" placeholder="Örn: ÖZEL PAZAR BELGESİ">
-    </div>
-
-    <div class="mb-3">
-        <label class="form-label">Bitiş Tarihi</label>
-        <input type="date" name="expiry_date" class="form-control" required>
-    </div>
-
-    <button type="submit" class="btn btn-primary">Kaydet</button>
-    <a href="/sertifikalar?cat={{ request.args.get('cat', '') }}" class="btn btn-secondary">İptal</a>
-</form>
-
-<script>
-function toggleOther(selectElement) {
-    const otherDiv = document.getElementById('otherInputDiv');
-    const otherInput = document.getElementById('otherTitleInput');
-    if (selectElement.value === 'Diger') {
-        otherDiv.style.display = 'block';
-        otherInput.required = true;
-        otherInput.name = 'title';
-        selectElement.name = '';
-    } else {
-        otherDiv.style.display = 'none';
-        otherInput.required = false;
-        otherInput.name = '';
-        selectElement.name = 'title';
-    }
-}
-</script>
-{% endblock %}
+        <input type="text" id="searchInput" class="form-control mb-2" placeholder="Belge adını yazın (örn: CE, ISO, HELAL...)">
+        <select name="title" id="sertifikaSelect" class="form-select" size="8" required>
+            <option value="">-- Yukarıya yazarak arayın --</option>
+            <option>ACS (Sağlık Uygunluk Sertifikası)</option>
+            <option>ADR SERTİFİKALARI</option>
+            <option>AS/EN/JISQ 9100</option>
+            <option>ATEX SERTİFİKASI</option>
+            <option>BASEC SERTİFİKASI</option>
+            <option>BENOR SERTİFİKASI</option>
+            <option>BRC SERTİFİKASI</option>
+            <option>CALIBRATION SERTİFİKASI</option>
+            <option>CARB SERTİFİKASI</option>
+            <option>CB SERTİFİKASI</option>
+            <option>CCC SERTİFİKASI</option>
+            <option>CE İŞARETİ</option>
+            <option>CEKAL SERTİFİKASI</option>
+            <option>CLASS SERTİFİKASI</option>
+            <option>CMIM UYGUNLUK İŞARETİ</option>
+            <option>CMMIDEV SERTİFİKASI</option>
+            <option>COSMOS SERTİFİKASI</option>
+            <option>CRASH TEST SERTİFİKASI</option>
+            <option>CRADLE TO CRADLE SERTİFİKASI</option>
+            <option>CTUV İŞARETİ</option>
+            <option>DIN SERİSİ BELGELER</option>
+            <option>EAC GÜMRÜK BİRLİĞİ SERTİFİKASI</option>
+            <option>ECE YÖNETMELİKLERİ SERTİFİKASI</option>
+            <option>EC TYPE EXAMINATION SERTİFİKASI</option>
+            <option>ECM SERTİFİKASI</option>
+            <option>ECOLABEL SERTİFİKASI</option>
+            <option>ECOCERT SERTİFİKASI</option>
+            <option>EHEDG SERTİFİKASI</option>
+            <option>EMC SERTİFİKASI</option>
+            <option>EN SERİSİ SERTİFİKALAR</option>
+            <option>ENPLUS SERTİFİKASI</option>
+            <option>ETA (Avrupa Teknik Değerlendirmesi)</option>
+            <option>EU TYPE EXAMINATION SERTİFİKASI</option>
