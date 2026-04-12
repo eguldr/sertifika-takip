@@ -140,4 +140,5 @@ def admin():
     users = User.query.all()
     return render_template('admin.html', users=users)
 
-# Kod burada biter.
+if __name__ == '__main__':
+    app.run()
