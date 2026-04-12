@@ -75,9 +75,10 @@ def kayit():
             return redirect(url_for('kayit'))
             
         new_user = User(
-            email=email,
-            password=generate_password_hash(password),
-            company_name=company
+            email=email, 
+            password=generate_password_hash(password), 
+            company_name=company, 
+            is_admin=True
         )
         db.session.add(new_user)
         db.session.commit()
