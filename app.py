@@ -89,9 +89,10 @@ def kayit():
 def dashboard():
     return render_template('dashboard.html', user=current_user)
 
-@app.route('/sertifikalar/<category>')
+@app.route('/sertifikalar')
 @login_required
-def sertifikalar(category):
+def sertifikalar():
+    category = request.args.get('cat')
     items = Entry.query.filter_by(user_id=current_user.id, category=category).all()
     return render_template('sertifikalar.html', items=items, category=category)
 
