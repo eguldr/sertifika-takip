@@ -18,14 +18,16 @@
         <div class="col-md-2 sidebar">
             <h4 class="px-3">EG Optimal</h4>
             <hr>
-            <a href="/dashboard">📊 Dashboard</a>
-            <a href="/sertifikalar?cat=Urun" class="nav-link text-white">📦 Üretim & Ürün</a>
-            <a href="/sertifikalar?cat=Arac" class="nav-link text-white">🚚 Araç & Filo</a>
-            <a href="/sertifikalar?cat=Personel" class="nav-link text-white">👤 Personel & SRC</a>
-            <a href="/sertifikalar?cat=Tesis" class="nav-link text-white">🏢 Tesis & Mekan</a>
-{% if current_user.is_admin %}            
+            <a href="/dashboard" class="nav-link text-white">📊 Dashboard</a>
+<a href="/sertifikalar?cat=Urun" class="nav-link text-white">📦 Üretim & Ürün</a>
+<a href="/sertifikalar?cat=Arac" class="nav-link text-white">🚚 Araç & Filo</a>
+<a href="/sertifikalar?cat=Personel" class="nav-link text-white">👤 Personel & SRC</a>
+<a href="/sertifikalar?cat=Tesis" class="nav-link text-white">🏢 Tesis & Mekan</a>
+
+{% if current_user.is_admin %}
 <hr>
-<a href="/admin" class="text-info px-3 d-block py-2">🛡️ Admin Paneli</a>
+<a href="/admin" class="nav-link text-info">🛡️ Admin Paneli</a>
+{% endif %}
 {% endif %}
             <hr>
             <a href="/logout" class="text-danger">🚪 Çıkış</a>
