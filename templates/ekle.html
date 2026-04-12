@@ -42,3 +42,121 @@
             <option>ENPLUS SERTİFİKASI</option>
             <option>ETA (Avrupa Teknik Değerlendirmesi)</option>
             <option>EU TYPE EXAMINATION SERTİFİKASI</option>
+            <option>EUCERTPLAST SERTİFİKASI</option>
+            <option>EUROVENT SERTİFİKASI</option>
+            <option>F4 STAR BELGESİ</option>
+            <option>FAMI-QS SERTİFİKASI</option>
+            <option>FIBC TEST SERTİFİKASI</option>
+            <option>FM APPROVALS</option>
+            <option>FSSC 22000 SERTİFİKASI</option>
+            <option>G MARK SERTİFİKASI</option>
+            <option>GASTEC QA SERTİFİKASI</option>
+            <option>GERMAN ECOLABEL - BLUE ANGEL</option>
+            <option>GMP SERTİFİKASI</option>
+            <option>GMP+ FSA SERTİFİKASI</option>
+            <option>GDP SERTİFİKASI</option>
+            <option>GS SERTİFİKASI</option>
+            <option>HACCP SERTİFİKASI</option>
+            <option>HAR BELGESİ</option>
+            <option>HELAL BELGESİ</option>
+            <option>HİJYEN SERTİFİKASI</option>
+            <option>INDOOR AIR QUALITY</option>
+            <option>INSTA-CERT SERTİFİKASI</option>
+            <option>ISCC SERTİFİKASI</option>
+            <option>ISO 9001:2015</option>
+            <option>ISO 14001</option>
+            <option>ISO 22000</option>
+            <option>ISO 27001</option>
+            <option>ISO 45001</option>
+            <option>ISO 50001</option>
+            <option>ISO 13485</option>
+            <option>ISO 17025</option>
+            <option>ISO 22301</option>
+            <option>ISO 37001</option>
+            <option>İYİ TARIM UYGULAMALARI</option>
+            <option>JIS SERTİFİKASI</option>
+            <option>KEMA KEUR / DEKRA SERTİFİKASI</option>
+            <option>KEYMARK SERTİFİKASI</option>
+            <option>KITEMARK SERTİFİKASI</option>
+            <option>KTW-UBA UYGUNLUK BEYANI</option>
+            <option>KRAV SERTİFİKASI</option>
+            <option>MARINE SERTİFİKASI</option>
+            <option>MDR TIBBİ CİHAZ SERTİFİKASI</option>
+            <option>MDSAP SERTİFİKASI</option>
+            <option>NF İŞARETİ/SERTİFİKASI</option>
+            <option>NSF SERTİFİKASI</option>
+            <option>OEKO-TEX SERTİFİKASI</option>
+            <option>ORGANİK TARIM SERTİFİKASI</option>
+            <option>ORGANİK ÜRÜN SERTİFİKASI</option>
+            <option>Q-MARK SERTİFİKASI</option>
+            <option>RAL SERTİFİKASI</option>
+            <option>RTN SERTİFİKASI</option>
+            <option>SA8000 SOSYAL UYGUNLUK SERTİFİKASI</option>
+            <option>SAFETY INTEGRITY LEVEL (SIL)</option>
+            <option>SOLAR KEYMARK</option>
+            <option>STANDARDSMARK</option>
+            <option>TEKNİK REGLAMENT SERTİFİKASI</option>
+            <option>TOXPROOF SERTİFİKASI</option>
+            <option>TSI SERTİFİKASI</option>
+            <option>TYPE APPROVAL SERTİFİKASI</option>
+            <option>TYPE TEST SERTİFİKASI</option>
+            <option>UKCA İŞARETİ</option>
+            <option>UKRSEPRO SERTİFİKASI</option>
+            <option>UL SERTİFİKASI</option>
+            <option>UYGUNLUK SERTİFİKASI</option>
+            <option>VDE SERTİFİKASI</option>
+            <option>VDI 2700 SERTİFİKASI</option>
+            <option>WRAS SERTİFİKASI</option>
+            <option>WATERMARK SERTİFİKASI</option>
+            <option>YANGIN SERTİFİKASI</option>
+            <option value="Diger">➕ LİSTEDE YOK (KENDİM YAZACAĞIM)</option>
+        </select>
+    </div>
+
+    <div id="otherInputDiv" class="mb-3" style="display:none;">
+        <label class="form-label text-primary">Belge / Sertifika Adını Yazın</label>
+        <input type="text" id="otherTitleInput" class="form-control border-primary" placeholder="Örn: ÖZEL PAZAR BELGESİ">
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Bitiş Tarihi</label>
+        <input type="date" name="expiry_date" class="form-control" required>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Kaydet</button>
+    <a href="/sertifikalar?cat={{ request.args.get('cat', '') }}" class="btn btn-secondary ms-2">İptal</a>
+</form>
+
+<script>
+document.getElementById('searchInput').addEventListener('input', function() {
+    const filter = this.value.toUpperCase();
+    const select = document.getElementById('sertifikaSelect');
+    const options = select.querySelectorAll('option');
+    options.forEach(opt => {
+        if (opt.value === '' || opt.value === 'Diger') {
+            opt.style.display = '';
+        } else if (opt.text.toUpperCase().includes(filter)) {
+            opt.style.display = '';
+        } else {
+            opt.style.display = 'none';
+        }
+    });
+});
+
+document.getElementById('sertifikaSelect').addEventListener('change', function() {
+    const otherDiv = document.getElementById('otherInputDiv');
+    const otherInput = document.getElementById('otherTitleInput');
+    if (this.value === 'Diger') {
+        otherDiv.style.display = 'block';
+        otherInput.required = true;
+        otherInput.name = 'title';
+        this.name = '';
+    } else {
+        otherDiv.style.display = 'none';
+        otherInput.required = false;
+        otherInput.name = '';
+        this.name = 'title';
+    }
+});
+</script>
+{% endblock %}
