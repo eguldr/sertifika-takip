@@ -9,6 +9,7 @@ app = Flask(__name__)
 @app.after_request
 def add_header(response):
     response.headers['Content-Type'] = 'text/html; charset=utf-8'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
     return response
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'gizli-anahtar-123')
 
