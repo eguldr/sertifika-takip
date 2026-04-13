@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
 <h4>Yeni Kayıt Ekle</h4>
+
 <form method="POST" action="/ekle">
     <input type="hidden" name="category" value="{{ request.args.get('cat', '') }}">
 
     {% if request.args.get('cat') == 'Arac' %}
 
-    <!-- ARAÇ FORMU -->
+    <!-- ================= ARAÇ FORMU ================= -->
     <div class="mb-3">
         <label class="form-label">Araç Tipi</label>
         <select id="aracTipi" class="form-select" onchange="aracTipiDegisti(this)">
@@ -45,9 +46,98 @@
         </div>
     </div>
 
+    {% elif request.args.get('cat') == 'Personel' %}
+
+    <!-- ================= PERSONEL FORMU ================= -->
+    <div class="alert alert-info">
+        👤 Personel bilgileri ve belge bitiş tarihleri girilir. Sistem otomatik hatırlatma gönderir.
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Ad Soyad <span class="text-danger">*</span></label>
+            <input type="text" name="title" class="form-control" placeholder="Ahmet Yılmaz" required>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label">TC Kimlik No</label>
+            <input type="text" name="risk_value" id="tcInput" class="form-control" maxlength="11" placeholder="12345678901">
+            <div id="tcUyari" class="form-text text-danger" style="display:none;">TC 11 haneli olmalıdır</div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Ehliyet Türü</label>
+            <select name="ehliyet_turu" class="form-select">
+                <option value="">-- Seçiniz --</option>
+                <option>B (Otomobil)</option>
+                <option>C (Kamyon)</option>
+                <option>CE (TIR/Çekici)</option>
+                <option>D (Otobüs)</option>
+                <option>B+E</option>
+                <option>Yok</option>
+            </select>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Kullandığı Araç (Plaka)</label>
+            <input type="text" name="kullandigi_arac" class="form-control" placeholder="34 ABC 123">
+        </div>
+    </div>
+
+    <hr>
+    <h6 class="text-primary">📋 Takip Edilecek Belge</h6>
+
+    <div class="mb-3">
+        <label class="form-label">Belge Türü <span class="text-danger">*</span></label>
+        <select name="belge_turu" id="personelBelge" class="form-select" onchange="personelBelgeDegisti(this)" required>
+            <option value="">-- Seçiniz --</option>
+            <optgroup label="Zorunlu Belgeler">
+                <option value="Ehliyet Yenileme">🪪 Ehliyet Yenileme</option>
+                <option value="Psikoteknik Belgesi">🧠 Psikoteknik Belgesi</option>
+                <option value="SRC-1 Belgesi">📜 SRC-1 (Uluslararası Yük)</option>
+                <option value="SRC-2 Belgesi">📜 SRC-2 (Yurtiçi Yük)</option>
+                <option value="SRC-3 Belgesi">📜 SRC-3 (Uluslararası Yolcu)</option>
+                <option value="SRC-4 Belgesi">📜 SRC-4 (Yurtiçi Yolcu)</option>
+                <option value="SRC-5 Belgesi">📜 SRC-5 (Tehlikeli Madde)</option>
+                <option value="Mesleki Yeterlilik Belgesi">🎓 Mesleki Yeterlilik Belgesi</option>
+            </optgroup>
+            <optgroup label="Sağlık Belgeleri">
+                <option value="Sürücü Sağlık Raporu">🏥 Sürücü Sağlık Raporu</option>
+                <option value="Periyodik Sağlık Muayenesi">🏥 Periyodik Sağlık Muayenesi</option>
+            </optgroup>
+            <optgroup label="İş Güvenliği">
+                <option value="İş Güvenliği Eğitimi">🦺 İş Güvenliği Eğitimi</option>
+                <option value="Yangın Güvenliği Eğitimi">🔥 Yangın Güvenliği Eğitimi</option>
+                <option value="İlk Yardım Sertifikası">🩺 İlk Yardım Sertifikası</option>
+            </optgroup>
+            <option value="Diger">➕ Listede Yok</option>
+        </select>
+    </div>
+
+    <div id="personelDigerDiv" class="mb-3" style="display:none;">
+        <label class="form-label text-primary">Belge Adını Yazın</label>
+        <input type="text" id="personelDigerInput" class="form-control border-primary" placeholder="Örn: ADR Sertifikası">
+    </div>
+
+    <div id="personelBilgiNotu" class="alert alert-warning" style="display:none;"></div>
+
+    <div class="mb-3">
+        <label class="form-label">Bitiş Tarihi <span class="text-danger">*</span></label>
+        <input type="date" name="expiry_date" id="personelTarih" class="form-control" required>
+    </div>
+
+    <div id="sureDolmusUyari" class="alert alert-danger" style="display:none;">
+        ⛔ Bu belgenin süresi zaten dolmuş! Yenilenmesi gerekiyor.
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Not (Opsiyonel)</label>
+        <textarea name="personel_not" class="form-control" rows="2" placeholder="İsteğe bağlı not..."></textarea>
+    </div>
+
     {% else %}
 
-    <!-- SERTİFİKA FORMU -->
+    <!-- ================= SERTİFİKA FORMU ================= -->
     <div class="mb-3">
         <label class="form-label">Sertifika / Belge Seçin</label>
         <input type="text" id="searchInput" class="form-control mb-2" placeholder="Belge adını yazın (örn: CE, ISO, HELAL...)">
@@ -174,6 +264,7 @@
 </form>
 
 <script>
+// ===== ARAÇ FORMU =====
 const aracBelgeleri = {
     binek: [
         {grup: 'Zorunlu', belgeler: ['Araç Muayenesi', 'Trafik Sigortası (Zorunlu)']},
@@ -190,17 +281,28 @@ const aracBelgeleri = {
 };
 
 const uyarilar = {
-    binek: '⚠️ <strong>Binek Araç Muayene Cezaları (2026):</strong><br>• Trafikte muayenesiz yakalanma: <strong>2.719 TL</strong> (15 günde ödenirse %25 indirimle 2.039 TL)<br>• Her gecikilen ay için muayene ücretine <strong>%5 gecikme faizi</strong> eklenir<br>• Ruhsatta belirtilen tarihten 1 gün sonra bile %5 faiz işler<br>• 7 gün süre verilir, muayene yapılmazsa araç <strong>trafikten men</strong> edilir',
-    ticari_hafif: '⚠️ <strong>Hafif Ticari Araç Cezaları (2026):</strong><br>• Muayenesiz trafikte: <strong>2.719 TL</strong> + araç men<br>• Her gecikilen ay: muayene ücretine <strong>%5 faiz</strong><br>• <strong>K2 olmadan faaliyet: 21.333 TL</strong><br>• Araç K2\'ye kaydedilmezse: <strong>10.666 TL</strong>',
-    ticari_agir: '⚠️ <strong>Ağır Ticari Araç Cezaları (2026):</strong><br>• Muayenesiz: <strong>115.021 TL</strong> (1.) / 191.867 TL (2.) / 383.842 TL (3.)<br>• <strong>K2 olmadan faaliyet: 21.333 TL</strong><br>• Araç K2\'ye kaydedilmezse: <strong>10.666 TL</strong><br>• Takoğraf eksikliği: ağır ceza'
+    binek: '⚠️ <strong>Binek Araç (2026):</strong> Muayenesiz trafikte <strong>2.719 TL</strong> ceza + araç men riski. Her gecikilen ay muayene ücretine <strong>%5 faiz</strong> eklenir. 15 günde ödenirse %25 indirim.',
+    ticari_hafif: '⚠️ <strong>Hafif Ticari (2026):</strong> Muayenesiz: <strong>2.719 TL</strong> + araç men. <strong>K2 olmadan: 21.333 TL.</strong> Araç K2\'ye kaydedilmezse: 10.666 TL.',
+    ticari_agir: '⚠️ <strong>Ağır Ticari (2026):</strong> Muayenesiz 1.seferinde <strong>115.021 TL</strong> | 2.seferinde 191.867 TL | 3.seferinde 383.842 TL. <strong>K2 olmadan: 21.333 TL.</strong>'
 };
 
 const belgeBilgileri = {
-    'K2 Yetki Belgesi': 'ℹ️ <strong>K2 Yetki Belgesi:</strong> 5 yıl geçerlidir. 90 gün öncesinden yenileme süreci başlar. Süre bitiminden 540 gün içinde başvurulmazsa belge <strong>iptal</strong> olur. Yeni alınan araçlar 15 gün içinde belgeye eklenmelidir.',
-    'Araç Muayenesi': '🔧 <strong>Araç Muayenesi:</strong> Ruhsatta belirtilen tarihten 1 gün bile gecikse %5 faiz işlemeye başlar. Trafikte yakalanırsa 2.719 TL ceza + araç men riski.',
-    'Takoğraf Kalibrasyonu': '⏱️ <strong>Takoğraf:</strong> 2 yılda bir kalibrasyon zorunludur. Eksik veya manipüle takoğraf ağır cezaya yol açar.',
-    'Trafik Sigortası (Zorunlu)': '🛡️ <strong>Zorunlu Trafik Sigortası:</strong> Sigortasız araçla trafiğe çıkmak hem para cezasına hem de aracın trafikten men edilmesine neden olur.',
-    'ADR Uygunluk Belgesi': '☢️ <strong>ADR:</strong> Tehlikeli madde taşıyan araçlar için zorunludur. Eksikliği halinde ağır idari para cezası uygulanır.'
+    'K2 Yetki Belgesi': 'ℹ️ <strong>K2:</strong> 5 yıl geçerli. 90 gün öncesinden yenileme başlar. 540 gün içinde başvurulmazsa iptal. Yeni araçlar 15 gün içinde eklenmelidir.',
+    'Araç Muayenesi': '🔧 <strong>Muayene:</strong> Ruhsat tarihinden 1 gün bile gecikse %5 faiz işler. Trafikte yakalanırsa 2.719 TL ceza + men.',
+    'Takoğraf Kalibrasyonu': '⏱️ <strong>Takoğraf:</strong> 2 yılda bir kalibrasyon zorunludur.',
+    'Trafik Sigortası (Zorunlu)': '🛡️ <strong>Trafik Sigortası:</strong> Sigortasız araç trafiğe çıkarsa men + ağır ceza.',
+    'ADR Uygunluk Belgesi': '☢️ <strong>ADR:</strong> Tehlikeli madde taşıyan araçlar için zorunludur.'
+};
+
+const personelBilgileri = {
+    'Psikoteknik Belgesi': 'ℹ️ <strong>Psikoteknik:</strong> Ticari araç sürücüleri için zorunludur. 5 yılda bir yenilenir. Süresi dolan sürücü ticari araç kullanamaz.',
+    'SRC-1 Belgesi': 'ℹ️ <strong>SRC-1:</strong> Uluslararası yük taşımacılığı yapan sürücüler için zorunludur.',
+    'SRC-2 Belgesi': 'ℹ️ <strong>SRC-2:</strong> Yurtiçi yük taşımacılığı yapan sürücüler için zorunludur.',
+    'SRC-3 Belgesi': 'ℹ️ <strong>SRC-3:</strong> Uluslararası yolcu taşımacılığı yapan sürücüler için zorunludur.',
+    'SRC-4 Belgesi': 'ℹ️ <strong>SRC-4:</strong> Yurtiçi yolcu taşımacılığı yapan sürücüler için zorunludur.',
+    'SRC-5 Belgesi': 'ℹ️ <strong>SRC-5:</strong> Tehlikeli madde taşıyan sürücüler için zorunludur.',
+    'Ehliyet Yenileme': 'ℹ️ <strong>Ehliyet:</strong> Süresi dolan ehliyet ile araç kullanmak trafikten men ve cezaya yol açar.',
+    'Mesleki Yeterlilik Belgesi': 'ℹ️ <strong>Mesleki Yeterlilik:</strong> Belgesi olmadan çalıştırmak işverene ceza getirir (10.666 TL).'
 };
 
 function aracTipiDegisti(sel) {
@@ -209,7 +311,6 @@ function aracTipiDegisti(sel) {
         return;
     }
     document.getElementById('aracBelgeDiv').style.display = 'block';
-
     const uyariKutusu = document.getElementById('uyariKutusu');
     uyariKutusu.innerHTML = uyarilar[sel.value];
     uyariKutusu.style.display = 'block';
@@ -240,10 +341,8 @@ function aracSecimDegisti(sel) {
     const bilgiNotu = document.getElementById('belgeBilgiNotu');
     const digerDiv = document.getElementById('aracDigerDiv');
     const digerInput = document.getElementById('aracDigerInput');
-
     digerDiv.style.display = 'none';
     bilgiNotu.style.display = 'none';
-
     if (sel.value === 'Diger') {
         digerDiv.style.display = 'block';
         digerInput.name = 'title';
@@ -258,6 +357,53 @@ function aracSecimDegisti(sel) {
     }
 }
 
+// ===== PERSONEL FORMU =====
+function personelBelgeDegisti(sel) {
+    const bilgiNotu = document.getElementById('personelBilgiNotu');
+    const digerDiv = document.getElementById('personelDigerDiv');
+    const digerInput = document.getElementById('personelDigerInput');
+    digerDiv.style.display = 'none';
+    bilgiNotu.style.display = 'none';
+
+    if (sel.value === 'Diger') {
+        digerDiv.style.display = 'block';
+        digerInput.name = 'title';
+        sel.name = '';
+    } else {
+        sel.name = 'title';
+        digerInput.name = '';
+        if (personelBilgileri[sel.value]) {
+            bilgiNotu.innerHTML = personelBilgileri[sel.value];
+            bilgiNotu.style.display = 'block';
+        }
+    }
+}
+
+// TC kontrol
+const tcInput = document.getElementById('tcInput');
+if (tcInput) {
+    tcInput.addEventListener('input', function() {
+        const uyari = document.getElementById('tcUyari');
+        if (this.value.length > 0 && this.value.length !== 11) {
+            this.style.borderColor = 'red';
+            uyari.style.display = 'block';
+        } else {
+            this.style.borderColor = this.value.length === 11 ? 'green' : '';
+            uyari.style.display = 'none';
+        }
+    });
+}
+
+// Bitiş tarihi süresi dolmuş kontrolü
+const personelTarih = document.getElementById('personelTarih');
+if (personelTarih) {
+    personelTarih.addEventListener('change', function() {
+        const uyari = document.getElementById('sureDolmusUyari');
+        uyari.style.display = new Date(this.value) < new Date() ? 'block' : 'none';
+    });
+}
+
+// ===== SERTİFİKA FORMU =====
 const searchInput = document.getElementById('searchInput');
 if (searchInput) {
     searchInput.addEventListener('input', function() {
@@ -290,3 +436,5 @@ if (sertifikaSelect) {
 }
 </script>
 {% endblock %}
+
+
