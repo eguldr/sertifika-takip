@@ -46,11 +46,9 @@ def load_user(user_id):
 
 # --- Rotalar (Routes) ---
 
-@app.route('/')
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
     from flask import make_response, render_template
-    # Tarayıcıya 'bu bir metin değil, HTML sayfasıdır' diyoruz
     resp = make_response(render_template('login.html'))
     resp.headers['Content-Type'] = 'text/html; charset=utf-8'
     return resp
