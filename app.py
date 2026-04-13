@@ -8,8 +8,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 @app.after_request
 def add_header(response):
-    response.headers['Content-Type'] = 'text/html; charset=utf-8'
-    response.headers['X-Content-Type-Options'] = 'nosniff'
+    if response.content_type == 'text/plain':
+        response.content_type = 'text/html; charset=utf-8'
     return response
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'gizli-anahtar-123')
 
