@@ -46,12 +46,10 @@ def load_user(user_id):
 
 # --- Rotalar (Routes) ---
 
-@app.route('/', methods=['GET', 'POST'])
+
+@app.route('/')
 def index():
-    from flask import make_response, render_template
-    resp = make_response(render_template('login.html'))
-    resp.headers['Content-Type'] = 'text/html; charset=utf-8'
-    return resp
+    return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
