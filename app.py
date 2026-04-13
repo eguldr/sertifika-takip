@@ -167,6 +167,13 @@ def sil(id):
 def logout():
     logout_user()
     return redirect(url_for('login'))
+@app.route('/admin/')
+@login_required
+def admin():
+    if not current_user.is_admin:
+        return redirect(url_for('dashboard'))
+    users = User.query.all()
+    return render_template('admin.html', users=users)
 
 # Tabloları oluşturma
 with app.app_context():
