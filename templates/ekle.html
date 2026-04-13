@@ -46,6 +46,27 @@
         </div>
     </div>
 
+{% elif request.args.get('cat') == 'Tesis' %}
+    <div class="alert alert-info">🏢 Tesis & Mekan belgeleri ve bitiş tarihleri girilir.</div>
+    
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Belge / Rapor Adı</label>
+            <select class="form-select" name="title" id="tesisBelge" onchange="tesisBelgeDegisti(this)" required>
+                <option value="" selected disabled>Seçiniz...</option>
+                <option>İtfaiye Raporu</option>
+                <option>Kapasite Raporu</option>
+                <option>Risk Analizi</option>
+                <option>Emisyon Ölçümü</option>
+                <option>İşyeri Açma Ruhsatı</option>
+                <option value="Diger">Diğer (Elle Yaz)</option>
+            </select>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Geçerlilik Tarihi</label>
+            <input type="date" class="form-control" id="tesisTarih" name="expiry_date" required>
+        </div>
+    </div>
     {% elif request.args.get('cat') == 'Personel' %}
 
     <!-- ================= PERSONEL FORMU ================= -->
@@ -265,6 +286,29 @@
 
 <script>
 // ===== ARAÇ FORMU =====
+// ===== OTOMATİK SÜRE SİSTEMİ =====
+const belgeSureleri = {
+    'Psikoteknik Belgesi': 5 * 365,
+    'SRC-1 Belgesi': 3650,
+    'SRC-2 Belgesi': 3650,
+    'SRC-3 Belgesi': 3650,
+    'SRC-4 Belgesi': 3650,
+    'SRC-5 Belgesi': 3650,
+    'Ehliyet Yenileme': 3650,
+
+    'Araç Muayenesi': 365,
+    'Trafik Sigortası (Zorunlu)': 365,
+    'Kasko': 365,
+    'Egzoz Muayenesi': 365,
+    'Takoğraf Kalibrasyonu': 2 * 365,
+
+    'İtfaiye Raporu': 365,
+    'Emisyon Ölçümü': 2 * 365,
+    'Risk Analizi': 365,
+    'Kapasite Raporu': 2 * 365
+};
+
+const varsayilanSure = 365;
 const aracBelgeleri = {
     binek: [
         {grup: 'Zorunlu', belgeler: ['Araç Muayenesi', 'Trafik Sigortası (Zorunlu)']},
@@ -347,6 +391,21 @@ function aracSecimDegisti(sel) {
         digerDiv.style.display = 'block';
         digerInput.name = 'title';
         sel.name = '';
+        // ARAÇ İÇİN OTOMATİK TARİH
+    const tarihInput = document.querySelector('input[name="expiry_date"]');
+
+    if (tarihInput && sel.value !== 'Diger') {
+        const gun = belgeSureleri[sel.value] || varsayilanSure;
+
+        const bugun = new Date();
+        bugun.setDate(bugun.getDate() + gun);
+
+        const yyyy = bugun.getFullYear();
+        const mm = String(bugun.getMonth() + 1).padStart(2, '0');
+        const dd = String(bugun.getDate()).padStart(2, '0');
+
+        tarihInput.value = `${yyyy}-${mm}-${dd}`;
+    }
     } else {
         sel.name = 'title';
         digerInput.name = '';
@@ -376,6 +435,21 @@ function personelBelgeDegisti(sel) {
             bilgiNotu.innerHTML = personelBilgileri[sel.value];
             bilgiNotu.style.display = 'block';
         }
+    }
+    // OTOMATİK TARİH HESAPLAMA
+    const tarihInput = document.getElementById('personelTarih');
+
+    if (tarihInput && sel.value !== 'Diger') {
+        const gun = belgeSureleri[sel.value] || varsayilanSure;
+
+        const bugun = new Date();
+        bugun.setDate(bugun.getDate() + gun);
+
+        const yyyy = bugun.getFullYear();
+        const mm = String(bugun.getMonth() + 1).padStart(2, '0');
+        const dd = String(bugun.getDate()).padStart(2, '0');
+
+        tarihInput.value = `${yyyy}-${mm}-${dd}`;
     }
 }
 
@@ -434,6 +508,22 @@ if (sertifikaSelect) {
         }
     });
 }
+function tesisBelgeDegisti(sel) {
+    const tarihInput = document.getElementById('tesisTarih');
+
+    if (tarihInput && sel.value !== 'Diger') {
+        const gun = belgeSureleri[sel.value] || varsayilanSure;
+
+        const bugun = new Date();
+        bugun.setDate(bugun.getDate() + gun);
+
+        const yyyy = bugun.getFullYear();
+        const mm = String(bugun.getMonth() + 1).padStart(2, '0');
+        const dd = String(bugun.getDate()).padStart(2, '0');
+
+        tarihInput.value = `${yyyy}-${mm}-${dd}`;
+    }
+}    
 </script>
 {% endblock %}
 
