@@ -21,10 +21,33 @@
 </div>
 {% endif %}
 
-<table class="table table-striped mt-3">
-    <thead>
+<!-- ÖZET SAYAÇLAR -->
+{% set dolan = items | selectattr('durum', 'equalto', 'danger') | list %}
+{% set uyari = items | selectattr('durum', 'equalto', 'warning') | list %}
+{% set gecerli = items | selectattr('durum', 'equalto', 'success') | list %}
+
+{% if items %}
+<div class="row g-2 mb-3">
+    <div class="col-auto">
+        <span class="badge bg-danger fs-6 px-3 py-2">⛔ Kritik: {{ dolan|length }}</span>
+    </div>
+    <div class="col-auto">
+        <span class="badge bg-warning text-dark fs-6 px-3 py-2">⚠️ Uyarı: {{ uyari|length }}</span>
+    </div>
+    <div class="col-auto">
+        <span class="badge bg-success fs-6 px-3 py-2">✅ Geçerli: {{ gecerli|length }}</span>
+    </div>
+    <div class="col-auto">
+        <span class="badge bg-secondary fs-6 px-3 py-2">📋 Toplam: {{ items|length }}</span>
+    </div>
+</div>
+{% endif %}
+
+<table class="table table-striped mt-2">
+    <thead class="table-dark">
         <tr>
-            <th>Belge/Araç/Personel</th>
+            <th>Belge / Araç / Personel</th>
+            <th>Plaka / TC / Detay</th>
             <th>Bitiş Tarihi</th>
             <th>Kalan Gün</th>
             <th>Durum</th>
@@ -32,19 +55,61 @@
         </tr>
     </thead>
     <tbody>
-        {% for s in sertifikalar %}
-        <tr>
-            <td>{{ s.title }}</td>
-            <td>{{ s.expiry_date }}</td>
-            <td>{{ s.kalan_gun }}</td>
+        {% for item in items %}
+        <tr class="{% if item.durum == 'danger' %}table-danger{% elif item.durum == 'warning' %}table-warning{% endif %}">
+            <td><strong>{{ item.title }}</strong></td>
+            <td class="text-muted small">{{ item.risk_value or '—' }}</td>
             <td>
-                {% if s.kalan_gun <= 0 %}<span class="badge bg-danger">Süresi Dolmuş</span>
-                {% elif s.kalan_gun <= 30 %}<span class="badge bg-warning text-dark">Kritik</span>
-                {% else %}<span class="badge bg-success">Geçerli</span>{% endif %}
+                {% if item.expiry_date %}
+                    {{ item.expiry_date.strftime('%d.%m.%Y') }}
+                {% else %}
+                    <span class="text-muted">—</span>
+                {% endif %}
             </td>
-            <td><a href="/sil/{{ s.id }}" class="btn btn-sm btn-outline-danger">Sil</a></td>
+            <td>
+                {% if item.expiry_date %}
+                    {% set kalan = (item.expiry_date - bugun).days %}
+                    {% if kalan < 0 %}
+                        <strong class="text-danger">{{ kalan|abs }} gün geçti</strong>
+                    {% elif kalan == 0 %}
+                        <strong class="text-danger">Bugün!</strong>
+                    {% else %}
+                        {{ kalan }} gün
+                    {% endif %}
+                {% else %}
+                    —
+                {% endif %}
+            </td>
+            <td>
+                {% if item.durum == 'danger' %}
+                    {% if item.expiry_date and item.expiry_date < bugun %}
+                        <span class="badge bg-danger">⛔ Süresi Doldu</span>
+                    {% else %}
+                        <span class="badge bg-danger">🔴 Kritik</span>
+                    {% endif %}
+                {% elif item.durum == 'warning' %}
+                    <span class="badge bg-warning text-dark">⚠️ {{ item.durum_text }}</span>
+                {% elif item.durum == 'success' %}
+                    <span class="badge bg-success">✅ {{ item.durum_text }}</span>
+                {% else %}
+                    <span class="badge bg-secondary">—</span>
+                {% endif %}
+            </td>
+            <td>
+                <a href="/sil/{{ item.id }}" class="btn btn-sm btn-outline-danger"
+                   onclick="return confirm('{{ item.title }} kaydını silmek istiyor musunuz?')">🗑️ Sil</a>
+            </td>
         </tr>
         {% endfor %}
+        {% if not items %}
+        <tr>
+            <td colspan="6" class="text-center text-muted py-4">
+                Henüz kayıt yok. <a href="/ekle?cat={{ request.args.get('cat') }}">+ Yeni ekle</a>
+            </td>
+        </tr>
+        {% endif %}
     </tbody>
 </table>
 {% endblock %}
+
+   
