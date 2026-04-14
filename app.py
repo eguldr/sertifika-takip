@@ -6,11 +6,6 @@ from datetime import datetime, timedelta, date
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-@app.after_request
-def add_header(response):
-    if response.content_type == 'text/plain':
-        response.content_type = 'text/html; charset=utf-8'
-    return response
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'gizli-anahtar-123')
 
 uri = os.environ.get('DATABASE_URL')
@@ -35,11 +30,13 @@ class User(UserMixin, db.Model):
     company_name = db.Column(db.String(100))
     is_admin = db.Column(db.Boolean, default=False)
 
+
 class Entry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer)
     category = db.Column(db.String(50))
     title = db.Column(db.String(100))
+    firma_adi = db.Column(db.String(100))
     start_date = db.Column(db.Date)
     expiry_date = db.Column(db.Date)
     risk_value = db.Column(db.String(100))
@@ -75,12 +72,9 @@ def kayit():
         email = request.form.get('email')
         password = request.form.get('password')
         company = request.form.get('company_name')
-
-        user_exists = User.query.filter_by(email=email).first()
-        if user_exists:
+        if User.query.filter_by(email=email).first():
             flash('Bu e-posta zaten kayıtlı!')
             return redirect(url_for('kayit'))
-
         new_user = User(
             email=email,
             password=generate_password_hash(password),
@@ -103,25 +97,16 @@ def dashboard():
 
     tum_kayitlar = Entry.query.filter_by(user_id=current_user.id).all()
 
-    # Kategori sayıları
     urun  = Entry.query.filter_by(user_id=current_user.id, category='Urun').count()
     arac  = Entry.query.filter_by(user_id=current_user.id, category='Arac').count()
     pers  = Entry.query.filter_by(user_id=current_user.id, category='Personel').count()
     tesis = Entry.query.filter_by(user_id=current_user.id, category='Tesis').count()
 
-    # Süresi dolmuş (bugünden önce)
     suresi_dolan = [e for e in tum_kayitlar if e.expiry_date and e.expiry_date < bugun]
+    kritik_30    = [e for e in tum_kayitlar if e.expiry_date and bugun <= e.expiry_date <= gun_30]
+    uyari_60     = [e for e in tum_kayitlar if e.expiry_date and gun_30 < e.expiry_date <= gun_60]
+    bilgi_90     = [e for e in tum_kayitlar if e.expiry_date and gun_60 < e.expiry_date <= gun_90]
 
-    # 30 gün içinde dolacak
-    kritik_30 = [e for e in tum_kayitlar if e.expiry_date and bugun <= e.expiry_date <= gun_30]
-
-    # 31-60 gün arası
-    uyari_60 = [e for e in tum_kayitlar if e.expiry_date and gun_30 < e.expiry_date <= gun_60]
-
-    # 61-90 gün arası
-    bilgi_90 = [e for e in tum_kayitlar if e.expiry_date and gun_60 < e.expiry_date <= gun_90]
-
-    # Kategori isimlerini Türkçeleştir
     kat_isim = {
         'Urun': 'Üretim & Ürün',
         'Arac': 'Araç & Filo',
@@ -151,24 +136,19 @@ def sertifikalar():
 
     items = Entry.query.filter_by(user_id=current_user.id, category=category).all()
 
-    # Her kayıt için durum rengi hesapla
     for item in items:
         if item.expiry_date:
-            if item.expiry_date < bugun:
-                item.durum = 'danger'
-                item.durum_text = 'Süresi Doldu'
-            elif item.expiry_date <= gun_30:
-                item.durum = 'danger'
-                item.durum_text = f'{(item.expiry_date - bugun).days} gün kaldı'
-            elif item.expiry_date <= gun_60:
-                item.durum = 'warning'
-                item.durum_text = f'{(item.expiry_date - bugun).days} gün kaldı'
+            diff = (item.expiry_date - bugun).days
+            if diff < 0:
+                item.durum, item.durum_text = 'danger', 'Süresi Doldu'
+            elif diff <= 30:
+                item.durum, item.durum_text = 'danger', f'{diff} gün kaldı'
+            elif diff <= 60:
+                item.durum, item.durum_text = 'warning', f'{diff} gün kaldı'
             else:
-                item.durum = 'success'
-                item.durum_text = f'{(item.expiry_date - bugun).days} gün kaldı'
+                item.durum, item.durum_text = 'success', f'{diff} gün kaldı'
         else:
-            item.durum = 'secondary'
-            item.durum_text = 'Tarih yok'
+            item.durum, item.durum_text = 'secondary', 'Tarih yok'
 
     return render_template('sertifikalar.html', items=items, category=category, bugun=bugun)
 
@@ -182,13 +162,16 @@ def ekle():
 
         title = request.form.get('title')
         category = request.form.get('category')
+        firma_adi = request.form.get('firma_adi', '')
+        risk_value = request.form.get('risk_value', '')
 
         new_entry = Entry(
             user_id=current_user.id,
             category=category,
             title=title,
+            firma_adi=firma_adi,
             expiry_date=expiry_date,
-            risk_value=request.form.get('risk_value', '')
+            risk_value=risk_value
         )
         db.session.add(new_entry)
         db.session.commit()
@@ -231,3 +214,7 @@ def create_tables():
 
 if __name__ == '__main__':
     app.run()
+
+
+
+
