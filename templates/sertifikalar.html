@@ -1,110 +1,49 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>
-        {% if request.args.get('cat') == 'Urun' %} Üretim & Ürün Belgeleri
-        {% elif request.args.get('cat') == 'Arac' %} Araç & Filo Takipleri
-        {% elif request.args.get('cat') == 'Personel' %} Personel & Mesleki Yeterlilik
-        {% elif request.args.get('cat') == 'Tesis' %} Tesis & Mekan Uyumluluğu
-        {% else %} Tüm Kayıtlar {% endif %}
-    </h2>
-    <a href="/ekle?cat={{ request.args.get('cat') }}" class="btn btn-primary">+ Yeni Ekle</a>
+    <h2>{{ cat }} Kayıtları</h2>
+    <a href="/ekle?cat={{ cat }}" class="btn btn-primary">+ Yeni Ekle</a>
 </div>
 
-{% if request.args.get('cat') == 'Arac' %}
-<div class="alert alert-info">
-    <strong>💡 Bilgi Notu:</strong> 2026 yılı itibarıyla K1/K2 yetki belgesi yenileme maliyeti yaklaşık <b>150.000 TL</b>'dir. Süresi dolmadan yapılan başvurularda %15 indirim hakkınız korunur.
-</div>
-{% elif request.args.get('cat') == 'Personel' %}
-<div class="alert alert-warning">
-    <strong>⚠️ Risk Uyarısı:</strong> SRC veya Psikoteknik belgesi eksik sürücü kullanımında firmaya uygulanan ceza yaklaşık <b>8.200 TL</b>'dir.
-</div>
-{% elif request.args.get('cat') == 'Tesis' %}
-<div class="alert alert-warning">
-    <strong>⚠️ Hatırlatma:</strong> Yıllık İşletme Cetveli yıl sonundan itibaren <b>4 ay (120 gün)</b> içinde İl Sanayi Müdürlüğüne verilmesi zorunludur.
-</div>
-{% endif %}
-
-{% set dolan = items | selectattr('durum', 'equalto', 'danger') | list %}
-{% set uyari = items | selectattr('durum', 'equalto', 'warning') | list %}
-{% set gecerli = items | selectattr('durum', 'equalto', 'success') | list %}
-
-{% if items %}
-<div class="row g-2 mb-3">
-    <div class="col-auto"><span class="badge bg-danger fs-6 px-3 py-2">⛔ Kritik: {{ dolan|length }}</span></div>
-    <div class="col-auto"><span class="badge bg-warning text-dark fs-6 px-3 py-2">⚠️ Uyarı: {{ uyari|length }}</span></div>
-    <div class="col-auto"><span class="badge bg-success fs-6 px-3 py-2">✅ Geçerli: {{ gecerli|length }}</span></div>
-    <div class="col-auto"><span class="badge bg-secondary fs-6 px-3 py-2">📋 Toplam: {{ items|length }}</span></div>
-</div>
-{% endif %}
-
-<table class="table table-striped mt-2">
+<table class="table table-hover">
     <thead class="table-dark">
         <tr>
-            <th>Belge / Araç / Personel</th>
-            <th>Firma / Şirket</th>
-            <th>Plaka / TC / Detay</th>
+            <th>Şirket / Firma</th>
+            <th>Belge / Detay</th>
             <th>Bitiş Tarihi</th>
-            <th>Kalan Gün</th>
             <th>Durum</th>
             <th>İşlem</th>
         </tr>
     </thead>
     <tbody>
         {% for item in items %}
-        <tr class="{% if item.durum == 'danger' %}table-danger{% elif item.durum == 'warning' %}table-warning{% endif %}">
-            <td><strong>{{ item.title }}</strong></td>
-            <td class="text-muted small">{{ item.firma_adi or '—' }}</td>
-            <td class="text-muted small">{{ item.risk_value or '—' }}</td>
+        <tr>
+            <td><strong>{{ item.firma_adi or 'Belirtilmedi' }}</strong></td>
+            <td>{{ item.title }} <br><small class="text-muted">{{ item.risk_value }}</small></td>
+            <td>{{ item.expiry_date.strftime('%d.%m.%Y') if item.expiry_date }}</td>
+            <td><span class="badge bg-{{ item.durum }}">Takipte</span></td>
             <td>
-                {% if item.expiry_date %}
-                    {{ item.expiry_date.strftime('%d.%m.%Y') }}
-                {% else %}
-                    <span class="text-muted">—</span>
-                {% endif %}
-            </td>
-            <td>
-                {% if item.expiry_date %}
-                    {% set kalan = (item.expiry_date - bugun).days %}
-                    {% if kalan < 0 %}
-                        <strong class="text-danger">{{ kalan|abs }} gün geçti</strong>
-                    {% elif kalan == 0 %}
-                        <strong class="text-danger">Bugün!</strong>
-                    {% else %}
-                        {{ kalan }} gün
-                    {% endif %}
-                {% else %}—{% endif %}
-            </td>
-            <td>
-                {% if item.durum == 'danger' %}
-                    {% if item.expiry_date and item.expiry_date < bugun %}
-                        <span class="badge bg-danger">⛔ Süresi Doldu</span>
-                    {% else %}
-                        <span class="badge bg-danger">🔴 {{ item.durum_text }}</span>
-                    {% endif %}
-                {% elif item.durum == 'warning' %}
-                    <span class="badge bg-warning text-dark">⚠️ {{ item.durum_text }}</span>
-                {% elif item.durum == 'success' %}
-                    <span class="badge bg-success">✅ {{ item.durum_text }}</span>
-                {% else %}
-                    <span class="badge bg-secondary">—</span>
-                {% endif %}
-            </td>
-            <td>
-                <a href="/sil/{{ item.id }}" class="btn btn-sm btn-outline-danger"
-                   onclick="return confirm('{{ item.title }} kaydını silmek istiyor musunuz?')">🗑️ Sil</a>
+                <button onclick="wpGonder('{{ item.id }}', '{{ item.firma_adi }}', '{{ item.title }}', '{{ item.expiry_date }}')" class="btn btn-sm btn-success">🟢 WhatsApp</button>
+                <a href="/sil/{{ item.id }}" class="btn btn-sm btn-danger">🗑️</a>
             </td>
         </tr>
         {% endfor %}
-        {% if not items %}
-        <tr>
-            <td colspan="7" class="text-center text-muted py-4">
-                Henüz kayıt yok. <a href="/ekle?cat={{ request.args.get('cat') }}">+ Yeni ekle</a>
-            </td>
-        </tr>
-        {% endif %}
     </tbody>
 </table>
+
+<script>
+function wpGonder(id, firma, belge, tarih) {
+    // 1. Log kaydı oluştur (Hukuki kanıt)
+    fetch('/log_ekle/' + id);
+    
+    // 2. WhatsApp mesajını hazırla
+    let mesaj = `Sayın ${firma} yetkilisi, sistemimizdeki kaydınıza göre ${belge} belgenizin süresi ${tarih} tarihinde dolacaktır. Bilgilerinize. - EG Optimal`;
+    let url = "https://wa.me/?text=" + encodeURIComponent(mesaj);
+    
+    // 3. WhatsApp'ı aç
+    window.open(url, '_blank');
+}
+</script>
 {% endblock %}
 
 
