@@ -1,7 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>{{ cat }} Takip Paneli</h2>
+<h2>
+    {% if request.args.get('cat')|lower == 'urun' %} Ürün Takip Paneli
+    {% elif request.args.get('cat')|lower == 'arac' %} Araç Takip Paneli
+    {% elif request.args.get('cat')|lower == 'personel' %} Personel Takip Paneli
+    {% elif request.args.get('cat')|lower == 'tesis' %} Tesis & Mekan Takip Paneli
+    {% else %} Tüm Sertifikalar
+    {% endif %}
+</h2>
     <a href="/ekle?cat={{ cat }}" class="btn btn-primary">+ Yeni Ekle</a>
 </div>
 
