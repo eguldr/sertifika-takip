@@ -214,7 +214,7 @@ def create_tables():
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all() # Eksik sütunları oluşturmaya zorlar
+        db.create_all()  # Bu satır veritabanındaki eksik sütunu (firma_adi) oluşturacak
     app.run()
 
 
