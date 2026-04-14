@@ -1,16 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>{{ cat }} Kayıtları</h2>
+    <h2>{{ cat }} Takip Paneli</h2>
     <a href="/ekle?cat={{ cat }}" class="btn btn-primary">+ Yeni Ekle</a>
 </div>
 
 <table class="table table-hover">
     <thead class="table-dark">
         <tr>
-            <th>Şirket / Firma</th>
+            <th>Firma / Şirket</th>
             <th>Belge / Detay</th>
             <th>Bitiş Tarihi</th>
+            <th>Kalan Gün</th>
             <th>Durum</th>
             <th>İşlem</th>
         </tr>
@@ -18,13 +19,24 @@
     <tbody>
         {% for item in items %}
         <tr>
-            <td><strong>{{ item.firma_adi or 'Belirtilmedi' }}</strong></td>
+            <td><strong>{{ item.firma_adi or '—' }}</strong></td>
             <td>{{ item.title }} <br><small class="text-muted">{{ item.risk_value }}</small></td>
             <td>{{ item.expiry_date.strftime('%d.%m.%Y') if item.expiry_date }}</td>
-            <td><span class="badge bg-{{ item.durum }}">Takipte</span></td>
             <td>
-                <button onclick="wpGonder('{{ item.id }}', '{{ item.firma_adi }}', '{{ item.title }}', '{{ item.expiry_date }}')" class="btn btn-sm btn-success">🟢 WhatsApp</button>
-                <a href="/sil/{{ item.id }}" class="btn btn-sm btn-danger">🗑️</a>
+                {% if item.kalan_gun is not none %}
+                    {% if item.kalan_gun < 0 %}
+                        <span class="text-danger fw-bold">Süresi Geçti!</span>
+                    {% else %}
+                        <span class="fw-bold text-{{ item.durum }}">{{ item.kalan_gun }} Gün Kaldı</span>
+                    {% endif %}
+                {% else %}—{% endif %}
+            </td>
+            <td>
+                {% if item.durum == 'danger' %}🔴 Kritik{% elif item.durum == 'warning' %}🟡 Uyarı{% else %}🟢 Güvenli{% endif %}
+            </td>
+            <td>
+                <button onclick="wpGonder('{{ item.id }}', '{{ item.firma_adi }}', '{{ item.title }}', '{{ item.expiry_date }}', '{{ item.whatsapp_no }}')" class="btn btn-sm btn-success">🟢 WhatsApp Gönder</button>
+                <a href="/sil/{{ item.id }}" class="btn btn-sm btn-outline-danger">🗑️</a>
             </td>
         </tr>
         {% endfor %}
@@ -32,15 +44,12 @@
 </table>
 
 <script>
-function wpGonder(id, firma, belge, tarih) {
-    // 1. Log kaydı oluştur (Hukuki kanıt)
+function wpGonder(id, firma, belge, tarih, tel) {
     fetch('/log_ekle/' + id);
+    let mesaj = `Sayın ${firma} yetkilisi, ${belge} belgenizin süresi ${tarih} tarihinde dolacaktır. Bilgilerinize. - EG Optimal`;
     
-    // 2. WhatsApp mesajını hazırla
-    let mesaj = `Sayın ${firma} yetkilisi, sistemimizdeki kaydınıza göre ${belge} belgenizin süresi ${tarih} tarihinde dolacaktır. Bilgilerinize. - EG Optimal`;
-    let url = "https://wa.me/?text=" + encodeURIComponent(mesaj);
-    
-    // 3. WhatsApp'ı aç
+    // Telefon numarası varsa doğrudan sohbete yönlendirir, yoksa sadece mesajı hazırlar
+    let url = tel ? `https://wa.me/${tel}?text=${encodeURIComponent(mesaj)}` : `https://wa.me/?text=${encodeURIComponent(mesaj)}`;
     window.open(url, '_blank');
 }
 </script>
