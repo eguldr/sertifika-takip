@@ -2,7 +2,7 @@
 {% block content %}
 <div class="card shadow border-0">
     <div class="card-header bg-primary text-white py-3">
-        <h4 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Yeni Kayıt Ekle (v4 Tam Sürüm)</h4>
+        <h4 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Yeni Kayıt Ekle (v4 Final)</h4>
     </div>
     <div class="card-body p-4">
         <form method="POST" action="/ekle">
@@ -14,11 +14,16 @@
                 <div class="form-text text-muted">Başına 90 ekleyerek yazın.</div>
             </div>
 
+            <div class="mb-3">
+                <label class="form-label fw-bold">Firma / Kurum Adı</label>
+                <input type="text" name="firma_adi" class="form-control shadow-sm" placeholder="Firma adını yazın">
+            </div>
+
             {% if request.args.get('cat') == 'Arac' %}
             <div class="mb-3">
                 <label class="form-label fw-bold">Araç Tipi</label>
                 <select id="aracTipi" class="form-select shadow-sm" onchange="aracTipiDegisti(this)">
-                    <option value="">-- Seçiniz --</option>
+                    <option value="">-- Önce araç tipini seçin --</option>
                     <option value="binek">🚗 Binek Otomobil</option>
                     <option value="ticari_hafif">🚐 Hafif Ticari</option>
                     <option value="ticari_agir">🚛 Ağır Ticari</option>
@@ -61,7 +66,7 @@
             {% else %}
             <div class="mb-3">
                 <label class="form-label fw-bold">Sertifika Seçin</label>
-                <input type="text" id="searchInput" class="form-control mb-2" placeholder="Listede ara...">
+                <input type="text" id="searchInput" class="form-control mb-2" placeholder="Listede ara (ISO, CE, ACS...)">
                 <select name="title" id="sertifikaSelect" class="form-select shadow-sm" size="10" onchange="checkDiger(this)" required>
                     <option value="" disabled selected>-- Listeden Seçin --</option>
                     <option>ACS (Sağlık Uygunluk Sertifikası)</option>
@@ -203,11 +208,7 @@
             </div>
 
             <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label fw-bold">Firma Adı</label>
-                    <input type="text" name="firma_adi" class="form-control shadow-sm">
-                </div>
-                <div class="col-md-6 mb-3">
+                <div class="col-md-12 mb-3">
                     <label class="form-label fw-bold">Plaka / TC / Not</label>
                     <input type="text" name="risk_value" class="form-control shadow-sm">
                 </div>
@@ -224,7 +225,7 @@
 </div>
 
 <script>
-// "Listede Yok" seçilince kutu açan kontrol
+// "Listede Yok" Kontrolü
 function checkDiger(sel) {
     const div = document.getElementById('otherInputDiv');
     const inp = document.getElementById('otherTitleInput');
@@ -244,9 +245,9 @@ function checkDiger(sel) {
 
 // Otomatik Tarih Hesaplama
 const sureler = {
-    'Araç Muayenesi': 365, 'Trafik Sigortası': 365, 'Kasko': 365,
+    'Araç Muayenesi': 365, 'Trafik Sigortası': 365, 'Kasko (İhtiyari Mali Mesuliyet)': 365,
     'Sanayi Sicil Belgesi': 730, 'Yıllık İşletme Cetveli': 120,
-    'Kış Lastiği Değişimi': 180, 'Yaz Lastiği Değişimi': 180
+    'Kış Lastiği Değişimi': 180, 'Yaz Lastiği Değişimi': 180, 'Egzoz Emisyon Ölçümü': 365
 };
 
 function otomatikTarih(val) {
@@ -258,11 +259,11 @@ function otomatikTarih(val) {
     t.value = d.toISOString().split('T')[0];
 }
 
-// Araç Belge Listeleri
+// Araç Belge Listeleri (Kasko ve Lastik Değişimleri Buraya Özel!)
 const aracBelgeleri = {
     binek: ['Araç Muayenesi', 'Trafik Sigortası', 'Kasko (İhtiyari Mali Mesuliyet)', 'Egzoz Emisyon Ölçümü', 'Kış Lastiği Değişimi', 'Yaz Lastiği Değişimi'],
-    ticari_hafif: ['Araç Muayenesi', 'Trafik Sigortası', 'K2 Yetki Belgesi', 'Kış Lastiği Değişimi', 'Yaz Lastiği Değişimi'],
-    ticari_agir: ['Araç Muayenesi', 'Trafik Sigortası', 'Takoğraf Kalibrasyonu', 'Kış Lastiği Değişimi', 'Yaz Lastiği Değişimi']
+    ticari_hafif: ['Araç Muayenesi', 'Trafik Sigortası', 'K2 Yetki Belgesi', 'Egzoz Emisyon Ölçümü', 'Kış Lastiği Değişimi', 'Yaz Lastiği Değişimi'],
+    ticari_agir: ['Araç Muayenesi', 'Trafik Sigortası', 'Takoğraf Kalibrasyonu', 'Egzoz Emisyon Ölçümü', 'Kış Lastiği Değişimi', 'Yaz Lastiği Değişimi']
 };
 
 function aracTipiDegisti(sel) {
