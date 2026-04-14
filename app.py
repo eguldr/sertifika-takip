@@ -147,9 +147,18 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
+# app.py'nin en sonundaki bu kısmı:
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+    app.run()
+
+# ŞU HALE GETİR:
+@app.before_request
+def tablo_kur():
+    db.create_all()
+
+if __name__ == '__main__':
     app.run()
 
 
