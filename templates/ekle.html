@@ -33,9 +33,15 @@
             <input type="text" id="aracDigerInput" class="form-control border-primary">
         </div>
 
-        <div class="mb-3">
-            <label class="form-label">Plaka / Araç Adı</label>
-            <input type="text" name="risk_value" class="form-control" placeholder="Örn: 34 ABC 123">
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Plaka / Araç Adı</label>
+                <input type="text" name="risk_value" class="form-control" placeholder="Örn: 34 ABC 123">
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">Firma Adı <span class="text-muted small">(opsiyonel)</span></label>
+                <input type="text" name="firma_adi" class="form-control" placeholder="Örn: ABC Lojistik A.Ş.">
+            </div>
         </div>
 
         <div id="belgeBilgiNotu" class="alert alert-info" style="display:none;"></div>
@@ -46,27 +52,44 @@
         </div>
     </div>
 
-{% elif request.args.get('cat') == 'Tesis' %}
+    {% elif request.args.get('cat') == 'Tesis' %}
+
+    <!-- ================= TESİS FORMU ================= -->
     <div class="alert alert-info">🏢 Tesis & Mekan belgeleri ve bitiş tarihleri girilir.</div>
-    
+
     <div class="row">
         <div class="col-md-6 mb-3">
-            <label class="form-label">Belge / Rapor Adı</label>
-            <select class="form-select" name="title" id="tesisBelge" onchange="tesisBelgeDegisti(this)" required>
-                <option value="" selected disabled>Seçiniz...</option>
-                <option>İtfaiye Raporu</option>
-                <option>Kapasite Raporu</option>
-                <option>Risk Analizi</option>
-                <option>Emisyon Ölçümü</option>
-                <option>İşyeri Açma Ruhsatı</option>
-                <option value="Diger">Diğer (Elle Yaz)</option>
-            </select>
+            <label class="form-label">Firma / Tesis Adı <span class="text-muted small">(opsiyonel)</span></label>
+            <input type="text" name="firma_adi" class="form-control" placeholder="Örn: XYZ Sanayi A.Ş.">
         </div>
         <div class="col-md-6 mb-3">
-            <label class="form-label">Geçerlilik Tarihi</label>
-            <input type="date" class="form-control" id="tesisTarih" name="expiry_date" required>
+            <label class="form-label">Belge / Rapor Adı <span class="text-danger">*</span></label>
+            <select class="form-select" name="title" id="tesisBelge" onchange="tesisBelgeDegisti(this)" required>
+                <option value="" selected disabled>Seçiniz...</option>
+                <option value="İtfaiye Raporu">🚒 İtfaiye Raporu</option>
+                <option value="Kapasite Raporu">📊 Kapasite Raporu</option>
+                <option value="Sanayi Sicil Belgesi">🏭 Sanayi Sicil Belgesi</option>
+                <option value="Yıllık İşletme Cetveli">📋 Yıllık İşletme Cetveli</option>
+                <option value="Risk Analizi">⚠️ Risk Analizi</option>
+                <option value="Emisyon Ölçümü">💨 Emisyon Ölçümü</option>
+                <option value="İşyeri Açma Ruhsatı">📄 İşyeri Açma Ruhsatı</option>
+                <option value="Diger">➕ Diğer (Elle Yaz)</option>
+            </select>
         </div>
     </div>
+
+    <div id="tesisDigerDiv" class="mb-3" style="display:none;">
+        <label class="form-label text-primary">Belge Adını Yazın</label>
+        <input type="text" id="tesisDigerInput" class="form-control border-primary" placeholder="Örn: Çevre İzin Belgesi">
+    </div>
+
+    <div id="tesisBilgiNotu" class="alert alert-warning" style="display:none;"></div>
+
+    <div class="mb-3">
+        <label class="form-label">Geçerlilik Tarihi <span class="text-danger">*</span></label>
+        <input type="date" class="form-control" id="tesisTarih" name="expiry_date" required>
+    </div>
+
     {% elif request.args.get('cat') == 'Personel' %}
 
     <!-- ================= PERSONEL FORMU ================= -->
@@ -103,6 +126,11 @@
             <label class="form-label">Kullandığı Araç (Plaka)</label>
             <input type="text" name="kullandigi_arac" class="form-control" placeholder="34 ABC 123">
         </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Çalıştığı Firma <span class="text-muted small">(opsiyonel)</span></label>
+        <input type="text" name="firma_adi" class="form-control" placeholder="Örn: ABC Nakliyat Ltd.">
     </div>
 
     <hr>
@@ -159,6 +187,13 @@
     {% else %}
 
     <!-- ================= SERTİFİKA FORMU ================= -->
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Firma / Şirket Adı <span class="text-muted small">(opsiyonel)</span></label>
+            <input type="text" name="firma_adi" class="form-control" placeholder="Örn: ABC Tekstil A.Ş.">
+        </div>
+    </div>
+
     <div class="mb-3">
         <label class="form-label">Sertifika / Belge Seçin</label>
         <input type="text" id="searchInput" class="form-control mb-2" placeholder="Belge adını yazın (örn: CE, ISO, HELAL...)">
@@ -285,207 +320,167 @@
 </form>
 
 <script>
-// ===== ARAÇ FORMU =====
-// ===== OTOMATİK SÜRE SİSTEMİ =====
 const belgeSureleri = {
     'Psikoteknik Belgesi': 5 * 365,
-    'SRC-1 Belgesi': 3650,
-    'SRC-2 Belgesi': 3650,
-    'SRC-3 Belgesi': 3650,
-    'SRC-4 Belgesi': 3650,
-    'SRC-5 Belgesi': 3650,
-    'Ehliyet Yenileme': 3650,
-
-    'Araç Muayenesi': 365,
-    'Trafik Sigortası (Zorunlu)': 365,
-    'Kasko': 365,
-    'Egzoz Muayenesi': 365,
+    'SRC-1 Belgesi': 3650, 'SRC-2 Belgesi': 3650,
+    'SRC-3 Belgesi': 3650, 'SRC-4 Belgesi': 3650,
+    'SRC-5 Belgesi': 3650, 'Ehliyet Yenileme': 3650,
+    'Araç Muayenesi': 365, 'Trafik Sigortası (Zorunlu)': 365,
+    'Kasko': 365, 'Egzoz Muayenesi': 365,
     'Takoğraf Kalibrasyonu': 2 * 365,
-
-    'İtfaiye Raporu': 365,
-    'Emisyon Ölçümü': 2 * 365,
-    'Risk Analizi': 365,
-    'Kapasite Raporu': 2 * 365
+    'K2 Yetki Belgesi': 5 * 365,
+    'Lastik Değişimi (Kış)': 180, 'Lastik Değişimi (Yaz)': 180,
+    'İtfaiye Raporu': 365, 'Emisyon Ölçümü': 2 * 365,
+    'Risk Analizi': 365, 'Kapasite Raporu': 2 * 365,
+    'Sanayi Sicil Belgesi': 365,
+    'Yıllık İşletme Cetveli': 120
 };
-
 const varsayilanSure = 365;
+
+function otomatikTarih(belgeAdi, tarihInputId) {
+    const tarihInput = document.getElementById(tarihInputId) || document.querySelector('input[name="expiry_date"]');
+    if (!tarihInput || !belgeAdi || belgeAdi === 'Diger') return;
+    const gun = belgeSureleri[belgeAdi] || varsayilanSure;
+    const bugun = new Date();
+    bugun.setDate(bugun.getDate() + gun);
+    tarihInput.value = `${bugun.getFullYear()}-${String(bugun.getMonth()+1).padStart(2,'0')}-${String(bugun.getDate()).padStart(2,'0')}`;
+}
+
 const aracBelgeleri = {
     binek: [
-        {grup: 'Zorunlu', belgeler: ['Araç Muayenesi', 'Trafik Sigortası (Zorunlu)']},
-        {grup: 'İsteğe Bağlı', belgeler: ['Kasko', 'Egzoz Muayenesi', 'Araç Ruhsatı Yenileme']}
+        {grup:'Zorunlu', belgeler:['Araç Muayenesi','Trafik Sigortası (Zorunlu)']},
+        {grup:'İsteğe Bağlı', belgeler:['Kasko','Egzoz Muayenesi','Araç Ruhsatı Yenileme','Lastik Değişimi (Kış)','Lastik Değişimi (Yaz)']}
     ],
     ticari_hafif: [
-        {grup: 'Zorunlu', belgeler: ['Araç Muayenesi', 'Trafik Sigortası (Zorunlu)', 'K2 Yetki Belgesi']},
-        {grup: 'İsteğe Bağlı', belgeler: ['Kasko', 'Egzoz Muayenesi', 'Takoğraf Kalibrasyonu', 'Araç Ruhsatı Yenileme', 'Lastik Değişimi']}
+        {grup:'Zorunlu', belgeler:['Araç Muayenesi','Trafik Sigortası (Zorunlu)','K2 Yetki Belgesi']},
+        {grup:'İsteğe Bağlı', belgeler:['Kasko','Egzoz Muayenesi','Takoğraf Kalibrasyonu','Araç Ruhsatı Yenileme','Lastik Değişimi (Kış)','Lastik Değişimi (Yaz)']}
     ],
     ticari_agir: [
-        {grup: 'Zorunlu', belgeler: ['Araç Muayenesi', 'Trafik Sigortası (Zorunlu)', 'K2 Yetki Belgesi', 'Takoğraf Kalibrasyonu', 'ADR Uygunluk Belgesi']},
-        {grup: 'İsteğe Bağlı', belgeler: ['Kasko', 'Egzoz Muayenesi', 'Araç Ruhsatı Yenileme']}
+        {grup:'Zorunlu', belgeler:['Araç Muayenesi','Trafik Sigortası (Zorunlu)','K2 Yetki Belgesi','Takoğraf Kalibrasyonu','ADR Uygunluk Belgesi']},
+        {grup:'İsteğe Bağlı', belgeler:['Kasko','Egzoz Muayenesi','Araç Ruhsatı Yenileme','Lastik Değişimi (Kış)','Lastik Değişimi (Yaz)']}
     ]
 };
 
 const uyarilar = {
-    binek: '⚠️ <strong>Binek Araç (2026):</strong> Muayenesiz trafikte <strong>2.719 TL</strong> ceza + araç men riski. Her gecikilen ay muayene ücretine <strong>%5 faiz</strong> eklenir. 15 günde ödenirse %25 indirim.',
-    ticari_hafif: '⚠️ <strong>Hafif Ticari (2026):</strong> Muayenesiz: <strong>2.719 TL</strong> + araç men. <strong>K2 olmadan: 21.333 TL.</strong> Araç K2\'ye kaydedilmezse: 10.666 TL.',
-    ticari_agir: '⚠️ <strong>Ağır Ticari (2026):</strong> Muayenesiz 1.seferinde <strong>115.021 TL</strong> | 2.seferinde 191.867 TL | 3.seferinde 383.842 TL. <strong>K2 olmadan: 21.333 TL.</strong>'
+    binek: '⚠️ <strong>Binek Araç (2026):</strong> Muayenesiz trafikte <strong>2.719 TL</strong> ceza + araç men. Her gecikilen ay <strong>%5 faiz</strong>. 15 günde ödenirse %25 indirim.',
+    ticari_hafif: '⚠️ <strong>Hafif Ticari (2026):</strong> Muayenesiz: <strong>2.719 TL</strong> + araç men. <strong>K2 olmadan: 21.333 TL.</strong>',
+    ticari_agir: '⚠️ <strong>Ağır Ticari (2026):</strong> Muayenesiz 1.seferde <strong>115.021 TL</strong> | 2.seferde 191.867 TL | 3.seferde 383.842 TL. <strong>K2 olmadan: 21.333 TL.</strong>'
 };
 
 const belgeBilgileri = {
-    'K2 Yetki Belgesi': 'ℹ️ <strong>K2:</strong> 5 yıl geçerli. 90 gün öncesinden yenileme başlar. 540 gün içinde başvurulmazsa iptal. Yeni araçlar 15 gün içinde eklenmelidir.',
-    'Araç Muayenesi': '🔧 <strong>Muayene:</strong> Ruhsat tarihinden 1 gün bile gecikse %5 faiz işler. Trafikte yakalanırsa 2.719 TL ceza + men.',
-    'Takoğraf Kalibrasyonu': '⏱️ <strong>Takoğraf:</strong> 2 yılda bir kalibrasyon zorunludur.',
-    'Trafik Sigortası (Zorunlu)': '🛡️ <strong>Trafik Sigortası:</strong> Sigortasız araç trafiğe çıkarsa men + ağır ceza.',
-    'ADR Uygunluk Belgesi': '☢️ <strong>ADR:</strong> Tehlikeli madde taşıyan araçlar için zorunludur.'
+    'K2 Yetki Belgesi': 'ℹ️ <strong>K2:</strong> 5 yıl geçerli. 90 gün öncesinden yenileme başlar. 540 gün içinde başvurulmazsa iptal.',
+    'Araç Muayenesi': '🔧 <strong>Muayene:</strong> 1 gün gecikse %5 faiz işler. Trafikte yakalanırsa 2.719 TL + men.',
+    'Takoğraf Kalibrasyonu': '⏱️ <strong>Takoğraf:</strong> 2 yılda bir zorunlu kalibrasyon.',
+    'Trafik Sigortası (Zorunlu)': '🛡️ Sigortasız araç trafiğe çıkarsa men + ağır ceza.',
+    'ADR Uygunluk Belgesi': '☢️ Tehlikeli madde taşıyan araçlar için zorunludur.',
+    'Lastik Değişimi (Kış)': '❄️ Kış lastiği: Ekim-Nisan arası tavsiye edilir. Bazı illerde zorunludur.',
+    'Lastik Değişimi (Yaz)': '☀️ Yaz lastiği: Nisan-Ekim arası tavsiye edilir.'
+};
+
+const tesisBilgileri = {
+    'Sanayi Sicil Belgesi': 'ℹ️ <strong>Sanayi Sicil Belgesi:</strong> Yıllık yenileme gerektirir. İl Sanayi Müdürlüğüne başvurulur.',
+    'Yıllık İşletme Cetveli': '⚠️ <strong>Yıllık İşletme Cetveli:</strong> Yıl sonundan itibaren <strong>4 ay (120 gün)</strong> içinde Bakanlığa (İl Müdürlüğüne) verilmesi zorunludur. Vermeyenlere idari yaptırım uygulanır.',
+    'İtfaiye Raporu': '🚒 Yıllık yenileme gerektirir. İtfaiye müdürlüğünden alınır.',
+    'Kapasite Raporu': '📊 <strong>Kapasite Raporu:</strong> 2 yıl geçerlidir. Ticaret/Sanayi Odasından alınır.',
+    'Risk Analizi': '⚠️ İş güvenliği mevzuatı kapsamında periyodik güncelleme gerektirir.',
+    'Emisyon Ölçümü': '💨 2 yılda bir yapılması zorunludur.'
 };
 
 const personelBilgileri = {
-    'Psikoteknik Belgesi': 'ℹ️ <strong>Psikoteknik:</strong> Ticari araç sürücüleri için zorunludur. 5 yılda bir yenilenir. Süresi dolan sürücü ticari araç kullanamaz.',
-    'SRC-1 Belgesi': 'ℹ️ <strong>SRC-1:</strong> Uluslararası yük taşımacılığı yapan sürücüler için zorunludur.',
-    'SRC-2 Belgesi': 'ℹ️ <strong>SRC-2:</strong> Yurtiçi yük taşımacılığı yapan sürücüler için zorunludur.',
-    'SRC-3 Belgesi': 'ℹ️ <strong>SRC-3:</strong> Uluslararası yolcu taşımacılığı yapan sürücüler için zorunludur.',
-    'SRC-4 Belgesi': 'ℹ️ <strong>SRC-4:</strong> Yurtiçi yolcu taşımacılığı yapan sürücüler için zorunludur.',
-    'SRC-5 Belgesi': 'ℹ️ <strong>SRC-5:</strong> Tehlikeli madde taşıyan sürücüler için zorunludur.',
-    'Ehliyet Yenileme': 'ℹ️ <strong>Ehliyet:</strong> Süresi dolan ehliyet ile araç kullanmak trafikten men ve cezaya yol açar.',
-    'Mesleki Yeterlilik Belgesi': 'ℹ️ <strong>Mesleki Yeterlilik:</strong> Belgesi olmadan çalıştırmak işverene ceza getirir (10.666 TL).'
+    'Psikoteknik Belgesi': 'ℹ️ Ticari araç sürücüleri için zorunlu. 5 yılda bir yenilenir.',
+    'SRC-1 Belgesi': 'ℹ️ Uluslararası yük taşımacılığı sürücüleri için zorunlu.',
+    'SRC-2 Belgesi': 'ℹ️ Yurtiçi yük taşımacılığı sürücüleri için zorunlu.',
+    'SRC-3 Belgesi': 'ℹ️ Uluslararası yolcu taşımacılığı sürücüleri için zorunlu.',
+    'SRC-4 Belgesi': 'ℹ️ Yurtiçi yolcu taşımacılığı sürücüleri için zorunlu.',
+    'SRC-5 Belgesi': 'ℹ️ Tehlikeli madde taşıyan sürücüler için zorunlu.',
+    'Ehliyet Yenileme': 'ℹ️ Süresi dolan ehliyet ile araç kullanmak men ve cezaya yol açar.',
+    'Mesleki Yeterlilik Belgesi': 'ℹ️ Belgesi olmadan çalıştırmak işverene ceza getirir (10.666 TL).'
 };
 
 function aracTipiDegisti(sel) {
-    if (!sel.value) {
-        document.getElementById('aracBelgeDiv').style.display = 'none';
-        return;
-    }
-    document.getElementById('aracBelgeDiv').style.display = 'block';
+    if (!sel.value) { document.getElementById('aracBelgeDiv').style.display='none'; return; }
+    document.getElementById('aracBelgeDiv').style.display='block';
     const uyariKutusu = document.getElementById('uyariKutusu');
     uyariKutusu.innerHTML = uyarilar[sel.value];
     uyariKutusu.style.display = 'block';
-
     const aracSelect = document.getElementById('aracSelect');
     aracSelect.innerHTML = '<option value="">-- Seçiniz --</option>';
     aracBelgeleri[sel.value].forEach(grup => {
-        const optgroup = document.createElement('optgroup');
-        optgroup.label = grup.grup;
-        grup.belgeler.forEach(belge => {
-            const opt = document.createElement('option');
-            opt.value = belge;
-            opt.text = belge;
-            optgroup.appendChild(opt);
-        });
-        aracSelect.appendChild(optgroup);
+        const og = document.createElement('optgroup');
+        og.label = grup.grup;
+        grup.belgeler.forEach(b => { const o = document.createElement('option'); o.value=b; o.text=b; og.appendChild(o); });
+        aracSelect.appendChild(og);
     });
-    const digerOpt = document.createElement('option');
-    digerOpt.value = 'Diger';
-    digerOpt.text = '➕ Listede Yok';
-    aracSelect.appendChild(digerOpt);
-
-    document.getElementById('belgeBilgiNotu').style.display = 'none';
-    document.getElementById('aracDigerDiv').style.display = 'none';
+    const d = document.createElement('option'); d.value='Diger'; d.text='➕ Listede Yok';
+    aracSelect.appendChild(d);
+    document.getElementById('belgeBilgiNotu').style.display='none';
+    document.getElementById('aracDigerDiv').style.display='none';
 }
 
 function aracSecimDegisti(sel) {
-    const bilgiNotu = document.getElementById('belgeBilgiNotu');
+    const bilgi = document.getElementById('belgeBilgiNotu');
     const digerDiv = document.getElementById('aracDigerDiv');
     const digerInput = document.getElementById('aracDigerInput');
-    digerDiv.style.display = 'none';
-    bilgiNotu.style.display = 'none';
+    digerDiv.style.display='none'; bilgi.style.display='none';
     if (sel.value === 'Diger') {
-        digerDiv.style.display = 'block';
-        digerInput.name = 'title';
-        sel.name = '';
-        // ARAÇ İÇİN OTOMATİK TARİH
-    const tarihInput = document.querySelector('input[name="expiry_date"]');
-
-    if (tarihInput && sel.value !== 'Diger') {
-        const gun = belgeSureleri[sel.value] || varsayilanSure;
-
-        const bugun = new Date();
-        bugun.setDate(bugun.getDate() + gun);
-
-        const yyyy = bugun.getFullYear();
-        const mm = String(bugun.getMonth() + 1).padStart(2, '0');
-        const dd = String(bugun.getDate()).padStart(2, '0');
-
-        tarihInput.value = `${yyyy}-${mm}-${dd}`;
-    }
+        digerDiv.style.display='block'; digerInput.name='title'; sel.name='';
     } else {
-        sel.name = 'title';
-        digerInput.name = '';
-        if (belgeBilgileri[sel.value]) {
-            bilgiNotu.innerHTML = belgeBilgileri[sel.value];
-            bilgiNotu.style.display = 'block';
-        }
+        sel.name='title'; digerInput.name='';
+        if (belgeBilgileri[sel.value]) { bilgi.innerHTML=belgeBilgileri[sel.value]; bilgi.style.display='block'; }
+        otomatikTarih(sel.value, null);
     }
 }
 
-// ===== PERSONEL FORMU =====
+function tesisBelgeDegisti(sel) {
+    const digerDiv = document.getElementById('tesisDigerDiv');
+    const digerInput = document.getElementById('tesisDigerInput');
+    const bilgi = document.getElementById('tesisBilgiNotu');
+    digerDiv.style.display='none'; bilgi.style.display='none';
+    if (sel.value === 'Diger') {
+        digerDiv.style.display='block'; digerInput.name='title'; sel.name='';
+    } else {
+        sel.name='title'; digerInput.name='';
+        if (tesisBilgileri[sel.value]) { bilgi.innerHTML=tesisBilgileri[sel.value]; bilgi.style.display='block'; }
+        otomatikTarih(sel.value, 'tesisTarih');
+    }
+}
+
 function personelBelgeDegisti(sel) {
-    const bilgiNotu = document.getElementById('personelBilgiNotu');
+    const bilgi = document.getElementById('personelBilgiNotu');
     const digerDiv = document.getElementById('personelDigerDiv');
     const digerInput = document.getElementById('personelDigerInput');
-    digerDiv.style.display = 'none';
-    bilgiNotu.style.display = 'none';
-
+    digerDiv.style.display='none'; bilgi.style.display='none';
     if (sel.value === 'Diger') {
-        digerDiv.style.display = 'block';
-        digerInput.name = 'title';
-        sel.name = '';
+        digerDiv.style.display='block'; digerInput.name='title'; sel.name='';
     } else {
-        sel.name = 'title';
-        digerInput.name = '';
-        if (personelBilgileri[sel.value]) {
-            bilgiNotu.innerHTML = personelBilgileri[sel.value];
-            bilgiNotu.style.display = 'block';
-        }
-    }
-    // OTOMATİK TARİH HESAPLAMA
-    const tarihInput = document.getElementById('personelTarih');
-
-    if (tarihInput && sel.value !== 'Diger') {
-        const gun = belgeSureleri[sel.value] || varsayilanSure;
-
-        const bugun = new Date();
-        bugun.setDate(bugun.getDate() + gun);
-
-        const yyyy = bugun.getFullYear();
-        const mm = String(bugun.getMonth() + 1).padStart(2, '0');
-        const dd = String(bugun.getDate()).padStart(2, '0');
-
-        tarihInput.value = `${yyyy}-${mm}-${dd}`;
+        sel.name='title'; digerInput.name='';
+        if (personelBilgileri[sel.value]) { bilgi.innerHTML=personelBilgileri[sel.value]; bilgi.style.display='block'; }
+        otomatikTarih(sel.value, 'personelTarih');
     }
 }
 
-// TC kontrol
 const tcInput = document.getElementById('tcInput');
 if (tcInput) {
     tcInput.addEventListener('input', function() {
-        const uyari = document.getElementById('tcUyari');
-        if (this.value.length > 0 && this.value.length !== 11) {
-            this.style.borderColor = 'red';
-            uyari.style.display = 'block';
-        } else {
-            this.style.borderColor = this.value.length === 11 ? 'green' : '';
-            uyari.style.display = 'none';
-        }
+        const u = document.getElementById('tcUyari');
+        this.style.borderColor = this.value.length===11 ? 'green' : (this.value.length>0 ? 'red' : '');
+        u.style.display = (this.value.length>0 && this.value.length!==11) ? 'block' : 'none';
     });
 }
 
-// Bitiş tarihi süresi dolmuş kontrolü
 const personelTarih = document.getElementById('personelTarih');
 if (personelTarih) {
     personelTarih.addEventListener('change', function() {
-        const uyari = document.getElementById('sureDolmusUyari');
-        uyari.style.display = new Date(this.value) < new Date() ? 'block' : 'none';
+        document.getElementById('sureDolmusUyari').style.display = new Date(this.value)<new Date() ? 'block' : 'none';
     });
 }
 
-// ===== SERTİFİKA FORMU =====
 const searchInput = document.getElementById('searchInput');
 if (searchInput) {
     searchInput.addEventListener('input', function() {
-        const filter = this.value.toUpperCase();
-        document.getElementById('sertifikaSelect').querySelectorAll('option').forEach(opt => {
-            if (opt.value === '' || opt.value === 'Diger') opt.style.display = '';
-            else if (opt.text.toUpperCase().includes(filter)) opt.style.display = '';
-            else opt.style.display = 'none';
+        const f = this.value.toUpperCase();
+        document.getElementById('sertifikaSelect').querySelectorAll('option').forEach(o => {
+            o.style.display = (o.value===''||o.value==='Diger'||o.text.toUpperCase().includes(f)) ? '' : 'none';
         });
     });
 }
@@ -493,38 +488,14 @@ if (searchInput) {
 const sertifikaSelect = document.getElementById('sertifikaSelect');
 if (sertifikaSelect) {
     sertifikaSelect.addEventListener('change', function() {
-        const otherDiv = document.getElementById('otherInputDiv');
-        const otherInput = document.getElementById('otherTitleInput');
-        if (this.value === 'Diger') {
-            otherDiv.style.display = 'block';
-            otherInput.required = true;
-            otherInput.name = 'title';
-            this.name = '';
-        } else {
-            otherDiv.style.display = 'none';
-            otherInput.required = false;
-            otherInput.name = '';
-            this.name = 'title';
-        }
+        const od = document.getElementById('otherInputDiv');
+        const oi = document.getElementById('otherTitleInput');
+        if (this.value==='Diger') { od.style.display='block'; oi.required=true; oi.name='title'; this.name=''; }
+        else { od.style.display='none'; oi.required=false; oi.name=''; this.name='title'; }
     });
 }
-function tesisBelgeDegisti(sel) {
-    const tarihInput = document.getElementById('tesisTarih');
-
-    if (tarihInput && sel.value !== 'Diger') {
-        const gun = belgeSureleri[sel.value] || varsayilanSure;
-
-        const bugun = new Date();
-        bugun.setDate(bugun.getDate() + gun);
-
-        const yyyy = bugun.getFullYear();
-        const mm = String(bugun.getMonth() + 1).padStart(2, '0');
-        const dd = String(bugun.getDate()).padStart(2, '0');
-
-        tarihInput.value = `${yyyy}-${mm}-${dd}`;
-    }
-}    
 </script>
 {% endblock %}
+
 
 
