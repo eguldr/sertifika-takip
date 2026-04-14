@@ -64,6 +64,30 @@ def create_tables():
 @app.route('/')
 def index():
     return redirect(url_for('login'))
+@app.route('/export')
+@login_required # Sadece giriş yapanlar rapor alabilsin
+def export_excel():
+    entries = Sertifika.query.all() 
+    data = []
+    for e in entries:
+        data.append({
+            "Firma Adı": e.firma_adi,
+            "Belge Adı": e.title,
+            "Plaka/TC/Not": e.risk_value,
+            "WhatsApp": e.whatsapp_no,
+            "Bitiş Tarihi": e.expiry_date
+        })
+    
+    df = pd.DataFrame(data)
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Sertifikalar')
+    
+    output.seek(0)
+    return send_file(output, 
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                     as_attachment=True, 
+                     download_name="EG_Optimal_Rapor.xlsx")
 
 
 @app.route('/login', methods=['GET', 'POST'])
