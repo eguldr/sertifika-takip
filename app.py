@@ -34,6 +34,7 @@ class Entry(db.Model):
     category = db.Column(db.String(50))
     title = db.Column(db.String(100))
     firma_adi = db.Column(db.String(100))
+    whatsapp_no = db.Column(db.String(20)) # YENİ: WhatsApp Numarası
     expiry_date = db.Column(db.Date)
     risk_value = db.Column(db.String(100))
 
@@ -47,6 +48,10 @@ class HatirlatmaLog(db.Model):
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+@app.before_request
+def tablo_kur():
+    db.create_all()
 
 @app.route('/')
 def index():
@@ -98,19 +103,16 @@ def sertifikalar():
     items = Entry.query.filter_by(user_id=current_user.id, category=cat).all()
     bugun = date.today()
     for item in items:
-        diff = (item.expiry_date - bugun).days if item.expiry_date else 999
-        item.durum = 'danger' if diff <= 30 else ('warning' if diff <= 60 else 'success')
+        if item.expiry_date:
+            item.kalan_gun = (item.expiry_date - bugun).days
+            if item.kalan_gun < 0: item.durum = 'danger'
+            elif item.kalan_gun <= 30: item.durum = 'danger'
+            elif item.kalan_gun <= 60: item.durum = 'warning'
+            else: item.durum = 'success'
+        else:
+            item.kalan_gun = None
+            item.durum = 'secondary'
     return render_template('sertifikalar.html', items=items, bugun=bugun, cat=cat)
-
-@app.route('/log_ekle/<int:id>')
-@login_required
-def log_ekle(id):
-    item = Entry.query.get(id)
-    if item:
-        yeni_log = HatirlatmaLog(entry_id=item.id, firma_adi=item.firma_adi, belge_adi=item.title)
-        db.session.add(yeni_log)
-        db.session.commit()
-    return "OK"
 
 @app.route('/ekle', methods=['GET', 'POST'])
 @login_required
@@ -122,6 +124,7 @@ def ekle():
             category=request.form.get('category'),
             title=request.form.get('title'),
             firma_adi=request.form.get('firma_adi'),
+            whatsapp_no=request.form.get('whatsapp_no'), # WhatsApp No eklendi
             risk_value=request.form.get('risk_value'),
             expiry_date=datetime.strptime(exp_str, '%Y-%m-%d').date() if exp_str else None
         )
@@ -129,6 +132,25 @@ def ekle():
         db.session.commit()
         return redirect(url_for('sertifikalar', cat=new_entry.category))
     return render_template('ekle.html')
+
+@app.route('/log_ekle/<int:id>')
+@login_required
+def log_ekle(id):
+    item = Entry.query.get(id)
+    if item:
+        yeni_log = HatirlatmaLog(entry_id=item.id, firma_adi=item.firma_adi, belge_adi=item.title)
+        db.session.add(yeni_log)
+        db.session.commit()
+    return "OK"
+
+@app.route('/admin')
+@login_required
+def admin():
+    if not current_user.is_admin:
+        return redirect(url_for('dashboard'))
+    logs = HatirlatmaLog.query.order_by(HatirlatmaLog.tarih.desc()).limit(20).all()
+    users = User.query.all()
+    return render_template('admin.html', logs=logs, users=users)
 
 @app.route('/sil/<int:id>')
 @login_required
@@ -147,25 +169,5 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-# app.py'nin en sonundaki bu kısmı:
-if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-    app.run()
-
-# ŞU HALE GETİR:
-@app.before_request
-def tablo_kur():
-    db.create_all()
-@app.route('/admin')
-@login_required
-def admin():
-    if not current_user.is_admin:
-        return redirect(url_for('dashboard'))
-    users = User.query.all()
-    return f"Sistemde toplam {len(users)} kullanıcı var."
 if __name__ == '__main__':
     app.run()
-
-
-
