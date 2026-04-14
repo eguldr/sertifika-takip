@@ -61,13 +61,10 @@ def create_tables():
     db.create_all()
 
 
-@app.route('/')
-def index():
-    return redirect(url_for('login'))
 @app.route('/export')
-@login_required # Sadece giriş yapanlar rapor alabilsin
+@login_required
 def export_excel():
-    entries = Sertifikalar.query.all() 
+    entries = Sertifikalar.query.all()
     data = []
     for e in entries:
         data.append({
@@ -75,20 +72,19 @@ def export_excel():
             "Belge Adı": e.title,
             "Plaka/TC/Not": e.risk_value,
             "WhatsApp": e.whatsapp_no,
-            "Bitiş Tarihi": e.expiry_date
+            "Bitiş Tarihi": e.expiry_date.strftime('%d.%m.%Y') if e.expiry_date else ""
         })
     
- df = pd.DataFrame(data)
- output = BytesIO()
- with pd.ExcelWriter(output, engine='openpyxl') as writer:
-     df.to_excel(writer, index=False, sheet_name='Sertifikalar')
+    df = pd.DataFrame(data)
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Sertifikalar')
     
- output.seek(0)
- return send_file(output, 
-                  mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                  as_attachment=True, 
-                  download_name="EG_Optimal_Rapor.xlsx")
-
+    output.seek(0)
+    return send_file(output, 
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                     as_attachment=True, 
+                     download_name="EG_Optimal_Rapor.xlsx")
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
