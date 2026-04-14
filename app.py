@@ -157,7 +157,13 @@ if __name__ == '__main__':
 @app.before_request
 def tablo_kur():
     db.create_all()
-
+@app.route('/admin')
+@login_required
+def admin():
+    if not current_user.is_admin:
+        return redirect(url_for('dashboard'))
+    users = User.query.all()
+    return f"Sistemde toplam {len(users)} kullanıcı var."
 if __name__ == '__main__':
     app.run()
 
