@@ -50,18 +50,64 @@
                     <option value="Diger">➕ LİSTEDE YOK</option>
                 </select>
             </div>
+{% elif request.args.get('cat') == 'Personel' %}
+<div class="alert alert-warning shadow-sm border-start border-4 border-warning">
+    <i class="fas fa-exclamation-triangle me-1"></i> <strong>Önemli Hatırlatma:</strong> MYK belgelerinde 5 yıllık sürenin dolmasına <strong>6 ay kala</strong> başvuru yapılmalıdır. 2 yıl çalışma kanıtı sunanlar sınavsız yenileyebilir.
+</div>
 
-            {% elif request.args.get('cat') == 'Personel' %}
-            <div class="mb-3">
-                <label class="form-label fw-bold">Personel Belgesi Seçin</label>
-                <select name="title" class="form-select shadow-sm" onchange="checkDiger(this)" required>
-                    <option value="" disabled selected>-- Seçiniz --</option>
-                    <option>SRC 1-2-3-4 Belgesi</option>
-                    <option>Psikoteknik Belgesi</option>
-                    <option>Ehliyet Yenileme</option>
-                    <option value="Diger">➕ LİSTEDE YOK</option>
-                </select>
-            </div>
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <label class="form-label fw-bold">Personel Ad Soyad</label>
+        <input type="text" name="firma_adi" class="form-control shadow-sm" placeholder="Ad Soyad yazın" required>
+    </div>
+    <div class="col-md-6 mb-3">
+        <label class="form-label fw-bold">TC Kimlik / Ehliyet No</label>
+        <input type="text" name="risk_value" class="form-control shadow-sm" maxlength="11" placeholder="Bilgi notu veya TC">
+    </div>
+</div>
+
+<div class="mb-3">
+    <label class="form-label fw-bold">Belge Türü Seçin</label>
+    <input type="text" id="personelSearch" class="form-control mb-2" placeholder="Listede ara (SRC, MYK, Kaynakçı, Ehliyet...)">
+    <select name="title" id="personelSelect" class="form-select shadow-sm" size="10" required onchange="checkDiger(this)">
+        <option value="" disabled selected>-- Belge Tipini Seçin --</option>
+        
+        <optgroup label="🚚 ULAŞIM & SÜRÜCÜ BELGELERİ">
+            <option>SRC 1 (Uluslararası Yolcu)</option>
+            <option>SRC 2 (Yurtiçi Yolcu)</option>
+            <option>SRC 3 (Uluslararası Eşya/Kargo)</option>
+            <option>SRC 4 (Yurtiçi Eşya/Kargo)</option>
+            <option>SRC 5 (Tehlikeli Madde Taşımacılığı)</option>
+            <option>Psikoteknik Değerlendirme Raporu</option>
+            <option>Ehliyet Yenileme / Sağlık Raporu</option>
+        </optgroup>
+
+        <optgroup label="🛡️ MYK YENİ ZORUNLU MESLEKLER (2026)">
+            <option>Atık Ayırma İşçisi (Seviye 3)</option>
+            <option>Atık Koordinatörü (Seviye 5)</option>
+            <option>Biyogaz Sistemleri Personeli</option>
+            <option>Fotovoltaik Güç Sistemleri Personeli</option>
+            <option>Güneş Isıl Sistem Personeli</option>
+            <option>Rüzgar Güç Sistemi Personeli</option>
+            <option>Tehlikeli Atık Toplayıcısı</option>
+            <option>Batarya Elektrikli Araç Bakım Onarımcısı</option>
+            <option>Hibrit Araç Bakım Onarımcısı</option>
+            <option>Elektrikli Araç Montaj Elemanı</option>
+            <option>Tehlikeli Madde Taşımacılığı Şoförü</option>
+        </optgroup>
+
+        <optgroup label="🏗️ İNŞAAT, METAL & TEKNİK">
+            <option>Çelik Kaynakçısı (MYK)</option>
+            <option>Köprülü Vinç Operatörü (MYK)</option>
+            <option>Kule Vinç Operatörü (MYK)</option>
+            <option>İskele Kurulum Elemanı (MYK)</option>
+            <option>İş Makinesi Operatörlük Belgesi (G Sınıfı)</option>
+            <option>Kızgın Yağ Kazanı Operatörü</option>
+        </optgroup>
+
+        <option value="Diger">➕ LİSTEDE YOK (ELLE YAZ)</option>
+    </select>
+</div>
 
             {% else %}
             <div class="mb-3">
