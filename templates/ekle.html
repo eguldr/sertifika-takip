@@ -1,117 +1,169 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>
-        {% if cat == 'Urun' %}Üretim & Ürün Belgeleri
-        {% elif cat == 'Arac' %}Araç & Filo Takipleri
-        {% elif cat == 'Personel' %}Personel & Mesleki Yeterlilik
-        {% elif cat == 'Tesis' %}Tesis & Mekan Uyumluluğu
-        {% else %}Tüm Kayıtlar{% endif %}
-    </h2>
-    <a href="/ekle?cat={{ cat }}" class="btn btn-primary">+ Yeni Ekle</a>
-</div>
+<div class="card shadow border-0">
+    <div class="card-header bg-primary text-white py-3">
+        <h4 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Yeni Kayıt Ekle (v4 Tam Sürüm)</h4>
+    </div>
+    <div class="card-body p-4">
+        <form method="POST" action="/ekle">
+            <input type="hidden" name="category" value="{{ request.args.get('cat', 'Urun') }}">
 
-{% if cat == 'Arac' %}
-<div class="alert alert-info">
-    <strong>💡 Bilgi Notu:</strong> K1/K2 yetki belgesi yenileme maliyeti yaklaşık <b>150.000 TL</b>'dir. Süresi dolmadan başvuruda %15 indirim hakkınız korunur.
-</div>
-{% elif cat == 'Personel' %}
-<div class="alert alert-warning">
-    <strong>⚠️ Risk Uyarısı:</strong> SRC veya Psikoteknik belgesi eksik sürücü kullanımında firmaya uygulanan ceza yaklaşık <b>8.200 TL</b>'dir.
-</div>
-{% elif cat == 'Tesis' %}
-<div class="alert alert-warning">
-    <strong>⚠️ Hatırlatma:</strong> Yıllık İşletme Cetveli yıl sonundan itibaren <b>4 ay (120 gün)</b> içinde İl Sanayi Müdürlüğüne verilmesi zorunludur.
-</div>
-{% endif %}
+            <div class="row bg-light p-3 rounded mb-4 border border-success shadow-sm">
+                <div class="col-md-12">
+                    <label class="form-label fw-bold text-success"><i class="fab fa-whatsapp me-1"></i> WhatsApp Hatırlatma Numarası</label>
+                    <input type="text" name="whatsapp_no" class="form-control border-success form-control-lg" placeholder="Örn: 905321234567" required>
+                    <div class="form-text text-dark">Lütfen numaranın başına 90 ekleyerek yazın.</div>
+                </div>
+            </div>
 
-{% set dolan  = items | selectattr('durum', 'equalto', 'danger')  | list %}
-{% set uyari  = items | selectattr('durum', 'equalto', 'warning') | list %}
-{% set gecerli = items | selectattr('durum', 'equalto', 'success') | list %}
+            <div class="mb-3">
+                <label class="form-label fw-bold">Firma / Şirket / Müşteri Adı</label>
+                <input type="text" name="firma_adi" class="form-control" placeholder="Firma adını yazın">
+            </div>
 
-{% if items %}
-<div class="row g-2 mb-3">
-    <div class="col-auto"><span class="badge bg-danger fs-6 px-3 py-2">⛔ Kritik: {{ dolan|length }}</span></div>
-    <div class="col-auto"><span class="badge bg-warning text-dark fs-6 px-3 py-2">⚠️ Uyarı: {{ uyari|length }}</span></div>
-    <div class="col-auto"><span class="badge bg-success fs-6 px-3 py-2">✅ Güvenli: {{ gecerli|length }}</span></div>
-    <div class="col-auto"><span class="badge bg-secondary fs-6 px-3 py-2">📋 Toplam: {{ items|length }}</span></div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">Belge veya Sertifika Seçin</label>
+                <input type="text" id="searchInput" class="form-control mb-2" placeholder="Listede ara (örn: ISO, CE, Muayene, SRC...)">
+                <select name="title" id="sertifikaSelect" class="form-select" size="12" required>
+                    <option value="" disabled selected>-- Lütfen Listeden Bir Belge Seçin --</option>
+                    
+                    <option>ACS (Sağlık Uygunluk Sertifikası)</option>
+                    <option>ADR SERTİFİKALARI</option>
+                    <option>AS/EN/JISQ 9100</option>
+                    <option>ATEX SERTİFİKASI</option>
+                    <option>BASEC SERTİFİKASI</option>
+                    <option>BENOR SERTİFİKASI</option>
+                    <option>BRC SERTİFİKASI</option>
+                    <option>CALIBRATION SERTİFİKASI</option>
+                    <option>CARB SERTİFİKASI</option>
+                    <option>CB SERTİFİKASI</option>
+                    <option>CCC SERTİFİKASI</option>
+                    <option>CE İŞARETİ</option>
+                    <option>CEKAL SERTİFİKASI</option>
+                    <option>CLASS SERTİFİKASI</option>
+                    <option>CMIM UYGUNLUK İŞARETİ</option>
+                    <option>CMMIDEV SERTİFİKASI</option>
+                    <option>COSMOS SERTİFİKASI</option>
+                    <option>CRASH TEST SERTİFİKASI</option>
+                    <option>CRADLE TO CRADLE SERTİFİKASI</option>
+                    <option>CTUV İŞARETİ</option>
+                    <option>DIN SERİSİ BELGELER</option>
+                    <option>EAC GÜMRÜK BİRLİĞİ SERTİFİKASI</option>
+                    <option>ECE YÖNETMELİKLERİ SERTİFİKASI</option>
+                    <option>EC TYPE EXAMINATION SERTİFİKASI</option>
+                    <option>ECM SERTİFİKASI</option>
+                    <option>ECOLABEL SERTİFİKASI</option>
+                    <option>ECOCERT SERTİFİKASI</option>
+                    <option>EHEDG SERTİFİKASI</option>
+                    <option>EMC SERTİFİKASI</option>
+                    <option>EN SERİSİ SERTİFİKALAR</option>
+                    <option>ENPLUS SERTİFİKASI</option>
+                    <option>ETA (Avrupa Teknik Değerlendirmesi)</option>
+                    <option>EU TYPE EXAMINATION SERTİFİKASI</option>
+                    <option>EUCERTPLAST SERTİFİKASI</option>
+                    <option>EUROVENT SERTİFİKASI</option>
+                    <option>F4 STAR BELGESİ</option>
+                    <option>FAMI-QS SERTİFİKASI</option>
+                    <option>FIBC TEST SERTİFİKASI</option>
+                    <option>FM APPROVALS</option>
+                    <option>FSSC 22000 SERTİFİKASI</option>
+                    <option>G MARK SERTİFİKASI</option>
+                    <option>GASTEC QA SERTİFİKASI</option>
+                    <option>GERMAN ECOLABEL - BLUE ANGEL</option>
+                    <option>GMP SERTİFİKASI</option>
+                    <option>GMP+ FSA SERTİFİKASI</option>
+                    <option>GDP SERTİFİKASI</option>
+                    <option>GS SERTİFİKASI</option>
+                    <option>HACCP SERTİFİKASI</option>
+                    <option>HAR BELGESİ</option>
+                    <option>HELAL BELGESİ</option>
+                    <option>HİJYEN SERTİFİKASI</option>
+                    <option>INDOOR AIR QUALITY</option>
+                    <option>INSTA-CERT SERTİFİKASI</option>
+                    <option>ISCC SERTİFİKASI</option>
+                    <option>ISO 9001:2015</option>
+                    <option>ISO 14001</option>
+                    <option>ISO 22000</option>
+                    <option>ISO 27001</option>
+                    <option>ISO 45001</option>
+                    <option>ISO 50001</option>
+                    <option>ISO 13485</option>
+                    <option>ISO 17025</option>
+                    <option>ISO 22301</option>
+                    <option>ISO 37001</option>
+                    <option>IYI TARIM UYGULAMALARI</option>
+                    <option>JIS SERTİFİKASI</option>
+                    <option>KEMA KEUR / DEKRA SERTİFİKASI</option>
+                    <option>KEYMARK SERTİFİKASI</option>
+                    <option>KITEMARK SERTİFİKASI</option>
+                    <option>KTW-UBA UYGUNLUK BEYANI</option>
+                    <option>KRAV SERTİFİKASI</option>
+                    <option>MARINE SERTİFİKASI</option>
+                    <option>MDR TIBBI CIHAZ SERTİFİKASI</option>
+                    <option>MDSAP SERTİFİKASI</option>
+                    <option>NF İŞARETİ/SERTİFİKASI</option>
+                    <option>NSF SERTİFİKASI</option>
+                    <option>OEKO-TEX SERTİFİKASI</option>
+                    <option>ORGANİK TARIM SERTİFİKASI</option>
+                    <option>ORGANİK ÜRÜN SERTİFİKASI</option>
+                    <option>Q-MARK SERTİFİKASI</option>
+                    <option>RAL SERTİFİKASI</option>
+                    <option>RTN SERTİFİKASI</option>
+                    <option>SA8000 SOSYAL UYGUNLUK SERTİFİKASI</option>
+                    <option>SAFETY INTEGRITY LEVEL (SIL)</option>
+                    <option>SOLAR KEYMARK</option>
+                    <option>STANDARDSMARK</option>
+                    <option>TEKNİK REGLAMENT SERTİFİKASI</option>
+                    <option>TOXPROOF SERTİFİKASI</option>
+                    <option>TSI SERTİFİKASI</option>
+                    <option>TYPE APPROVAL SERTİFİKASI</option>
+                    <option>TYPE TEST SERTİFİKASI</option>
+                    <option>UKCA İŞARETİ</option>
+                    <option>UKRSEPRO SERTİFİKASI</option>
+                    <option>UL SERTİFİKASI</option>
+                    <option>UYGUNLUK SERTİFİKASI</option>
+                    <option>VDE SERTİFİKASI</option>
+                    <option>VDI 2700 SERTİFİKASI</option>
+                    <option>WRAS SERTİFİKASI</option>
+                    <option>WATERMARK SERTİFİKASI</option>
+                    <option>YANGIN SERTİFİKASI</option>
+                    <option>KAPASİTE RAPORU</option>
+                    <option>SANAYİ SİCİL BELGESİ</option>
+                    <option>YATIRIM TEŞVİK BELGESİ</option>
+                    
+                    <option>Araç Muayenesi</option>
+                    <option>Trafik Sigortası (Zorunlu)</option>
+                    <option>SRC 1-2-3-4 Belgesi</option>
+                    <option>Psikoteknik Belgesi</option>
+                    <option value="Diger">➕ DİĞER / LİSTEDE YOK</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Plaka / TC / Ek Bilgi (Opsiyonel)</label>
+                <input type="text" name="risk_value" class="form-control" placeholder="Örn: 34 ABC 123">
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-bold text-danger">Belge Bitiş Tarihi</label>
+                <input type="date" name="expiry_date" class="form-control form-control-lg border-danger" required>
+            </div>
+
+            <button type="submit" class="btn btn-success btn-lg w-100 shadow">KAYDET VE TAKİBE BAŞLA</button>
+        </form>
+    </div>
 </div>
-{% endif %}
-
-<table class="table table-hover">
-    <thead class="table-dark">
-        <tr>
-            <th>Firma / Şirket</th>
-            <th>Belge / Detay</th>
-            <th>Bitiş Tarihi</th>
-            <th>Kalan Gün</th>
-            <th>Durum</th>
-            <th>İşlem</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for item in items %}
-        <tr class="{% if item.durum == 'danger' %}table-danger{% elif item.durum == 'warning' %}table-warning{% endif %}">
-            <td><strong>{{ item.firma_adi or '—' }}</strong></td>
-            <td>
-                {{ item.title }}
-                {% if item.risk_value %}<br><small class="text-muted">{{ item.risk_value }}</small>{% endif %}
-                {% if item.whatsapp_no %}<br><small class="text-success">📱 {{ item.whatsapp_no }}</small>{% endif %}
-            </td>
-            <td>{{ item.expiry_date.strftime('%d.%m.%Y') if item.expiry_date else '—' }}</td>
-            <td>
-                {% if item.kalan_gun is not none %}
-                    {% if item.kalan_gun < 0 %}
-                        <span class="text-danger fw-bold">{{ item.kalan_gun|abs }} gün geçti!</span>
-                    {% elif item.kalan_gun == 0 %}
-                        <span class="text-danger fw-bold">Bugün!</span>
-                    {% else %}
-                        <span class="fw-bold text-{{ item.durum }}">{{ item.kalan_gun }} gün kaldı</span>
-                    {% endif %}
-                {% else %}—{% endif %}
-            </td>
-            <td>
-                {% if item.durum == 'danger' %}🔴 Kritik
-                {% elif item.durum == 'warning' %}🟡 Uyarı
-                {% elif item.durum == 'success' %}🟢 Güvenli
-                {% else %}⚪ —{% endif %}
-            </td>
-            <td>
-                {% if item.whatsapp_no %}
-                <button onclick="wpGonder('{{ item.id }}','{{ item.firma_adi or '' }}','{{ item.title }}','{{ item.expiry_date }}','{{ item.whatsapp_no }}')"
-                        class="btn btn-sm btn-success mb-1">🟢 WP Gönder</button>
-                {% else %}
-                <button onclick="wpGonder('{{ item.id }}','{{ item.firma_adi or '' }}','{{ item.title }}','{{ item.expiry_date }}','')"
-                        class="btn btn-sm btn-outline-success mb-1" title="Numara kayıtlı değil">📤 WP Hazırla</button>
-                {% endif %}
-                <a href="/sil/{{ item.id }}" class="btn btn-sm btn-outline-danger"
-                   onclick="return confirm('Silmek istiyor musunuz?')">🗑️</a>
-            </td>
-        </tr>
-        {% endfor %}
-        {% if not items %}
-        <tr>
-            <td colspan="6" class="text-center text-muted py-4">
-                Henüz kayıt yok. <a href="/ekle?cat={{ cat }}">+ Yeni ekle</a>
-            </td>
-        </tr>
-        {% endif %}
-    </tbody>
-</table>
 
 <script>
-function wpGonder(id, firma, belge, tarih, tel) {
-    fetch('/log_ekle/' + id);
-    const mesaj = `Sayın ${firma} yetkilisi,\n\n"${belge}" belgenizin süresi ${tarih} tarihinde dolmaktadır.\n\nLütfen yenileme işlemini zamanında yaptırınız.\n\nSaygılarımızla,\nEG Optimal Danışmanlık`;
-    const url = tel
-        ? `https://wa.me/${tel}?text=${encodeURIComponent(mesaj)}`
-        : `https://wa.me/?text=${encodeURIComponent(mesaj)}`;
-    window.open(url, '_blank');
+// Akıllı Arama Motoru (Senin listenin can damarı)
+const searchInput = document.getElementById('searchInput');
+if (searchInput) {
+    searchInput.addEventListener('input', function() {
+        const f = this.value.toUpperCase();
+        document.getElementById('sertifikaSelect').querySelectorAll('option').forEach(o => {
+            o.style.display = (o.text.toUpperCase().includes(f) || o.value==="") ? '' : 'none';
+        });
+    });
 }
 </script>
 {% endblock %}
-
-
-
-
-
