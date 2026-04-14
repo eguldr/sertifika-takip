@@ -2,31 +2,164 @@
 {% block content %}
 <div class="card shadow border-0">
     <div class="card-header bg-primary text-white py-3">
-        <h4 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Yeni Kayıt Ekle (v4 Tam Sürüm)</h4>
+        <h4 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Yeni Kayıt Ekle (v4 Final)</h4>
     </div>
     <div class="card-body p-4">
         <form method="POST" action="/ekle">
-            <input type="hidden" name="category" value="{{ request.args.get('cat', 'Urun') }}">
+            <input type="hidden" name="category" value="{{ request.args.get('cat', '') }}">
 
-            <div class="row bg-light p-3 rounded mb-4 border border-success shadow-sm">
-                <div class="col-md-12">
-                    <label class="form-label fw-bold text-success"><i class="fab fa-whatsapp me-1"></i> WhatsApp Hatırlatma Numarası</label>
-                    <input type="text" name="whatsapp_no" class="form-control border-success form-control-lg" placeholder="Örn: 905321234567" required>
-                    <div class="form-text text-dark">Lütfen numaranın başına 90 ekleyerek yazın.</div>
+            {% if request.args.get('cat') == 'Arac' %}
+            <div class="mb-3">
+                <label class="form-label fw-bold">Araç Tipi</label>
+                <select id="aracTipi" class="form-select shadow-sm" onchange="aracTipiDegisti(this)">
+                    <option value="">-- Önce araç tipini seçin --</option>
+                    <option value="binek">🚗 Binek Otomobil</option>
+                    <option value="ticari_hafif">🚐 Hafif Ticari (Minibüs/Kamyonet ≤3.5t)</option>
+                    <option value="ticari_agir">🚛 Ağır Ticari (Kamyon/TIR >3.5t)</option>
+                </select>
+            </div>
+
+            <div id="aracBelgeDiv" style="display:none;">
+                <div id="uyariKutusu" class="alert alert-warning shadow-sm" style="display:none;"></div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Belge / İşlem Türü</label>
+                    <select name="title" id="aracSelect" class="form-select shadow-sm" onchange="aracSecimDegisti(this)" required>
+                        <option value="">-- Seçiniz --</option>
+                    </select>
+                </div>
+
+                <div id="aracDigerDiv" class="mb-3" style="display:none;">
+                    <label class="form-label text-primary fw-bold">Belge Adını Yazın</label>
+                    <input type="text" id="aracDigerInput" class="form-control border-primary">
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Plaka / Araç Adı</label>
+                        <input type="text" name="risk_value" class="form-control" placeholder="Örn: 34 ABC 123">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Firma Adı <span class="text-muted small">(opsiyonel)</span></label>
+                        <input type="text" name="firma_adi" class="form-control" placeholder="Örn: ABC Lojistik A.Ş.">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-success"><i class="fab fa-whatsapp me-1"></i> WhatsApp Numarası (Hatırlatma İçin)</label>
+                    <input type="text" name="whatsapp_no" class="form-control border-success" placeholder="Örn: 905321234567">
+                    <div class="form-text text-muted">Başına ülke kodu ekleyerek yazın (Örn: 905...)</div>
+                </div>
+
+                <div id="belgeBilgiNotu" class="alert alert-info shadow-sm" style="display:none;"></div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-danger">Bitiş Tarihi</label>
+                    <input type="date" name="expiry_date" class="form-control border-danger" required>
+                </div>
+            </div>
+
+            {% elif request.args.get('cat') == 'Tesis' %}
+            <div class="alert alert-info shadow-sm">🏢 Tesis & Mekan belgeleri ve bitiş tarihleri girilir.</div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Firma / Tesis Adı</label>
+                    <input type="text" name="firma_adi" class="form-control" placeholder="Örn: XYZ Sanayi A.Ş.">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Belge / Rapor Adı <span class="text-danger">*</span></label>
+                    <select class="form-select shadow-sm" name="title" id="tesisBelge" onchange="tesisBelgeDegisti(this)" required>
+                        <option value="" selected disabled>Seçiniz...</option>
+                        <option value="İtfaiye Raporu">🚒 İtfaiye Raporu</option>
+                        <option value="Kapasite Raporu">📊 Kapasite Raporu</option>
+                        <option value="Sanayi Sicil Belgesi">🏭 Sanayi Sicil Belgesi</option>
+                        <option value="Yıllık İşletme Cetveli">📋 Yıllık İşletme Cetveli</option>
+                        <option value="Risk Analizi">⚠️ Risk Analizi</option>
+                        <option value="Emisyon Ölçümü">💨 Emisyon Ölçümü</option>
+                        <option value="İşyeri Açma Ruhsatı">📄 İşyeri Açma Ruhsatı</option>
+                        <option value="Diger">➕ Diğer (Elle Yaz)</option>
+                    </select>
                 </div>
             </div>
 
             <div class="mb-3">
-                <label class="form-label fw-bold">Firma / Şirket / Müşteri Adı</label>
-                <input type="text" name="firma_adi" class="form-control" placeholder="Firma adını yazın">
+                <label class="form-label fw-bold text-success"><i class="fab fa-whatsapp me-1"></i> WhatsApp Numarası (Hatırlatma İçin)</label>
+                <input type="text" name="whatsapp_no" class="form-control border-success" placeholder="905321234567">
+            </div>
+
+            <div id="tesisDigerDiv" class="mb-3" style="display:none;">
+                <label class="form-label text-primary fw-bold">Belge Adını Yazın</label>
+                <input type="text" id="tesisDigerInput" class="form-control border-primary">
+            </div>
+
+            <div id="tesisBilgiNotu" class="alert alert-warning shadow-sm" style="display:none;"></div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Geçerlilik Tarihi</label>
+                <input type="date" class="form-control" id="tesisTarih" name="expiry_date" required>
+            </div>
+
+            {% elif request.args.get('cat') == 'Personel' %}
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">Ad Soyad <span class="text-danger">*</span></label>
+                    <input type="text" name="title" class="form-control" placeholder="Ahmet Yılmaz" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-bold">TC Kimlik No</label>
+                    <input type="text" name="risk_value" id="tcInput" class="form-control" maxlength="11" placeholder="12345678901">
+                </div>
             </div>
 
             <div class="mb-3">
-                <label class="form-label fw-bold">Belge veya Sertifika Seçin</label>
-                <input type="text" id="searchInput" class="form-control mb-2" placeholder="Listede ara (örn: ISO, CE, Muayene, SRC...)">
-                <select name="title" id="sertifikaSelect" class="form-select" size="12" required>
-                    <option value="" disabled selected>-- Lütfen Listeden Bir Belge Seçin --</option>
-                    
+                <label class="form-label fw-bold">Çalıştığı Firma</label>
+                <input type="text" name="firma_adi" class="form-control" placeholder="Örn: ABC Nakliyat Ltd.">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold text-success"><i class="fab fa-whatsapp me-1"></i> WhatsApp Numarası (Hatırlatma İçin)</label>
+                <input type="text" name="whatsapp_no" class="form-control border-success" placeholder="905321234567">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Belge Türü <span class="text-danger">*</span></label>
+                <select name="belge_turu" id="personelBelge" class="form-select shadow-sm" onchange="personelBelgeDegisti(this)" required>
+                    <option value="">-- Seçiniz --</option>
+                    <optgroup label="Zorunlu Belgeler">
+                        <option value="Ehliyet Yenileme">🪪 Ehliyet Yenileme</option>
+                        <option value="Psikoteknik Belgesi">🧠 Psikoteknik Belgesi</option>
+                        <option value="SRC-1 Belgesi">📜 SRC-1 (Uluslararası Yük)</option>
+                        <option value="SRC-2 Belgesi">📜 SRC-2 (Yurtiçi Yük)</option>
+                        <option value="SRC-3 Belgesi">📜 SRC-3 (Uluslararası Yolcu)</option>
+                        <option value="SRC-4 Belgesi">📜 SRC-4 (Yurtiçi Yolcu)</option>
+                        <option value="SRC-5 Belgesi">📜 SRC-5 (Tehlikeli Madde)</option>
+                    </optgroup>
+                    <option value="Diger">➕ Listede Yok</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold text-danger">Bitiş Tarihi</label>
+                <input type="date" name="expiry_date" id="personelTarih" class="form-control border-danger" required>
+            </div>
+
+            {% else %}
+            <div class="mb-3">
+                <label class="form-label fw-bold">Firma / Şirket Adı</label>
+                <input type="text" name="firma_adi" class="form-control" placeholder="Örn: ABC Tekstil A.Ş.">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold text-success"><i class="fab fa-whatsapp me-1"></i> WhatsApp Numarası (Hatırlatma İçin)</label>
+                <input type="text" name="whatsapp_no" class="form-control border-success" placeholder="905321234567">
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">Sertifika / Belge Seçin</label>
+                <input type="text" id="searchInput" class="form-control mb-2" placeholder="Listede ara (örn: CE, ISO, ACS...)">
+                <select name="title" id="sertifikaSelect" class="form-select shadow-sm" size="10" required>
+                    <option value="">-- Yukarıya yazarak arayın --</option>
                     <option>ACS (Sağlık Uygunluk Sertifikası)</option>
                     <option>ADR SERTİFİKALARI</option>
                     <option>AS/EN/JISQ 9100</option>
@@ -34,134 +167,93 @@
                     <option>BASEC SERTİFİKASI</option>
                     <option>BENOR SERTİFİKASI</option>
                     <option>BRC SERTİFİKASI</option>
-                    <option>CALIBRATION SERTİFİKASI</option>
-                    <option>CARB SERTİFİKASI</option>
-                    <option>CB SERTİFİKASI</option>
-                    <option>CCC SERTİFİKASI</option>
                     <option>CE İŞARETİ</option>
-                    <option>CEKAL SERTİFİKASI</option>
-                    <option>CLASS SERTİFİKASI</option>
-                    <option>CMIM UYGUNLUK İŞARETİ</option>
-                    <option>CMMIDEV SERTİFİKASI</option>
-                    <option>COSMOS SERTİFİKASI</option>
-                    <option>CRASH TEST SERTİFİKASI</option>
-                    <option>CRADLE TO CRADLE SERTİFİKASI</option>
-                    <option>CTUV İŞARETİ</option>
-                    <option>DIN SERİSİ BELGELER</option>
-                    <option>EAC GÜMRÜK BİRLİĞİ SERTİFİKASI</option>
-                    <option>ECE YÖNETMELİKLERİ SERTİFİKASI</option>
-                    <option>EC TYPE EXAMINATION SERTİFİKASI</option>
-                    <option>ECM SERTİFİKASI</option>
-                    <option>ECOLABEL SERTİFİKASI</option>
-                    <option>ECOCERT SERTİFİKASI</option>
-                    <option>EHEDG SERTİFİKASI</option>
-                    <option>EMC SERTİFİKASI</option>
-                    <option>EN SERİSİ SERTİFİKALAR</option>
-                    <option>ENPLUS SERTİFİKASI</option>
-                    <option>ETA (Avrupa Teknik Değerlendirmesi)</option>
-                    <option>EU TYPE EXAMINATION SERTİFİKASI</option>
-                    <option>EUCERTPLAST SERTİFİKASI</option>
-                    <option>EUROVENT SERTİFİKASI</option>
-                    <option>F4 STAR BELGESİ</option>
-                    <option>FAMI-QS SERTİFİKASI</option>
-                    <option>FIBC TEST SERTİFİKASI</option>
-                    <option>FM APPROVALS</option>
-                    <option>FSSC 22000 SERTİFİKASI</option>
-                    <option>G MARK SERTİFİKASI</option>
-                    <option>GASTEC QA SERTİFİKASI</option>
-                    <option>GERMAN ECOLABEL - BLUE ANGEL</option>
                     <option>GMP SERTİFİKASI</option>
-                    <option>GMP+ FSA SERTİFİKASI</option>
-                    <option>GDP SERTİFİKASI</option>
-                    <option>GS SERTİFİKASI</option>
-                    <option>HACCP SERTİFİKASI</option>
-                    <option>HAR BELGESİ</option>
                     <option>HELAL BELGESİ</option>
-                    <option>HİJYEN SERTİFİKASI</option>
-                    <option>INDOOR AIR QUALITY</option>
-                    <option>INSTA-CERT SERTİFİKASI</option>
-                    <option>ISCC SERTİFİKASI</option>
                     <option>ISO 9001:2015</option>
                     <option>ISO 14001</option>
                     <option>ISO 22000</option>
                     <option>ISO 27001</option>
                     <option>ISO 45001</option>
-                    <option>ISO 50001</option>
                     <option>ISO 13485</option>
-                    <option>ISO 17025</option>
-                    <option>ISO 22301</option>
-                    <option>ISO 37001</option>
-                    <option>IYI TARIM UYGULAMALARI</option>
-                    <option>JIS SERTİFİKASI</option>
-                    <option>KEMA KEUR / DEKRA SERTİFİKASI</option>
-                    <option>KEYMARK SERTİFİKASI</option>
-                    <option>KITEMARK SERTİFİKASI</option>
-                    <option>KTW-UBA UYGUNLUK BEYANI</option>
-                    <option>KRAV SERTİFİKASI</option>
-                    <option>MARINE SERTİFİKASI</option>
-                    <option>MDR TIBBI CIHAZ SERTİFİKASI</option>
-                    <option>MDSAP SERTİFİKASI</option>
-                    <option>NF İŞARETİ/SERTİFİKASI</option>
-                    <option>NSF SERTİFİKASI</option>
-                    <option>OEKO-TEX SERTİFİKASI</option>
-                    <option>ORGANİK TARIM SERTİFİKASI</option>
-                    <option>ORGANİK ÜRÜN SERTİFİKASI</option>
-                    <option>Q-MARK SERTİFİKASI</option>
-                    <option>RAL SERTİFİKASI</option>
-                    <option>RTN SERTİFİKASI</option>
-                    <option>SA8000 SOSYAL UYGUNLUK SERTİFİKASI</option>
-                    <option>SAFETY INTEGRITY LEVEL (SIL)</option>
-                    <option>SOLAR KEYMARK</option>
-                    <option>STANDARDSMARK</option>
-                    <option>TEKNİK REGLAMENT SERTİFİKASI</option>
-                    <option>TOXPROOF SERTİFİKASI</option>
-                    <option>TSI SERTİFİKASI</option>
-                    <option>TYPE APPROVAL SERTİFİKASI</option>
-                    <option>TYPE TEST SERTİFİKASI</option>
-                    <option>UKCA İŞARETİ</option>
-                    <option>UKRSEPRO SERTİFİKASI</option>
-                    <option>UL SERTİFİKASI</option>
-                    <option>UYGUNLUK SERTİFİKASI</option>
-                    <option>VDE SERTİFİKASI</option>
-                    <option>VDI 2700 SERTİFİKASI</option>
-                    <option>WRAS SERTİFİKASI</option>
-                    <option>WATERMARK SERTİFİKASI</option>
-                    <option>YANGIN SERTİFİKASI</option>
                     <option>KAPASİTE RAPORU</option>
                     <option>SANAYİ SİCİL BELGESİ</option>
                     <option>YATIRIM TEŞVİK BELGESİ</option>
-                    
-                    <option>Araç Muayenesi</option>
-                    <option>Trafik Sigortası (Zorunlu)</option>
-                    <option>SRC 1-2-3-4 Belgesi</option>
-                    <option>Psikoteknik Belgesi</option>
-                    <option value="Diger">➕ DİĞER / LİSTEDE YOK</option>
+                    <option value="Diger">➕ LİSTEDE YOK</option>
                 </select>
             </div>
 
             <div class="mb-3">
-                <label class="form-label fw-bold">Plaka / TC / Ek Bilgi (Opsiyonel)</label>
-                <input type="text" name="risk_value" class="form-control" placeholder="Örn: 34 ABC 123">
+                <label class="form-label fw-bold text-danger">Bitiş Tarihi</label>
+                <input type="date" name="expiry_date" class="form-control border-danger" required>
             </div>
+            {% endif %}
 
-            <div class="mb-4">
-                <label class="form-label fw-bold text-danger">Belge Bitiş Tarihi</label>
-                <input type="date" name="expiry_date" class="form-control form-control-lg border-danger" required>
+            <div class="d-grid gap-2 mt-4">
+                <button type="submit" class="btn btn-success btn-lg shadow">Verileri Kaydet</button>
+                <a href="/dashboard" class="btn btn-outline-secondary">İptal</a>
             </div>
-
-            <button type="submit" class="btn btn-success btn-lg w-100 shadow">KAYDET VE TAKİBE BAŞLA</button>
         </form>
     </div>
 </div>
 
 <script>
-// Akıllı Arama Motoru (Senin listenin can damarı)
+const belgeSureleri = {
+    'Psikoteknik Belgesi': 1825, 'Ehliyet Yenileme': 3650,
+    'Araç Muayenesi': 365, 'Trafik Sigortası (Zorunlu)': 365,
+    'Kasko': 365, 'Egzoz Muayenesi': 365,
+    'K2 Yetki Belgesi': 1825, 'Sanayi Sicil Belgesi': 730,
+    'Yıllık İşletme Cetveli': 120, 'İtfaiye Raporu': 365,
+    'Kış Lastiği Değişimi': 180, 'Yaz Lastiği Değişimi': 180
+};
+
+function otomatikTarih(belgeAdi) {
+    const tarihInput = document.querySelector('input[name="expiry_date"]');
+    if (!tarihInput || !belgeAdi || belgeAdi === 'Diger') return;
+    const gun = belgeSureleri[belgeAdi] || 365;
+    const bugun = new Date();
+    bugun.setDate(bugun.getDate() + gun);
+    tarihInput.value = bugun.toISOString().split('T')[0];
+}
+
+const aracBelgeleri = {
+    binek: [
+        {grup:'Zorunlu', belgeler:['Araç Muayenesi','Trafik Sigortası (Zorunlu)']},
+        {grup:'İsteğe Bağlı', belgeler:['Kasko','Egzoz Muayenesi','Kış Lastiği Değişimi','Yaz Lastiği Değişimi']}
+    ],
+    ticari_hafif: [
+        {grup:'Zorunlu', belgeler:['Araç Muayenesi','Trafik Sigortası (Zorunlu)','K2 Yetki Belgesi']},
+        {grup:'İsteğe Bağlı', belgeler:['Kasko','Egzoz Muayenesi','Takoğraf Kalibrasyonu','Kış Lastiği Değişimi','Yaz Lastiği Değişimi']}
+    ],
+    ticari_agir: [
+        {grup:'Zorunlu', belgeler:['Araç Muayenesi','Trafik Sigortası (Zorunlu)','K2 Yetki Belgesi','Takoğraf Kalibrasyonu','ADR Uygunluk Belgesi']},
+        {grup:'İsteğe Bağlı', belgeler:['Kasko','Egzoz Muayenesi','Kış Lastiği Değişimi','Yaz Lastiği Değişimi']}
+    ]
+};
+
+function aracTipiDegisti(sel) {
+    document.getElementById('aracBelgeDiv').style.display = sel.value ? 'block' : 'none';
+    const s = document.getElementById('aracSelect');
+    s.innerHTML = '<option value="">-- Seçiniz --</option>';
+    if(sel.value) {
+        aracBelgeleri[sel.value].forEach(g => {
+            let og = document.createElement('optgroup'); og.label = g.grup;
+            g.belgeler.forEach(b => { let o = document.createElement('option'); o.value=b; o.text=b; og.appendChild(o); });
+            s.appendChild(og);
+        });
+    }
+}
+
+function aracSecimDegisti(sel) { otomatikTarih(sel.value); }
+function tesisBelgeDegisti(sel) { otomatikTarih(sel.value); }
+function personelBelgeDegisti(sel) { otomatikTarih(sel.value); }
+
 const searchInput = document.getElementById('searchInput');
 if (searchInput) {
     searchInput.addEventListener('input', function() {
         const f = this.value.toUpperCase();
         document.getElementById('sertifikaSelect').querySelectorAll('option').forEach(o => {
-            o.style.display = (o.text.toUpperCase().includes(f) || o.value==="") ? '' : 'none';
+            o.style.display = (o.text.toUpperCase().includes(f)) ? '' : 'none';
         });
     });
 }
