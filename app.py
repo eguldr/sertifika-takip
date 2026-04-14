@@ -119,15 +119,18 @@ def sertifikalar():
 def ekle():
     if request.method == 'POST':
         exp_str = request.form.get('expiry_date')
+        
+        # FORM'DAN VERİYİ ALIP DB DEĞİŞKENİNE ATIYORUZ
         new_entry = Entry(
             user_id=current_user.id,
             category=request.form.get('category'),
             title=request.form.get('title'),
             firma_adi=request.form.get('firma_adi'),
-            whatsapp_no=request.form.get('whatsapp_no'), # WhatsApp No eklendi
+            whatsapp_no=request.form.get('whatsapp_no'), # İŞTE KRİTİK SATIR!
             risk_value=request.form.get('risk_value'),
             expiry_date=datetime.strptime(exp_str, '%Y-%m-%d').date() if exp_str else None
         )
+        
         db.session.add(new_entry)
         db.session.commit()
         return redirect(url_for('sertifikalar', cat=new_entry.category))
