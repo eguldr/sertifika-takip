@@ -19,27 +19,22 @@
 <div class="alert alert-warning">
     <strong>⚠️ Risk Uyarısı:</strong> SRC veya Psikoteknik belgesi eksik sürücü kullanımında firmaya uygulanan ceza yaklaşık <b>8.200 TL</b>'dir.
 </div>
+{% elif request.args.get('cat') == 'Tesis' %}
+<div class="alert alert-warning">
+    <strong>⚠️ Hatırlatma:</strong> Yıllık İşletme Cetveli yıl sonundan itibaren <b>4 ay (120 gün)</b> içinde İl Sanayi Müdürlüğüne verilmesi zorunludur.
+</div>
 {% endif %}
 
-<!-- ÖZET SAYAÇLAR -->
 {% set dolan = items | selectattr('durum', 'equalto', 'danger') | list %}
 {% set uyari = items | selectattr('durum', 'equalto', 'warning') | list %}
 {% set gecerli = items | selectattr('durum', 'equalto', 'success') | list %}
 
 {% if items %}
 <div class="row g-2 mb-3">
-    <div class="col-auto">
-        <span class="badge bg-danger fs-6 px-3 py-2">⛔ Kritik: {{ dolan|length }}</span>
-    </div>
-    <div class="col-auto">
-        <span class="badge bg-warning text-dark fs-6 px-3 py-2">⚠️ Uyarı: {{ uyari|length }}</span>
-    </div>
-    <div class="col-auto">
-        <span class="badge bg-success fs-6 px-3 py-2">✅ Geçerli: {{ gecerli|length }}</span>
-    </div>
-    <div class="col-auto">
-        <span class="badge bg-secondary fs-6 px-3 py-2">📋 Toplam: {{ items|length }}</span>
-    </div>
+    <div class="col-auto"><span class="badge bg-danger fs-6 px-3 py-2">⛔ Kritik: {{ dolan|length }}</span></div>
+    <div class="col-auto"><span class="badge bg-warning text-dark fs-6 px-3 py-2">⚠️ Uyarı: {{ uyari|length }}</span></div>
+    <div class="col-auto"><span class="badge bg-success fs-6 px-3 py-2">✅ Geçerli: {{ gecerli|length }}</span></div>
+    <div class="col-auto"><span class="badge bg-secondary fs-6 px-3 py-2">📋 Toplam: {{ items|length }}</span></div>
 </div>
 {% endif %}
 
@@ -47,6 +42,7 @@
     <thead class="table-dark">
         <tr>
             <th>Belge / Araç / Personel</th>
+            <th>Firma / Şirket</th>
             <th>Plaka / TC / Detay</th>
             <th>Bitiş Tarihi</th>
             <th>Kalan Gün</th>
@@ -58,6 +54,7 @@
         {% for item in items %}
         <tr class="{% if item.durum == 'danger' %}table-danger{% elif item.durum == 'warning' %}table-warning{% endif %}">
             <td><strong>{{ item.title }}</strong></td>
+            <td class="text-muted small">{{ item.firma_adi or '—' }}</td>
             <td class="text-muted small">{{ item.risk_value or '—' }}</td>
             <td>
                 {% if item.expiry_date %}
@@ -76,16 +73,14 @@
                     {% else %}
                         {{ kalan }} gün
                     {% endif %}
-                {% else %}
-                    —
-                {% endif %}
+                {% else %}—{% endif %}
             </td>
             <td>
                 {% if item.durum == 'danger' %}
                     {% if item.expiry_date and item.expiry_date < bugun %}
                         <span class="badge bg-danger">⛔ Süresi Doldu</span>
                     {% else %}
-                        <span class="badge bg-danger">🔴 Kritik</span>
+                        <span class="badge bg-danger">🔴 {{ item.durum_text }}</span>
                     {% endif %}
                 {% elif item.durum == 'warning' %}
                     <span class="badge bg-warning text-dark">⚠️ {{ item.durum_text }}</span>
@@ -103,7 +98,7 @@
         {% endfor %}
         {% if not items %}
         <tr>
-            <td colspan="6" class="text-center text-muted py-4">
+            <td colspan="7" class="text-center text-muted py-4">
                 Henüz kayıt yok. <a href="/ekle?cat={{ request.args.get('cat') }}">+ Yeni ekle</a>
             </td>
         </tr>
@@ -111,5 +106,6 @@
     </tbody>
 </table>
 {% endblock %}
+
 
    
