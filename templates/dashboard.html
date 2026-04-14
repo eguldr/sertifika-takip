@@ -1,18 +1,23 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- UYARI BÖLÜMÜ -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="text-primary fw-bold"><i class="fas fa-tachometer-alt me-2"></i>Genel Durum Paneli</h2>
+    <a href="{{ url_for('export_excel') }}" class="btn btn-success shadow-sm">
+        <i class="fas fa-file-excel me-1"></i> Tüm Listeyi Excel'e Aktar
+    </a>
+</div>
+
 {% if suresi_dolan %}
-<div class="alert alert-danger mb-3">
+<div class="alert alert-danger shadow-sm mb-3">
     <h6 class="mb-2">⛔ Süresi Dolmuş — {{ suresi_dolan|length }} kayıt</h6>
     <ul class="mb-0 ps-3">
         {% for e in suresi_dolan %}
         <li>
-            <strong>{{ e.title }}</strong>
-            {% if e.risk_value %} — {{ e.risk_value }}{% endif %}
+            <strong>{{ e.title }}</strong> {% if e.risk_value %} — {{ e.risk_value }}{% endif %}
             <span class="badge bg-danger ms-1">{{ e.expiry_date.strftime('%d.%m.%Y') }}</span>
-            <span class="badge bg-secondary ms-1">{{ kat_isim.get(e.category, e.category) }}</span>
-            <a href="/sil/{{ e.id }}" class="ms-2 text-danger small" onclick="return confirm('Silmek istiyor musunuz?')">🗑️</a>
+            <a href="/edit/{{ e.id }}" class="ms-2 text-warning small">✏️</a>
+            <a href="/sil/{{ e.id }}" class="ms-1 text-danger small" onclick="return confirm('Silmek istiyor musunuz?')">🗑️</a>
         </li>
         {% endfor %}
     </ul>
@@ -20,15 +25,13 @@
 {% endif %}
 
 {% if kritik_30 %}
-<div class="alert alert-warning mb-3">
+<div class="alert alert-warning shadow-sm mb-3" style="border-left: 5px solid red;">
     <h6 class="mb-2">🔴 30 Gün İçinde Dolacak — {{ kritik_30|length }} kayıt</h6>
     <ul class="mb-0 ps-3">
         {% for e in kritik_30 %}
         <li>
-            <strong>{{ e.title }}</strong>
-            {% if e.risk_value %} — {{ e.risk_value }}{% endif %}
-            <span class="badge bg-warning text-dark ms-1">{{ (e.expiry_date - bugun).days }} gün</span>
-            <span class="badge bg-secondary ms-1">{{ kat_isim.get(e.category, e.category) }}</span>
+            <strong>{{ e.title }}</strong> — {{ (e.expiry_date - bugun).days }} gün kaldı
+            <a href="/edit/{{ e.id }}" class="ms-2 text-warning small">✏️</a>
         </li>
         {% endfor %}
     </ul>
@@ -36,77 +39,45 @@
 {% endif %}
 
 {% if uyari_60 %}
-<div class="alert alert-warning mb-3" style="background-color:#fff3cd; border-color:#ffc107;">
+<div class="alert alert-warning shadow-sm mb-3" style="background-color:#fff3cd; border-color:#ffc107;">
     <h6 class="mb-2">🟡 60 Gün İçinde Dolacak — {{ uyari_60|length }} kayıt</h6>
     <ul class="mb-0 ps-3">
         {% for e in uyari_60 %}
-        <li>
-            <strong>{{ e.title }}</strong>
-            {% if e.risk_value %} — {{ e.risk_value }}{% endif %}
-            <span class="badge bg-warning text-dark ms-1">{{ (e.expiry_date - bugun).days }} gün</span>
-            <span class="badge bg-secondary ms-1">{{ kat_isim.get(e.category, e.category) }}</span>
-        </li>
+        <li><strong>{{ e.title }}</strong> — {{ (e.expiry_date - bugun).days }} gün <a href="/edit/{{ e.id }}" class="ms-2 text-warning small">✏️</a></li>
         {% endfor %}
     </ul>
 </div>
 {% endif %}
 
-{% if bilgi_90 %}
-<div class="alert alert-info mb-3">
-    <h6 class="mb-2">🔵 90 Gün İçinde Dolacak — {{ bilgi_90|length }} kayıt</h6>
-    <ul class="mb-0 ps-3">
-        {% for e in bilgi_90 %}
-        <li>
-            <strong>{{ e.title }}</strong>
-            {% if e.risk_value %} — {{ e.risk_value }}{% endif %}
-            <span class="badge bg-info text-dark ms-1">{{ (e.expiry_date - bugun).days }} gün</span>
-            <span class="badge bg-secondary ms-1">{{ kat_isim.get(e.category, e.category) }}</span>
-        </li>
-        {% endfor %}
-    </ul>
-</div>
-{% endif %}
-
-{% if not suresi_dolan and not kritik_30 and not uyari_60 and not bilgi_90 %}
-<div class="alert alert-success mb-3">
-    ✅ Önümüzdeki 90 gün içinde süresi dolacak belge yok. Her şey yolunda!
-</div>
-{% endif %}
-
-<!-- KATEGORİ KARTLARI -->
-<div class="row g-3">
+<div class="row g-3 mb-4">
     <div class="col-md-3">
-        <div class="card bg-primary text-white mb-4">
+        <div class="card bg-primary text-white shadow">
             <div class="card-body"><h5>Üretim & Ürün</h5><h2>{{ urun }}</h2></div>
-            <div class="card-footer d-flex align-items-center justify-content-between">
-                <a class="small text-white stretched-link" href="/sertifikalar?cat=Urun">Detaylar</a>
-            </div>
+            <div class="card-footer"><a class="small text-white stretched-link" href="/sertifikalar?cat=Urun">Detayları Gör</a></div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card bg-warning text-dark mb-4">
+        <div class="card bg-warning text-dark shadow">
             <div class="card-body"><h5>Araç & Filo</h5><h2>{{ arac }}</h2></div>
-            <div class="card-footer d-flex align-items-center justify-content-between">
-                <a class="small text-dark stretched-link" href="/sertifikalar?cat=Arac">Detaylar</a>
-            </div>
+            <div class="card-footer"><a class="small text-dark stretched-link" href="/sertifikalar?cat=Arac">Detayları Gör</a></div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card bg-success text-white mb-4">
+        <div class="card bg-success text-white shadow">
             <div class="card-body"><h5>Personel & SRC</h5><h2>{{ pers }}</h2></div>
-            <div class="card-footer d-flex align-items-center justify-content-between">
-                <a class="small text-white stretched-link" href="/sertifikalar?cat=Personel">Detaylar</a>
-            </div>
+            <div class="card-footer"><a class="small text-white stretched-link" href="/sertifikalar?cat=Personel">Detayları Gör</a></div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card bg-danger text-white mb-4">
+        <div class="card bg-danger text-white shadow">
             <div class="card-body"><h5>Tesis & Mekan</h5><h2>{{ tesis }}</h2></div>
-            <div class="card-footer d-flex align-items-center justify-content-between">
-                <a class="small text-white stretched-link" href="/sertifikalar?cat=Tesis">Detaylar</a>
-            </div>
+            <div class="card-footer"><a class="small text-white stretched-link" href="/sertifikalar?cat=Tesis">Detayları Gör</a></div>
         </div>
     </div>
 </div>
 
-{% endblock %}
+<div class="text-center mt-4">
+    <p class="text-muted small">💡 Kayıtları düzenlemek veya silmek için yukarıdaki uyarı listelerini veya ilgili kategori detaylarını kullanabilirsiniz.</p>
+</div>
+
+{% endblock %}   
