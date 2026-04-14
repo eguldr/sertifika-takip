@@ -1,360 +1,116 @@
 {% extends "base.html" %}
 {% block content %}
-<h4>Yeni Kayıt Ekle</h4>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        {% if cat == 'Urun' %}Üretim & Ürün Belgeleri
+        {% elif cat == 'Arac' %}Araç & Filo Takipleri
+        {% elif cat == 'Personel' %}Personel & Mesleki Yeterlilik
+        {% elif cat == 'Tesis' %}Tesis & Mekan Uyumluluğu
+        {% else %}Tüm Kayıtlar{% endif %}
+    </h2>
+    <a href="/ekle?cat={{ cat }}" class="btn btn-primary">+ Yeni Ekle</a>
+</div>
 
-<form method="POST" action="/ekle">
-    <input type="hidden" name="category" value="{{ request.args.get('cat', '') }}">
+{% if cat == 'Arac' %}
+<div class="alert alert-info">
+    <strong>💡 Bilgi Notu:</strong> K1/K2 yetki belgesi yenileme maliyeti yaklaşık <b>150.000 TL</b>'dir. Süresi dolmadan başvuruda %15 indirim hakkınız korunur.
+</div>
+{% elif cat == 'Personel' %}
+<div class="alert alert-warning">
+    <strong>⚠️ Risk Uyarısı:</strong> SRC veya Psikoteknik belgesi eksik sürücü kullanımında firmaya uygulanan ceza yaklaşık <b>8.200 TL</b>'dir.
+</div>
+{% elif cat == 'Tesis' %}
+<div class="alert alert-warning">
+    <strong>⚠️ Hatırlatma:</strong> Yıllık İşletme Cetveli yıl sonundan itibaren <b>4 ay (120 gün)</b> içinde İl Sanayi Müdürlüğüne verilmesi zorunludur.
+</div>
+{% endif %}
 
-    {% if request.args.get('cat') == 'Arac' %}
+{% set dolan  = items | selectattr('durum', 'equalto', 'danger')  | list %}
+{% set uyari  = items | selectattr('durum', 'equalto', 'warning') | list %}
+{% set gecerli = items | selectattr('durum', 'equalto', 'success') | list %}
 
-    <div class="mb-3">
-        <label class="form-label">Araç Tipi</label>
-        <select id="aracTipi" class="form-select" onchange="aracTipiDegisti(this)">
-            <option value="">-- Önce araç tipini seçin --</option>
-            <option value="binek">🚗 Binek Otomobil</option>
-            <option value="ticari_hafif">🚐 Hafif Ticari (Minibüs/Kamyonet ≤3.5t)</option>
-            <option value="ticari_agir">🚛 Ağır Ticari (Kamyon/TIR >3.5t)</option>
-        </select>
-    </div>
+{% if items %}
+<div class="row g-2 mb-3">
+    <div class="col-auto"><span class="badge bg-danger fs-6 px-3 py-2">⛔ Kritik: {{ dolan|length }}</span></div>
+    <div class="col-auto"><span class="badge bg-warning text-dark fs-6 px-3 py-2">⚠️ Uyarı: {{ uyari|length }}</span></div>
+    <div class="col-auto"><span class="badge bg-success fs-6 px-3 py-2">✅ Güvenli: {{ gecerli|length }}</span></div>
+    <div class="col-auto"><span class="badge bg-secondary fs-6 px-3 py-2">📋 Toplam: {{ items|length }}</span></div>
+</div>
+{% endif %}
 
-    <div id="aracBelgeDiv" style="display:none;">
-        <div id="uyariKutusu" class="alert alert-warning" style="display:none;"></div>
-        <div class="mb-3">
-            <label class="form-label">Belge / İşlem Türü</label>
-            <select name="title" id="aracSelect" class="form-select" onchange="aracSecimDegisti(this)" required>
-                <option value="">-- Seçiniz --</option>
-            </select>
-        </div>
-        <div id="aracDigerDiv" class="mb-3" style="display:none;">
-            <label class="form-label text-primary">Belge Adını Yazın</label>
-            <input type="text" id="aracDigerInput" class="form-control border-primary">
-        </div>
-        <div class="row">
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Plaka / Araç Adı</label>
-                <input type="text" name="risk_value" class="form-control" placeholder="34 ABC 123">
-            </div>
-            <div class="col-md-4 mb-3">
-                <label class="form-label">Firma Adı <span class="text-muted small">(opsiyonel)</span></label>
-                <input type="text" name="firma_adi" class="form-control" placeholder="ABC Lojistik A.Ş.">
-            </div>
-            <div class="col-md-4 mb-3">
-                <label class="form-label">WhatsApp No <span class="text-muted small">(hatırlatma için)</span></label>
-                <input type="text" name="whatsapp_no" class="form-control" placeholder="905321234567">
-                <div class="form-text">Ülke koduyla yazın (905...)</div>
-            </div>
-        </div>
-        <div id="belgeBilgiNotu" class="alert alert-info" style="display:none;"></div>
-        <div class="mb-3">
-            <label class="form-label">Bitiş Tarihi</label>
-            <input type="date" name="expiry_date" id="aracTarih" class="form-control" required>
-        </div>
-    </div>
-
-    {% elif request.args.get('cat') == 'Tesis' %}
-
-    <div class="alert alert-info">🏢 Tesis & Mekan belgeleri ve bitiş tarihleri girilir.</div>
-    <div class="row">
-        <div class="col-md-4 mb-3">
-            <label class="form-label">Firma / Tesis Adı</label>
-            <input type="text" name="firma_adi" class="form-control" placeholder="XYZ Sanayi A.Ş.">
-        </div>
-        <div class="col-md-4 mb-3">
-            <label class="form-label">WhatsApp No <span class="text-muted small">(hatırlatma için)</span></label>
-            <input type="text" name="whatsapp_no" class="form-control" placeholder="905321234567">
-            <div class="form-text">Ülke koduyla yazın (905...)</div>
-        </div>
-        <div class="col-md-4 mb-3">
-            <label class="form-label">Belge / Rapor Adı <span class="text-danger">*</span></label>
-            <select class="form-select" name="title" id="tesisBelge" onchange="tesisBelgeDegisti(this)" required>
-                <option value="" selected disabled>Seçiniz...</option>
-                <option value="İtfaiye Raporu">🚒 İtfaiye Raporu</option>
-                <option value="Kapasite Raporu">📊 Kapasite Raporu</option>
-                <option value="Sanayi Sicil Belgesi">🏭 Sanayi Sicil Belgesi</option>
-                <option value="Yıllık İşletme Cetveli">📋 Yıllık İşletme Cetveli</option>
-                <option value="Risk Analizi">⚠️ Risk Analizi</option>
-                <option value="Emisyon Ölçümü">💨 Emisyon Ölçümü</option>
-                <option value="İşyeri Açma Ruhsatı">📄 İşyeri Açma Ruhsatı</option>
-                <option value="Diger">➕ Diğer (Elle Yaz)</option>
-            </select>
-        </div>
-    </div>
-    <div id="tesisDigerDiv" class="mb-3" style="display:none;">
-        <label class="form-label text-primary">Belge Adını Yazın</label>
-        <input type="text" id="tesisDigerInput" class="form-control border-primary" placeholder="Örn: Çevre İzin Belgesi">
-    </div>
-    <div id="tesisBilgiNotu" class="alert alert-warning" style="display:none;"></div>
-    <div class="mb-3">
-        <label class="form-label">Geçerlilik Tarihi <span class="text-danger">*</span></label>
-        <input type="date" class="form-control" id="tesisTarih" name="expiry_date" required>
-    </div>
-
-    {% elif request.args.get('cat') == 'Personel' %}
-
-    <div class="alert alert-info">👤 Personel bilgileri ve belge bitiş tarihleri girilir.</div>
-    <div class="row">
-        <div class="col-md-4 mb-3">
-            <label class="form-label">Ad Soyad <span class="text-danger">*</span></label>
-            <input type="text" name="title" class="form-control" placeholder="Ahmet Yılmaz" required>
-        </div>
-        <div class="col-md-4 mb-3">
-            <label class="form-label">TC Kimlik No</label>
-            <input type="text" name="risk_value" id="tcInput" class="form-control" maxlength="11" placeholder="12345678901">
-            <div id="tcUyari" class="form-text text-danger" style="display:none;">TC 11 haneli olmalıdır</div>
-        </div>
-        <div class="col-md-4 mb-3">
-            <label class="form-label">WhatsApp No <span class="text-muted small">(hatırlatma için)</span></label>
-            <input type="text" name="whatsapp_no" class="form-control" placeholder="905321234567">
-            <div class="form-text">Ülke koduyla yazın (905...)</div>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-4 mb-3">
-            <label class="form-label">Ehliyet Türü</label>
-            <select name="ehliyet_turu" class="form-select">
-                <option value="">-- Seçiniz --</option>
-                <option>B (Otomobil)</option>
-                <option>C (Kamyon)</option>
-                <option>CE (TIR/Çekici)</option>
-                <option>D (Otobüs)</option>
-                <option>B+E</option>
-                <option>Yok</option>
-            </select>
-        </div>
-        <div class="col-md-4 mb-3">
-            <label class="form-label">Kullandığı Araç (Plaka)</label>
-            <input type="text" name="kullandigi_arac" class="form-control" placeholder="34 ABC 123">
-        </div>
-        <div class="col-md-4 mb-3">
-            <label class="form-label">Çalıştığı Firma</label>
-            <input type="text" name="firma_adi" class="form-control" placeholder="ABC Nakliyat Ltd.">
-        </div>
-    </div>
-    <hr>
-    <h6 class="text-primary">📋 Takip Edilecek Belge</h6>
-    <div class="mb-3">
-        <label class="form-label">Belge Türü <span class="text-danger">*</span></label>
-        <select name="belge_turu" id="personelBelge" class="form-select" onchange="personelBelgeDegisti(this)" required>
-            <option value="">-- Seçiniz --</option>
-            <optgroup label="Zorunlu Belgeler">
-                <option value="Ehliyet Yenileme">🪪 Ehliyet Yenileme</option>
-                <option value="Psikoteknik Belgesi">🧠 Psikoteknik Belgesi</option>
-                <option value="SRC-1 Belgesi">📜 SRC-1 (Uluslararası Yük)</option>
-                <option value="SRC-2 Belgesi">📜 SRC-2 (Yurtiçi Yük)</option>
-                <option value="SRC-3 Belgesi">📜 SRC-3 (Uluslararası Yolcu)</option>
-                <option value="SRC-4 Belgesi">📜 SRC-4 (Yurtiçi Yolcu)</option>
-                <option value="SRC-5 Belgesi">📜 SRC-5 (Tehlikeli Madde)</option>
-                <option value="Mesleki Yeterlilik Belgesi">🎓 Mesleki Yeterlilik Belgesi</option>
-            </optgroup>
-            <optgroup label="Sağlık Belgeleri">
-                <option value="Sürücü Sağlık Raporu">🏥 Sürücü Sağlık Raporu</option>
-                <option value="Periyodik Sağlık Muayenesi">🏥 Periyodik Sağlık Muayenesi</option>
-            </optgroup>
-            <optgroup label="İş Güvenliği">
-                <option value="İş Güvenliği Eğitimi">🦺 İş Güvenliği Eğitimi</option>
-                <option value="Yangın Güvenliği Eğitimi">🔥 Yangın Güvenliği Eğitimi</option>
-                <option value="İlk Yardım Sertifikası">🩺 İlk Yardım Sertifikası</option>
-            </optgroup>
-            <option value="Diger">➕ Listede Yok</option>
-        </select>
-    </div>
-    <div id="personelDigerDiv" class="mb-3" style="display:none;">
-        <label class="form-label text-primary">Belge Adını Yazın</label>
-        <input type="text" id="personelDigerInput" class="form-control border-primary" placeholder="Örn: ADR Sertifikası">
-    </div>
-    <div id="personelBilgiNotu" class="alert alert-warning" style="display:none;"></div>
-    <div class="mb-3">
-        <label class="form-label">Bitiş Tarihi <span class="text-danger">*</span></label>
-        <input type="date" name="expiry_date" id="personelTarih" class="form-control" required>
-    </div>
-    <div id="sureDolmusUyari" class="alert alert-danger" style="display:none;">
-        ⛔ Bu belgenin süresi zaten dolmuş! Yenilenmesi gerekiyor.
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Not (Opsiyonel)</label>
-        <textarea name="personel_not" class="form-control" rows="2"></textarea>
-    </div>
-
-    {% else %}
-
-    <div class="row">
-        <div class="col-md-6 mb-3">
-            <label class="form-label">Firma / Şirket Adı <span class="text-muted small">(opsiyonel)</span></label>
-            <input type="text" name="firma_adi" class="form-control" placeholder="ABC Tekstil A.Ş.">
-        </div>
-        <div class="col-md-6 mb-3">
-            <label class="form-label">WhatsApp No <span class="text-muted small">(hatırlatma için)</span></label>
-            <input type="text" name="whatsapp_no" class="form-control" placeholder="905321234567">
-            <div class="form-text">Ülke koduyla yazın (905...)</div>
-        </div>
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Sertifika / Belge Seçin</label>
-        <input type="text" id="searchInput" class="form-control mb-2" placeholder="Belge adını yazın (örn: CE, ISO, HELAL...)">
-        <select name="title" id="sertifikaSelect" class="form-select" size="8" required>
-            <option value="">-- Yukarıya yazarak arayın --</option>
-            <option>ACS (Sağlık Uygunluk Sertifikası)</option><option>ADR SERTİFİKALARI</option>
-            <option>AS/EN/JISQ 9100</option><option>ATEX SERTİFİKASI</option>
-            <option>BASEC SERTİFİKASI</option><option>BENOR SERTİFİKASI</option>
-            <option>BRC SERTİFİKASI</option><option>CALIBRATION SERTİFİKASI</option>
-            <option>CARB SERTİFİKASI</option><option>CB SERTİFİKASI</option>
-            <option>CCC SERTİFİKASI</option><option>CE İŞARETİ</option>
-            <option>CEKAL SERTİFİKASI</option><option>CLASS SERTİFİKASI</option>
-            <option>CMIM UYGUNLUK İŞARETİ</option><option>COSMOS SERTİFİKASI</option>
-            <option>CRASH TEST SERTİFİKASI</option><option>CRADLE TO CRADLE SERTİFİKASI</option>
-            <option>CTUV İŞARETİ</option><option>DIN SERİSİ BELGELER</option>
-            <option>EAC GÜMRÜK BİRLİĞİ SERTİFİKASI</option><option>ECE YÖNETMELİKLERİ SERTİFİKASI</option>
-            <option>EC TYPE EXAMINATION SERTİFİKASI</option><option>ECM SERTİFİKASI</option>
-            <option>ECOLABEL SERTİFİKASI</option><option>ECOCERT SERTİFİKASI</option>
-            <option>EHEDG SERTİFİKASI</option><option>EMC SERTİFİKASI</option>
-            <option>EN SERİSİ SERTİFİKALAR</option><option>ENPLUS SERTİFİKASI</option>
-            <option>ETA (Avrupa Teknik Değerlendirmesi)</option><option>EU TYPE EXAMINATION SERTİFİKASI</option>
-            <option>EUCERTPLAST SERTİFİKASI</option><option>EUROVENT SERTİFİKASI</option>
-            <option>F4 STAR BELGESİ</option><option>FAMI-QS SERTİFİKASI</option>
-            <option>FIBC TEST SERTİFİKASI</option><option>FM APPROVALS</option>
-            <option>FSSC 22000 SERTİFİKASI</option><option>G MARK SERTİFİKASI</option>
-            <option>GASTEC QA SERTİFİKASI</option><option>GERMAN ECOLABEL - BLUE ANGEL</option>
-            <option>GMP SERTİFİKASI</option><option>GMP+ FSA SERTİFİKASI</option>
-            <option>GDP SERTİFİKASI</option><option>GS SERTİFİKASI</option>
-            <option>HACCP SERTİFİKASI</option><option>HAR BELGESİ</option>
-            <option>HELAL BELGESİ</option><option>HİJYEN SERTİFİKASI</option>
-            <option>INDOOR AIR QUALITY</option><option>INSTA-CERT SERTİFİKASI</option>
-            <option>ISCC SERTİFİKASI</option><option>ISO 9001:2015</option>
-            <option>ISO 14001</option><option>ISO 22000</option><option>ISO 27001</option>
-            <option>ISO 45001</option><option>ISO 50001</option><option>ISO 13485</option>
-            <option>ISO 17025</option><option>ISO 22301</option><option>ISO 37001</option>
-            <option>İYİ TARIM UYGULAMALARI</option><option>JIS SERTİFİKASI</option>
-            <option>KEMA KEUR / DEKRA SERTİFİKASI</option><option>KEYMARK SERTİFİKASI</option>
-            <option>KITEMARK SERTİFİKASI</option><option>KTW-UBA UYGUNLUK BEYANI</option>
-            <option>KRAV SERTİFİKASI</option><option>MARINE SERTİFİKASI</option>
-            <option>MDR TIBBİ CİHAZ SERTİFİKASI</option><option>MDSAP SERTİFİKASI</option>
-            <option>NF İŞARETİ/SERTİFİKASI</option><option>NSF SERTİFİKASI</option>
-            <option>OEKO-TEX SERTİFİKASI</option><option>ORGANİK TARIM SERTİFİKASI</option>
-            <option>ORGANİK ÜRÜN SERTİFİKASI</option><option>Q-MARK SERTİFİKASI</option>
-            <option>RAL SERTİFİKASI</option><option>RTN SERTİFİKASI</option>
-            <option>SA8000 SOSYAL UYGUNLUK SERTİFİKASI</option><option>SAFETY INTEGRITY LEVEL (SIL)</option>
-            <option>SOLAR KEYMARK</option><option>STANDARDSMARK</option>
-            <option>TEKNİK REGLAMENT SERTİFİKASI</option><option>TOXPROOF SERTİFİKASI</option>
-            <option>TSI SERTİFİKASI</option><option>TYPE APPROVAL SERTİFİKASI</option>
-            <option>TYPE TEST SERTİFİKASI</option><option>UKCA İŞARETİ</option>
-            <option>UKRSEPRO SERTİFİKASI</option><option>UL SERTİFİKASI</option>
-            <option>UYGUNLUK SERTİFİKASI</option><option>VDE SERTİFİKASI</option>
-            <option>VDI 2700 SERTİFİKASI</option><option>WRAS SERTİFİKASI</option>
-            <option>WATERMARK SERTİFİKASI</option><option>YANGIN SERTİFİKASI</option>
-            <option value="Diger">➕ LİSTEDE YOK (KENDİM YAZACAĞIM)</option>
-        </select>
-    </div>
-    <div id="otherInputDiv" class="mb-3" style="display:none;">
-        <label class="form-label text-primary">Belge / Sertifika Adını Yazın</label>
-        <input type="text" id="otherTitleInput" class="form-control border-primary" placeholder="Örn: ÖZEL PAZAR BELGESİ">
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Bitiş Tarihi</label>
-        <input type="date" name="expiry_date" class="form-control" required>
-    </div>
-
-    {% endif %}
-
-    <button type="submit" class="btn btn-primary">Kaydet</button>
-    <a href="/sertifikalar?cat={{ request.args.get('cat', '') }}" class="btn btn-secondary ms-2">İptal</a>
-</form>
+<table class="table table-hover">
+    <thead class="table-dark">
+        <tr>
+            <th>Firma / Şirket</th>
+            <th>Belge / Detay</th>
+            <th>Bitiş Tarihi</th>
+            <th>Kalan Gün</th>
+            <th>Durum</th>
+            <th>İşlem</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in items %}
+        <tr class="{% if item.durum == 'danger' %}table-danger{% elif item.durum == 'warning' %}table-warning{% endif %}">
+            <td><strong>{{ item.firma_adi or '—' }}</strong></td>
+            <td>
+                {{ item.title }}
+                {% if item.risk_value %}<br><small class="text-muted">{{ item.risk_value }}</small>{% endif %}
+                {% if item.whatsapp_no %}<br><small class="text-success">📱 {{ item.whatsapp_no }}</small>{% endif %}
+            </td>
+            <td>{{ item.expiry_date.strftime('%d.%m.%Y') if item.expiry_date else '—' }}</td>
+            <td>
+                {% if item.kalan_gun is not none %}
+                    {% if item.kalan_gun < 0 %}
+                        <span class="text-danger fw-bold">{{ item.kalan_gun|abs }} gün geçti!</span>
+                    {% elif item.kalan_gun == 0 %}
+                        <span class="text-danger fw-bold">Bugün!</span>
+                    {% else %}
+                        <span class="fw-bold text-{{ item.durum }}">{{ item.kalan_gun }} gün kaldı</span>
+                    {% endif %}
+                {% else %}—{% endif %}
+            </td>
+            <td>
+                {% if item.durum == 'danger' %}🔴 Kritik
+                {% elif item.durum == 'warning' %}🟡 Uyarı
+                {% elif item.durum == 'success' %}🟢 Güvenli
+                {% else %}⚪ —{% endif %}
+            </td>
+            <td>
+                {% if item.whatsapp_no %}
+                <button onclick="wpGonder('{{ item.id }}','{{ item.firma_adi or '' }}','{{ item.title }}','{{ item.expiry_date }}','{{ item.whatsapp_no }}')"
+                        class="btn btn-sm btn-success mb-1">🟢 WP Gönder</button>
+                {% else %}
+                <button onclick="wpGonder('{{ item.id }}','{{ item.firma_adi or '' }}','{{ item.title }}','{{ item.expiry_date }}','')"
+                        class="btn btn-sm btn-outline-success mb-1" title="Numara kayıtlı değil">📤 WP Hazırla</button>
+                {% endif %}
+                <a href="/sil/{{ item.id }}" class="btn btn-sm btn-outline-danger"
+                   onclick="return confirm('Silmek istiyor musunuz?')">🗑️</a>
+            </td>
+        </tr>
+        {% endfor %}
+        {% if not items %}
+        <tr>
+            <td colspan="6" class="text-center text-muted py-4">
+                Henüz kayıt yok. <a href="/ekle?cat={{ cat }}">+ Yeni ekle</a>
+            </td>
+        </tr>
+        {% endif %}
+    </tbody>
+</table>
 
 <script>
-const belgeSureleri = {
-    'Psikoteknik Belgesi':5*365,'SRC-1 Belgesi':3650,'SRC-2 Belgesi':3650,
-    'SRC-3 Belgesi':3650,'SRC-4 Belgesi':3650,'SRC-5 Belgesi':3650,
-    'Ehliyet Yenileme':3650,'K2 Yetki Belgesi':5*365,
-    'Araç Muayenesi':365,'Trafik Sigortası (Zorunlu)':365,'Kasko':365,
-    'Egzoz Muayenesi':365,'Takoğraf Kalibrasyonu':2*365,
-    'Lastik Değişimi (Kış)':180,'Lastik Değişimi (Yaz)':180,
-    'İtfaiye Raporu':365,'Emisyon Ölçümü':2*365,'Risk Analizi':365,
-    'Kapasite Raporu':2*365,'Sanayi Sicil Belgesi':365,'Yıllık İşletme Cetveli':120
-};
-
-function otomatikTarih(belge, inputId) {
-    const el = inputId ? document.getElementById(inputId) : document.querySelector('input[name="expiry_date"]');
-    if (!el || !belge || belge==='Diger') return;
-    const gun = belgeSureleri[belge] || 365;
-    const d = new Date(); d.setDate(d.getDate()+gun);
-    el.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+function wpGonder(id, firma, belge, tarih, tel) {
+    fetch('/log_ekle/' + id);
+    const mesaj = `Sayın ${firma} yetkilisi,\n\n"${belge}" belgenizin süresi ${tarih} tarihinde dolmaktadır.\n\nLütfen yenileme işlemini zamanında yaptırınız.\n\nSaygılarımızla,\nEG Optimal Danışmanlık`;
+    const url = tel
+        ? `https://wa.me/${tel}?text=${encodeURIComponent(mesaj)}`
+        : `https://wa.me/?text=${encodeURIComponent(mesaj)}`;
+    window.open(url, '_blank');
 }
-
-const aracBelgeleri = {
-    binek:[{grup:'Zorunlu',belgeler:['Araç Muayenesi','Trafik Sigortası (Zorunlu)']},{grup:'İsteğe Bağlı',belgeler:['Kasko','Egzoz Muayenesi','Araç Ruhsatı Yenileme','Lastik Değişimi (Kış)','Lastik Değişimi (Yaz)']}],
-    ticari_hafif:[{grup:'Zorunlu',belgeler:['Araç Muayenesi','Trafik Sigortası (Zorunlu)','K2 Yetki Belgesi']},{grup:'İsteğe Bağlı',belgeler:['Kasko','Egzoz Muayenesi','Takoğraf Kalibrasyonu','Araç Ruhsatı Yenileme','Lastik Değişimi (Kış)','Lastik Değişimi (Yaz)']}],
-    ticari_agir:[{grup:'Zorunlu',belgeler:['Araç Muayenesi','Trafik Sigortası (Zorunlu)','K2 Yetki Belgesi','Takoğraf Kalibrasyonu','ADR Uygunluk Belgesi']},{grup:'İsteğe Bağlı',belgeler:['Kasko','Egzoz Muayenesi','Araç Ruhsatı Yenileme','Lastik Değişimi (Kış)','Lastik Değişimi (Yaz)']}]
-};
-const uyarilar = {
-    binek:'⚠️ <strong>Binek Araç (2026):</strong> Muayenesiz trafikte <strong>2.719 TL</strong> ceza + araç men. Her gecikilen ay <strong>%5 faiz</strong>.',
-    ticari_hafif:'⚠️ <strong>Hafif Ticari (2026):</strong> Muayenesiz: <strong>2.719 TL</strong> + araç men. <strong>K2 olmadan: 21.333 TL.</strong>',
-    ticari_agir:'⚠️ <strong>Ağır Ticari (2026):</strong> 1.seferde <strong>115.021 TL</strong> | 2.seferde 191.867 TL | 3.seferde 383.842 TL. <strong>K2 olmadan: 21.333 TL.</strong>'
-};
-const belgeBilgileri = {
-    'K2 Yetki Belgesi':'ℹ️ 5 yıl geçerli. 90 gün öncesinden yenileme başlar. 540 gün içinde başvurulmazsa iptal.',
-    'Araç Muayenesi':'🔧 1 gün gecikse %5 faiz işler. Trafikte yakalanırsa 2.719 TL + men.',
-    'Takoğraf Kalibrasyonu':'⏱️ 2 yılda bir zorunlu kalibrasyon.',
-    'Trafik Sigortası (Zorunlu)':'🛡️ Sigortasız araç trafiğe çıkarsa men + ağır ceza.',
-    'ADR Uygunluk Belgesi':'☢️ Tehlikeli madde taşıyan araçlar için zorunludur.',
-    'Lastik Değişimi (Kış)':'❄️ Ekim-Nisan arası tavsiye edilir.',
-    'Lastik Değişimi (Yaz)':'☀️ Nisan-Ekim arası tavsiye edilir.'
-};
-const tesisBilgileri = {
-    'Sanayi Sicil Belgesi':'ℹ️ Yıllık yenileme. İl Sanayi Müdürlüğüne başvurulur.',
-    'Yıllık İşletme Cetveli':'⚠️ Yıl sonundan itibaren <strong>4 ay (120 gün)</strong> içinde İl Müdürlüğüne verilmesi zorunludur!',
-    'İtfaiye Raporu':'🚒 Yıllık yenileme. İtfaiye müdürlüğünden alınır.',
-    'Kapasite Raporu':'📊 2 yıl geçerlidir. Ticaret/Sanayi Odasından alınır.',
-    'Risk Analizi':'⚠️ Periyodik güncelleme gerektirir.',
-    'Emisyon Ölçümü':'💨 2 yılda bir yapılması zorunludur.'
-};
-const personelBilgileri = {
-    'Psikoteknik Belgesi':'ℹ️ Ticari araç sürücüleri için zorunlu. 5 yılda bir yenilenir.',
-    'SRC-1 Belgesi':'ℹ️ Uluslararası yük taşımacılığı için zorunlu.',
-    'SRC-2 Belgesi':'ℹ️ Yurtiçi yük taşımacılığı için zorunlu.',
-    'SRC-3 Belgesi':'ℹ️ Uluslararası yolcu taşımacılığı için zorunlu.',
-    'SRC-4 Belgesi':'ℹ️ Yurtiçi yolcu taşımacılığı için zorunlu.',
-    'SRC-5 Belgesi':'ℹ️ Tehlikeli madde taşıyan sürücüler için zorunlu.',
-    'Ehliyet Yenileme':'ℹ️ Süresi dolan ehliyet ile araç kullanmak men ve cezaya yol açar.',
-    'Mesleki Yeterlilik Belgesi':'ℹ️ Belgesi olmadan çalıştırmak işverene ceza getirir (10.666 TL).'
-};
-
-function aracTipiDegisti(sel) {
-    if (!sel.value){document.getElementById('aracBelgeDiv').style.display='none';return;}
-    document.getElementById('aracBelgeDiv').style.display='block';
-    const uk=document.getElementById('uyariKutusu'); uk.innerHTML=uyarilar[sel.value]; uk.style.display='block';
-    const as=document.getElementById('aracSelect'); as.innerHTML='<option value="">-- Seçiniz --</option>';
-    aracBelgeleri[sel.value].forEach(g=>{const og=document.createElement('optgroup');og.label=g.grup;g.belgeler.forEach(b=>{const o=document.createElement('option');o.value=b;o.text=b;og.appendChild(o);});as.appendChild(og);});
-    const d=document.createElement('option');d.value='Diger';d.text='➕ Listede Yok';as.appendChild(d);
-    document.getElementById('belgeBilgiNotu').style.display='none';
-    document.getElementById('aracDigerDiv').style.display='none';
-}
-function aracSecimDegisti(sel) {
-    const b=document.getElementById('belgeBilgiNotu'),dd=document.getElementById('aracDigerDiv'),di=document.getElementById('aracDigerInput');
-    dd.style.display='none'; b.style.display='none';
-    if(sel.value==='Diger'){dd.style.display='block';di.name='title';sel.name='';}
-    else{sel.name='title';di.name='';if(belgeBilgileri[sel.value]){b.innerHTML=belgeBilgileri[sel.value];b.style.display='block';}otomatikTarih(sel.value,'aracTarih');}
-}
-function tesisBelgeDegisti(sel) {
-    const dd=document.getElementById('tesisDigerDiv'),di=document.getElementById('tesisDigerInput'),b=document.getElementById('tesisBilgiNotu');
-    dd.style.display='none'; b.style.display='none';
-    if(sel.value==='Diger'){dd.style.display='block';di.name='title';sel.name='';}
-    else{sel.name='title';di.name='';if(tesisBilgileri[sel.value]){b.innerHTML=tesisBilgileri[sel.value];b.style.display='block';}otomatikTarih(sel.value,'tesisTarih');}
-}
-function personelBelgeDegisti(sel) {
-    const b=document.getElementById('personelBilgiNotu'),dd=document.getElementById('personelDigerDiv'),di=document.getElementById('personelDigerInput');
-    dd.style.display='none'; b.style.display='none';
-    if(sel.value==='Diger'){dd.style.display='block';di.name='title';sel.name='';}
-    else{sel.name='title';di.name='';if(personelBilgileri[sel.value]){b.innerHTML=personelBilgileri[sel.value];b.style.display='block';}otomatikTarih(sel.value,'personelTarih');}
-}
-const tcInput=document.getElementById('tcInput');
-if(tcInput){tcInput.addEventListener('input',function(){const u=document.getElementById('tcUyari');this.style.borderColor=this.value.length===11?'green':(this.value.length>0?'red':'');u.style.display=(this.value.length>0&&this.value.length!==11)?'block':'none';});}
-const pt=document.getElementById('personelTarih');
-if(pt){pt.addEventListener('change',function(){document.getElementById('sureDolmusUyari').style.display=new Date(this.value)<new Date()?'block':'none';});}
-const si=document.getElementById('searchInput');
-if(si){si.addEventListener('input',function(){const f=this.value.toUpperCase();document.getElementById('sertifikaSelect').querySelectorAll('option').forEach(o=>{o.style.display=(o.value===''||o.value==='Diger'||o.text.toUpperCase().includes(f))?'':'none';});});}
-const ss=document.getElementById('sertifikaSelect');
-if(ss){ss.addEventListener('change',function(){const od=document.getElementById('otherInputDiv'),oi=document.getElementById('otherTitleInput');if(this.value==='Diger'){od.style.display='block';oi.required=true;oi.name='title';this.name='';}else{od.style.display='none';oi.required=false;oi.name='';this.name='title';}});}
 </script>
 {% endblock %}
+
 
 
 
