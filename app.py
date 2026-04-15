@@ -7,6 +7,37 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from datetime import datetime, timedelta, date
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_mail import Mail, Message
+
+# Mail Sunucusu Ayarları
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'senin_mail_adresin@gmail.com' # Buraya admin mailini yaz
+app.config['MAIL_PASSWORD'] = 'uygulama_sifresi' # Normal şifren değil, Google'dan alınan 16 haneli kod
+app.config['MAIL_DEFAULT_SENDER'] = 'senin_mail_adresin@gmail.com'
+
+mail = Mail(app)
+def send_confirmation_email(user_email, cert_name, expiry_date):
+    try:
+        msg = Message("EG Optimal - Sertifika Takip Onayı",
+                      recipients=[user_email])
+        msg.body = f"""
+Merhaba,
+
+'{cert_name}' isimli belgeniz sisteme başarıyla kaydedilmiştir.
+Bitiş Tarihi: {expiry_date}
+
+Süre dolmasına 30 gün kala size tekrar hatırlatma yapılacaktır.
+
+İyi çalışmalar,
+EG Optimal Dijital Takip Sistemi
+        """
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"Mail hatası: {e}")
+        return False
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'gizli-anahtar-123456')
@@ -205,6 +236,9 @@ def ekle():
         )
         db.session.add(new_entry)
         db.session.commit()
+        # Kayıt başarılı, şimdi mail gönder:
+        send_confirmation_email(current_user.email, title, expiry_date)
+        
         return redirect(url_for('sertifikalar', cat=new_entry.category))
     return render_template('ekle.html')
 
