@@ -68,7 +68,7 @@
 
 <div class="mb-3">
     <label class="form-label fw-bold">Belge Türü Seçin</label>
-    <input type="text" id="personelSearch" class="form-control mb-2" placeholder="Listede ara (SRC, MYK, Kaynakçı, Ehliyet...)">
+    
     <select name="title" id="personelSelect" class="form-select shadow-sm" size="10" required onchange="checkDiger(this)">
         <option value="" disabled selected>-- Belge Tipini Seçin --</option>
         
@@ -112,7 +112,7 @@
             {% else %}
             <div class="mb-3">
                 <label class="form-label fw-bold">Sertifika Seçin</label>
-                <input type="text" id="searchInput" class="form-control mb-2" placeholder="Listede ara (ISO, CE, ACS...)">
+               
                 <select name="title" id="sertifikaSelect" class="form-select shadow-sm" size="10" onchange="checkDiger(this)" required>
                     <option value="" disabled selected>-- Listeden Seçin --</option>
                     <option>ACS (Sağlık Uygunluk Sertifikası)</option>
