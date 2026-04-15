@@ -9,6 +9,8 @@ from datetime import datetime, timedelta, date
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
 app = Flask(__name__)
+from itsdangerous import URLSafeTimedSerializer
+ts = URLSafeTimedSerializer(app.config["SECRET_KEY"])
 # Mail Sunucusu Ayarları
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
@@ -38,7 +40,22 @@ EG Optimal Dijital Takip Sistemi
     except Exception as e:
         print(f"Mail hatası: {e}")
         return False
-def send_welcome_email(user_email, company_name):
+def send_verification_email(user_email):
+    token = ts.dumps(user_email, salt='email-confirm')
+    confirm_url = url_for('confirm_email', token=token, _external=True)
+    
+    msg = Message("EG Optimal - Hesabınızı Onaylayın 🛡️", recipients=[user_email])
+    msg.body = f"""
+Merhaba,
+
+EG Optimal Sertifika Takip Sistemine kayıt olduğunuz için teşekkürler.
+Hesabınızı aktifleştirmek için lütfen aşağıdaki linke tıklayın:
+
+{confirm_url}
+
+Bu link 24 saat boyunca geçerlidir.
+    """
+    mail.send(msg)
     try:
         msg = Message("EG Optimal'e Hoş Geldiniz! 🚀",
                       recipients=[user_email])
@@ -83,6 +100,7 @@ class User(UserMixin, db.Model):
     password = db.Column(db.String(256))
     company_name = db.Column(db.String(100))
     is_admin = db.Column(db.Boolean, default=False)
+    is_confirmed = db.Column(db.Boolean, default=False)
 
 
 class Entry(db.Model):
@@ -175,7 +193,7 @@ def kayit():
         )
         db.session.add(new_user)
         db.session.commit()
-        send_welcome_email(email, company_name)
+        send_verification_email(email)
         return redirect(url_for('login'))
     return render_template('kayit.html')
 
@@ -313,6 +331,36 @@ def admin():
     users = User.query.all()
     return render_template('admin.html', logs=logs, users=users)
 
+# --- 1. E-posta Onay Rotası (Bunu Az Önce Konuşmuştuk) ---
+@app.route('/confirm/<token>')
+def confirm_email(token):
+    try:
+        email = ts.loads(token, salt='email-confirm', max_age=86400)
+    except:
+        flash('Onay linki geçersiz veya süresi dolmuş.', 'danger')
+        return redirect(url_for('login'))
 
+    user = User.query.filter_by(email=email).first_or_404()
+    if user.is_confirmed:
+        flash('Hesabınız zaten onaylanmış.', 'info')
+    else:
+        user.is_confirmed = True
+        db.session.commit()
+        flash('Hesabınız başarıyla onaylandı! Artık giriş yapabilirsiniz.', 'success')
+    return redirect(url_for('login'))
+
+# --- 2. Admin Paneli Rotası (Yeni Gönderdiğin Kısım) ---
+@app.route('/admin/')
+@login_required
+def admin():
+    if not current_user.is_admin:
+        return redirect(url_for('dashboard'))
+    logs = HatirlatmaLog.query.order_by(HatirlatmaLog.tarih.desc()).limit(50).all()
+    users = User.query.all()
+    return render_template('admin.html', logs=logs, users=users)
+
+# --- 3. Uygulamayı Çalıştıran Blok (En Son Satır Olmalı) ---
+if __name__ == '__main__':
+    app.run()
 if __name__ == '__main__':
     app.run()
