@@ -135,7 +135,7 @@ def create_tables():
 @app.route('/export')
 @login_required
 def export_excel():
-    entries = Sertifikalar.query.all()
+    entries = Entry.query.all()
     data = []
     for e in entries:
         data.append({
@@ -321,15 +321,10 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-
-@app.route('/admin/')
-@login_required
-
 # --- 1. E-posta Onay Rotası ---
 @app.route('/confirm/<token>')
 def confirm_email(token):
     try:
-        # Token'ı çözüyoruz (24 saat geçerli)
         email = ts.loads(token, salt='email-confirm', max_age=86400)
     except:
         flash('Onay linki geçersiz veya süresi dolmuş.', 'danger')
@@ -346,16 +341,16 @@ def confirm_email(token):
         
     return redirect(url_for('login'))
 
-# --- 2. Admin Paneli Rotası (Sadece Bir Tane Kalsın) ---
-@app.route('/admin/')
+# --- 2. Admin Paneli Rotası ---
+@app.route('/admin_panel')
 @login_required
-def admin_panel(): # İsmini admin_panel yaptım ki admin() fonksiyonuyla karışmasın
+def admin_panel():
     if not current_user.is_admin:
         return redirect(url_for('dashboard'))
     logs = HatirlatmaLog.query.order_by(HatirlatmaLog.tarih.desc()).limit(50).all()
     users = User.query.all()
     return render_template('admin.html', logs=logs, users=users)
 
-# --- 3. Uygulamayı Çalıştıran Blok (Dosyanın EN SONUNDA Sadece 1 Tane) ---
+# --- 3. Uygulamayı Çalıştıran Blok ---
 if __name__ == '__main__':
- app.run()
+    app.run()
