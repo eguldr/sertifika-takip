@@ -8,14 +8,14 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from datetime import datetime, timedelta, date
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
-
+app = Flask(__name__)
 # Mail Sunucusu Ayarları
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'senin_mail_adresin@gmail.com' # Buraya admin mailini yaz
-app.config['MAIL_PASSWORD'] = 'uygulama_sifresi' # Normal şifren değil, Google'dan alınan 16 haneli kod
-app.config['MAIL_DEFAULT_SENDER'] = 'senin_mail_adresin@gmail.com'
+app.config['MAIL_USERNAME'] = 'erhanadea@gmail.com'
+app.config['MAIL_PASSWORD'] = 'awdxhwawnvoggdko'
+app.config['MAIL_DEFAULT_SENDER'] = 'erhanadea@gmail.com'
 
 mail = Mail(app)
 def send_confirmation_email(user_email, cert_name, expiry_date):
@@ -39,7 +39,7 @@ EG Optimal Dijital Takip Sistemi
         print(f"Mail hatası: {e}")
         return False
 
-app = Flask(__name__)
+
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'gizli-anahtar-123456')
 
 uri = os.environ.get('DATABASE_URL')
