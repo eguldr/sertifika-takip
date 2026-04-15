@@ -225,14 +225,19 @@ def sertifikalar():
 def ekle():
     if request.method == 'POST':
         exp_str = request.form.get('expiry_date')
+        # ŞU ÜÇ SATIRI BURAYA EKLE:
+        category = request.form.get('category')
+        title = request.form.get('title')
+        expiry_date = datetime.strptime(exp_str, '%Y-%m-%d').date() if exp_str else None
+
         new_entry = Entry(
             user_id=current_user.id,
-            category=request.form.get('category'),
-            title=request.form.get('title'),
+            category=category,
+            title=title,
             firma_adi=request.form.get('firma_adi', ''),
             whatsapp_no=request.form.get('whatsapp_no', ''),
             risk_value=request.form.get('risk_value', ''),
-            expiry_date=datetime.strptime(exp_str, '%Y-%m-%d').date() if exp_str else None
+            expiry_date=expiry_date
         )
         db.session.add(new_entry)
         db.session.commit()
