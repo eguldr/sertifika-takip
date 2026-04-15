@@ -60,7 +60,7 @@ Bu link 24 saat boyunca geçerlidir.
         msg = Message("EG Optimal'e Hoş Geldiniz! 🚀",
                       recipients=[user_email])
         msg.body = f"""
-Merhaba {company_name},
+Merhaba,
 
 EG Optimal Sertifika & Risk Takip sistemine başarıyla kayıt oldunuz. 
 
@@ -324,43 +324,38 @@ def logout():
 
 @app.route('/admin/')
 @login_required
-def admin():
-    if not current_user.is_admin:
-        return redirect(url_for('dashboard'))
-    logs = HatirlatmaLog.query.order_by(HatirlatmaLog.tarih.desc()).limit(50).all()
-    users = User.query.all()
-    return render_template('admin.html', logs=logs, users=users)
 
-# --- 1. E-posta Onay Rotası (Bunu Az Önce Konuşmuştuk) ---
+# --- 1. E-posta Onay Rotası ---
 @app.route('/confirm/<token>')
 def confirm_email(token):
     try:
+        # Token'ı çözüyoruz (24 saat geçerli)
         email = ts.loads(token, salt='email-confirm', max_age=86400)
     except:
         flash('Onay linki geçersiz veya süresi dolmuş.', 'danger')
         return redirect(url_for('login'))
 
     user = User.query.filter_by(email=email).first_or_404()
+    
     if user.is_confirmed:
         flash('Hesabınız zaten onaylanmış.', 'info')
     else:
         user.is_confirmed = True
         db.session.commit()
         flash('Hesabınız başarıyla onaylandı! Artık giriş yapabilirsiniz.', 'success')
+        
     return redirect(url_for('login'))
 
-# --- 2. Admin Paneli Rotası (Yeni Gönderdiğin Kısım) ---
+# --- 2. Admin Paneli Rotası (Sadece Bir Tane Kalsın) ---
 @app.route('/admin/')
 @login_required
-def admin():
+def admin_panel(): # İsmini admin_panel yaptım ki admin() fonksiyonuyla karışmasın
     if not current_user.is_admin:
         return redirect(url_for('dashboard'))
     logs = HatirlatmaLog.query.order_by(HatirlatmaLog.tarih.desc()).limit(50).all()
     users = User.query.all()
     return render_template('admin.html', logs=logs, users=users)
 
-# --- 3. Uygulamayı Çalıştıran Blok (En Son Satır Olmalı) ---
+# --- 3. Uygulamayı Çalıştıran Blok (Dosyanın EN SONUNDA Sadece 1 Tane) ---
 if __name__ == '__main__':
-    app.run()
-if __name__ == '__main__':
-    app.run()
+ app.run()
