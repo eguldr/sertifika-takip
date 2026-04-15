@@ -163,7 +163,7 @@ def kayit():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
-        company = request.form.get('company_name')
+        company_name = request.form.get('company_name')
         if User.query.filter_by(email=email).first():
             flash('Bu e-posta zaten kayıtlı!')
             return redirect(url_for('kayit'))
