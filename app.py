@@ -38,6 +38,27 @@ EG Optimal Dijital Takip Sistemi
     except Exception as e:
         print(f"Mail hatası: {e}")
         return False
+def send_welcome_email(user_email, company_name):
+    try:
+        msg = Message("EG Optimal'e Hoş Geldiniz! 🚀",
+                      recipients=[user_email])
+        msg.body = f"""
+Merhaba {company_name},
+
+EG Optimal Sertifika & Risk Takip sistemine başarıyla kayıt oldunuz. 
+
+Artık belgelerinizin süresini unutma derdine son! Sisteme giriş yaparak hemen ilk sertifikanızı ekleyebilir ve otomatik bildirimleri aktif edebilirsiniz.
+
+Keyifli kullanımlar dileriz.
+
+Saygılarımızla,
+EG Optimal Ekibi
+        """
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"Hoşgeldin maili hatası: {e}")
+        return False
 
 
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'gizli-anahtar-123456')
@@ -154,6 +175,7 @@ def kayit():
         )
         db.session.add(new_user)
         db.session.commit()
+        send_welcome_email(email, company_name)
         return redirect(url_for('login'))
     return render_template('kayit.html')
 
