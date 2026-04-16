@@ -131,12 +131,14 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 
-@app.before_app_first_request # Veya mevcut create_tables içine:
+@app.before_request
 def setup_database():
-    with app.app_context():
-        # Bu satır, veritabanında eksik olan yeni sütunları (is_confirmed gibi) 
-        # eklemeye çalışır veya tabloları baştan kurar.
-        db.create_all()
+    # Bu kontrol sayesinde sadece bir kez çalışır, her sayfada sıfırlamaz
+    if not hasattr(app, 'db_initialized'):
+        with app.app_context():
+            db.drop_all()   # Eskileri süpürür
+            db.create_all() # Yenileri kurar (is_confirmed dahil)
+        app.db_initialized = True
 
 @app.route('/export')
 @login_required
