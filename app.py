@@ -10,7 +10,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
 app = Flask(__name__)
 from itsdangerous import URLSafeTimedSerializer
-ts = URLSafeTimedSerializer(app.config["SECRET_KEY"])
+ts = URLSafeTimedSerializer(app.config.get("SECRET_KEY", "fallback-gizli-anahtar-123"))
 # Mail Sunucusu Ayarları
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
