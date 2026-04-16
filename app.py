@@ -9,8 +9,9 @@ from datetime import datetime, timedelta, date
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'erhan-gizli-anahtar-99')
 from itsdangerous import URLSafeTimedSerializer
-ts = URLSafeTimedSerializer(app.config.get("SECRET_KEY", "fallback-gizli-anahtar-123"))
+ts = URLSafeTimedSerializer(app.secret_key)
 # Mail Sunucusu Ayarları
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
@@ -83,7 +84,9 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'gizli-anahtar-123456')
 uri = os.environ.get('DATABASE_URL')
 if uri and uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
-app.config['SQLALCHEMY_DATABASE_URI'] = uri or 'sqlite:///test.db' # Eğer veritabanı yoksa geçici bir tane açar
+
+# Eğer DATABASE_URL gelmezse çökmemesi için:
+app.config['SQLALCHEMY_DATABASE_URI'] = uri or 'sqlite:///test.db'
 
 app.config['SQLALCHEMY_DATABASE_URI'] = uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -128,10 +131,12 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 
-@app.before_request
-def create_tables():
-    db.create_all()
-
+@app.before_app_first_request # Veya mevcut create_tables içine:
+def setup_database():
+    with app.app_context():
+        # Bu satır, veritabanında eksik olan yeni sütunları (is_confirmed gibi) 
+        # eklemeye çalışır veya tabloları baştan kurar.
+        db.create_all()
 
 @app.route('/export')
 @login_required
