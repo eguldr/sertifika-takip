@@ -136,7 +136,6 @@ def setup_database():
     # Bu kontrol sayesinde sadece bir kez çalışır, her sayfada sıfırlamaz
     if not hasattr(app, 'db_initialized'):
         with app.app_context():
-            db.drop_all()   # Eskileri süpürür
             db.create_all() # Yenileri kurar (is_confirmed dahil)
         app.db_initialized = True
 
