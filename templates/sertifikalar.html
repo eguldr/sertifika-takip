@@ -22,9 +22,15 @@
             </h2>
             <p class="text-muted small">Kategori bazlı filtreleme ve yönetim</p>
         </div>
-        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary px-4">
-            <i class="fas fa-arrow-left mr-2"></i> Dashboard'a Dön
-        </a>
+        
+        <div class="d-flex border rounded bg-white shadow-sm overflow-hidden">
+            <a href="{{ url_for('ekle') }}" class="btn btn-primary border-0 rounded-0 px-4" style="background-color: var(--navy-primary);">
+                <i class="fas fa-plus mr-2"></i> Yeni Sertifika Ekle
+            </a>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-light border-0 rounded-0 px-3">
+                <i class="fas fa-home"></i> Dashboard
+            </a>
+        </div>
     </div>
 
     <div class="card shadow-lg">
@@ -35,39 +41,48 @@
                         <tr>
                             <th class="pl-4 py-3">Belge / Firma</th>
                             <th class="py-3">Bitiş Tarihi</th>
-                            <th class="py-3">Durum</th>
-                            <th class="text-center py-3">İşlem</th>
+                            <th class="py-3">Durum Analizi</th>
+                            <th class="text-center py-3">İşlemler</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for item in items %}
-                        {% set kalan = (item.expiry_date - bugun).days %}
-                        <tr style="border-bottom: 1px solid #eee;">
-                            <td class="pl-4 align-middle">
-                                <span class="font-weight-bold" style="color: var(--navy-dark);">{{ item.title }}</span><br>
-                                <small class="text-muted">{{ item.firma_adi }}</small>
-                            </td>
-                            <td class="align-middle text-muted">{{ item.expiry_date.strftime('%d.%m.%Y') }}</td>
-                            <td class="align-middle">
-                                {% if kalan <= 30 %}
-                                    <span class="badge badge-danger px-3 py-2" style="border-radius: 20px;">Kritik: {{ kalan }} Gün</span>
-                                {% elif kalan <= 90 %}
-                                    <span class="badge badge-warning px-3 py-2" style="border-radius: 20px;">Yaklaşıyor: {{ kalan }} Gün</span>
-                                {% else %}
-                                    <span class="badge badge-success px-3 py-2" style="border-radius: 20px;">Aktif: {{ kalan }} Gün</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-center align-middle">
-                                <a href="https://wa.me/{{ item.whatsapp_no }}?text=Sayın%20{{ item.firma_adi }},%20'{{ item.title }}'%20belgenizin%20bitmesine%20{{ kalan }}%20gün%20kalmıştır." 
-                                   class="btn btn-sm btn-outline-success mr-2" target="_blank">
-                                    <i class="fab fa-whatsapp"></i>
-                                </a>
-                                <a href="{{ url_for('sil', id=item.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Silmek istediğinize emin misiniz?')">
-                                    <i class="fas fa-trash-alt"></i>
-                                </a>
-                            </td>
-                        </tr>
-                        {% endfor %}
+                        {% if items|length > 0 %}
+                            {% for item in items %}
+                            {% set kalan = (item.expiry_date - bugun).days %}
+                            <tr style="border-bottom: 1px solid #eee;">
+                                <td class="pl-4 align-middle">
+                                    <span class="font-weight-bold" style="color: var(--navy-dark);">{{ item.title }}</span><br>
+                                    <small class="text-muted">{{ item.firma_adi }}</small>
+                                </td>
+                                <td class="align-middle text-muted">{{ item.expiry_date.strftime('%d.%m.%Y') }}</td>
+                                <td class="align-middle">
+                                    {% if kalan <= 30 %}
+                                        <span class="badge badge-danger px-3 py-2" style="border-radius: 20px;">Kritik: {{ kalan }} Gün</span>
+                                    {% elif kalan <= 90 %}
+                                        <span class="badge badge-warning px-3 py-2" style="border-radius: 20px;">Yaklaşıyor: {{ kalan }} Gün</span>
+                                    {% else %}
+                                        <span class="badge badge-success px-3 py-2" style="border-radius: 20px;">Aktif: {{ kalan }} Gün</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center align-middle">
+                                    <a href="https://wa.me/{{ item.whatsapp_no }}?text=Sayın%20{{ item.firma_adi }},%20'{{ item.title }}'%20belgenizin%20bitmesine%20{{ kalan }}%20gün%20kalmıştır." 
+                                       class="btn btn-sm btn-outline-success mr-2" target="_blank">
+                                        <i class="fab fa-whatsapp"></i>
+                                    </a>
+                                    <a href="{{ url_for('sil', id=item.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Silmek istediğinize emin misiniz?')">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center py-5 text-muted">
+                                    <i class="fas fa-folder-open fa-3x mb-3"></i><br>
+                                    Bu kategoride henüz kayıtlı belge bulunmuyor.
+                                </td>
+                            </tr>
+                        {% endif %}
                     </tbody>
                 </table>
             </div>
