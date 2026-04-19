@@ -1,3 +1,4 @@
+import requests
 import os
 import pandas as pd
 from io import BytesIO
@@ -186,6 +187,19 @@ def login():
 @app.route('/kayit', methods=['GET', 'POST'])
 def kayit():
     if request.method == 'POST':
+        # reCAPTCHA Doğrulama
+        recaptcha_response = request.form.get('g-recaptcha-response')
+        verify_response = requests.post(
+            'https://www.google.com/recaptcha/api/siteverify',
+            data={
+                'secret': '6Lfdnb8sAAAAAM1H61QijX4-opiKk8_EFM7oofhg',
+                'response': recaptcha_response
+            }
+        ).json()
+
+        if not verify_response.get('success'):
+            flash("Lütfen robot olmadığınızı doğrulayın!", "danger")
+            return redirect(url_for('kayit'))
         email = request.form.get('email')
         password = request.form.get('password')
         company_name = request.form.get('company_name')
