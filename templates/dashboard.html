@@ -8,12 +8,26 @@
         --gold-accent: #c5a059;
     }
     body { background-color: var(--silver-light); font-family: 'Segoe UI', sans-serif; }
-    .card { border: none; border-radius: 12px; transition: 0.3s; cursor: pointer; }
-    .card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
-    .table thead th { background-color: var(--navy-primary); color: white; border: none; font-size: 0.75rem; }
-    .alert-bar { background: linear-gradient(90deg, #c62828, #b71c1c); color: white; border-radius: 8px; font-weight: bold; }
     
-    /* Yanıp sönen efekt için ekledim */
+    /* Kart Ayarları */
+    .card { border: none; border-radius: 12px; transition: 0.3s; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    .card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
+    
+    /* Tablo Ayarları */
+    .table-container { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+    .table thead th { background-color: var(--navy-primary); color: white; border: none; font-size: 0.75rem; padding: 15px; }
+    
+    /* Acil Uyarı Barı */
+    .alert-bar { 
+        background: linear-gradient(90deg, #c62828, #b71c1c); 
+        color: white; 
+        border: none;
+        border-radius: 10px; 
+        font-weight: bold;
+        position: relative;
+        z-index: 10;
+    }
+    
     .animate-pulse {
         animation: pulse-red 2s infinite;
     }
@@ -30,20 +44,24 @@
     {% if bu_hafta|length > 0 %}
     <div class="alert alert-bar shadow-sm d-flex justify-content-between align-items-center p-3 mb-4 animate-pulse">
         <span><i class="fas fa-exclamation-triangle mr-2"></i> DİKKAT: Bu hafta süresi dolacak {{ bu_hafta|length }} adet kritik belgeniz var!</span>
-        <button class="btn btn-sm btn-light font-weight-bold" onclick="filterTable('danger')">Hemen İncele</button>
+        <button class="btn btn-sm btn-light font-weight-bold px-3" 
+                style="position: relative; z-index: 20;"
+                onclick="filterTable('danger'); return false;">
+            Hemen İncele
+        </button>
     </div>
     {% endif %}
 
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="font-weight-bold" style="color: var(--navy-primary);">EG Optimal Dashboard</h2>
+            <h2 class="font-weight-bold" style="color: var(--navy-primary); margin-bottom: 0;">EG Optimal Dashboard</h2>
             <p class="text-muted small">İşinizi ve Belgelerinizi Geleceğe Yönelik Yönetin</p>
         </div>
         <div class="d-flex border rounded bg-white shadow-sm overflow-hidden">
             <a href="{{ url_for('ekle') }}" class="btn btn-primary border-0 rounded-0 px-4" style="background-color: var(--navy-primary);">
                 <i class="fas fa-plus mr-2"></i> Yeni Ekle
             </a>
-            <a href="{{ url_for('export_excel') }}" class="btn btn-light border-0 rounded-0 px-3">
+            <a href="{{ url_for('export_excel') }}" class="btn btn-light border-0 rounded-0 px-3" title="Excel İndir">
                 <i class="fas fa-file-excel text-success"></i>
             </a>
         </div>
@@ -54,7 +72,9 @@
             <div class="card shadow-sm h-100 py-2 bg-white" style="border-left: 5px solid #c62828;">
                 <div class="card-body">
                     <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">KRİTİK (SON 30 GÜN)</div>
-                    <div class="h3 mb-0 font-weight-bold text-dark">{{ sertifikalar|selectattr('expiry_date', 'le', bugun + timedelta(days=30))|list|length }} <small>Adet</small></div>
+                    <div class="h3 mb-0 font-weight-bold text-dark">
+                        {{ sertifikalar|selectattr('expiry_date', 'le', bugun + timedelta(days=30))|list|length }} <small>Adet</small>
+                    </div>
                 </div>
             </div>
         </div>
@@ -63,7 +83,9 @@
             <div class="card shadow-sm h-100 py-2 bg-white" style="border-left: 5px solid #f9a825;">
                 <div class="card-body">
                     <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">YAKLAŞAN (1-3 AY)</div>
-                    <div class="h3 mb-0 font-weight-bold text-dark">{{ sertifikalar|selectattr('expiry_date', 'gt', bugun + timedelta(days=30))|selectattr('expiry_date', 'le', bugun + timedelta(days=90))|list|length }} <small>Adet</small></div>
+                    <div class="h3 mb-0 font-weight-bold text-dark">
+                        {{ sertifikalar|selectattr('expiry_date', 'gt', bugun + timedelta(days=30))|selectattr('expiry_date', 'le', bugun + timedelta(days=90))|list|length }} <small>Adet</small>
+                    </div>
                 </div>
             </div>
         </div>
@@ -78,65 +100,71 @@
         </div>
     </div>
 
-    <div class="card shadow-lg overflow-hidden" id="tabloBolumu">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0" id="sertifikaTable">
-                    <thead>
-                        <tr>
-                            <th class="pl-4">Belge / Firma</th>
-                            <th>Bitiş Tarihi</th>
-                            <th>Kalan Gün</th>
-                            <th>İşlem</th>
-                        </tr>
-                    </thead>
-                    <tbody style="background-color: white;">
-                        {% for s in sertifikalar %}
-                        {% set kalan = (s.expiry_date - bugun).days %}
-                        {% set status = 'danger' if kalan <= 30 else 'warning' if kalan <= 90 else 'success' %}
-                        <tr class="table-row" data-status="{{ status }}">
-                            <td class="pl-4 align-middle">
-                                <span class="font-weight-bold" style="color: var(--navy-dark);">{{ s.title }}</span><br>
-                                <small class="text-muted">{{ s.firma_adi }}</small>
-                            </td>
-                            <td class="align-middle">{{ s.expiry_date.strftime('%d.%m.%Y') }}</td>
-                            <td class="align-middle">
-                                <span class="badge badge-{{ status }} px-3 py-2" style="border-radius: 20px;">
-                                    {{ kalan }} Gün
-                                </span>
-                            </td>
-                            <td class="align-middle">
-                                <a href="https://wa.me/{{ s.whatsapp_no }}?text=Sayın%20{{ s.firma_adi }},%20EG%20Optimal%20Sistemimizdeki%20kayd%C4%B1n%C4%B1za%20istinaden;%20'{{ s.title }}'%20belgenizin%20bitmesine%20{{ kalan }}%20g%C3%BCn%20kalm%C4%B1%C5%9Ft%C4%B1r.%20Yenileme%20i%C3%A7in%20destek%20alabilirsiniz." 
-                                   class="btn btn-sm btn-outline-success" target="_blank">
-                                    <i class="fab fa-whatsapp"></i> Hatırlat
-                                </a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+    <div class="table-container" id="tabloBolumu">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="sertifikaTable">
+                <thead>
+                    <tr>
+                        <th class="pl-4">Belge / Firma Tanımı</th>
+                        <th>Bitiş Tarihi</th>
+                        <th>Kalan Gün</th>
+                        <th class="text-center">Hızlı Aksiyon</th>
+                    </tr>
+                </thead>
+                <tbody style="background-color: white;">
+                    {% for s in sertifikalar %}
+                    {% set kalan = (s.expiry_date - bugun).days %}
+                    {% set status = 'danger' if kalan <= 30 else 'warning' if kalan <= 90 else 'success' %}
+                    <tr class="table-row" data-status="{{ status }}">
+                        <td class="pl-4 align-middle">
+                            <span class="font-weight-bold" style="color: var(--navy-dark);">{{ s.title }}</span><br>
+                            <small class="text-muted">{{ s.firma_adi }}</small>
+                        </td>
+                        <td class="align-middle text-muted">{{ s.expiry_date.strftime('%d.%m.%Y') }}</td>
+                        <td class="align-middle">
+                            <span class="badge badge-{{ status }} px-3 py-2" style="border-radius: 20px; min-width: 80px;">
+                                {{ kalan }} Gün
+                            </span>
+                        </td>
+                        <td class="align-middle text-center">
+                            <a href="https://wa.me/{{ s.whatsapp_no }}?text=Sayın%20{{ s.firma_adi }},%20EG%20Optimal%20Sistemimizdeki%20kaydınıza%20istinaden;%20'{{ s.title }}'%20belgenizin%20bitmesine%20{{ kalan }}%20gün%20kalmıştır.%20Yenileme%20için%20destek%20alabilirsiniz." 
+                               class="btn btn-sm btn-outline-success" target="_blank">
+                                <i class="fab fa-whatsapp mr-1"></i> WhatsApp
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
 <script>
 function filterTable(status) {
-    // Tüm satırları bul
     const rows = document.querySelectorAll('.table-row');
-    
-    // Filtreleme işlemi
+    const tableSection = document.getElementById("tabloBolumu");
+
     rows.forEach(row => {
         if (status === 'all') {
             row.style.display = '';
         } else {
-            row.style.display = row.getAttribute('data-status') === status ? '' : 'none';
+            const rowStatus = row.getAttribute('data-status');
+            if (rowStatus === status) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
         }
     });
 
-    // Sayfayı tabloya kaydır (Odaklanma)
-    const element = document.getElementById("tabloBolumu");
-    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Tabloya yumuşak kaydırma yap
+    if (tableSection) {
+        window.scrollTo({
+            top: tableSection.offsetTop - 50,
+            behavior: 'smooth'
+        });
+    }
 }
 </script>
 {% endblock %}
