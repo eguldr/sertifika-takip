@@ -376,7 +376,40 @@ def admin_panel():
     logs = HatirlatmaLog.query.order_by(HatirlatmaLog.tarih.desc()).limit(50).all()
     users = User.query.all()
     return render_template('admin.html', logs=logs, users=users)
+# --- 4. Şifre Sıfırlama Rotaları ---
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+        if user:
+            token = ts.dumps(email, salt='recover-key')
+            recover_url = url_for('reset_password', token=token, _external=True)
+            msg = Message("Şifre Sıfırlama Talebi - Sertifika Takip",
+                          recipients=[email])
+            msg.body = f"Şifrenizi sıfırlamak için şu bağlantıya tıklayın: {recover_url}\n\nBu bağlantı 30 dakika geçerlidir."
+            mail.send(msg)
+        flash('E-posta adresiniz kayıtlıysa şifre sıfırlama bağlantısı gönderilecektir.', 'info')
+        return redirect(url_for('login'))
+    return render_template('forgot_password.html')
 
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    try:
+        email = ts.loads(token, salt='recover-key', max_age=1800)
+    except:
+        flash('Şifre sıfırlama bağlantısı geçersiz veya süresi dolmuş.', 'danger')
+        return redirect(url_for('forgot_password'))
+    
+    if request.method == 'POST':
+        password = request.form.get('password')
+        user = User.query.filter_by(email=email).first()
+        if user:
+            user.password = generate_password_hash(password)
+            db.session.commit()
+            flash('Şifreniz başarıyla güncellendi. Giriş yapabilirsiniz.', 'success')
+            return redirect(url_for('login'))
+    return render_template('reset_password.html', token=token)
 # --- 3. Uygulamayı Çalıştıran Blok ---
 if __name__ == '__main__':
     app.run()
