@@ -1,83 +1,89 @@
 {% extends "base.html" %}
 {% block content %}
+<style>
+    :root {
+        --navy-primary: #1a237e; /* Derin Lacivert */
+        --navy-dark: #121858;
+        --silver-light: #f5f7fa;
+        --silver-accent: #e0e0e0;
+        --gold-accent: #c5a059; /* Hafif Altın Vurgu */
+    }
+    body { background-color: var(--silver-light); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .card { border: none; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+    .bg-navy { background-color: var(--navy-primary) !important; color: white; }
+    .table thead th { background-color: var(--navy-primary); color: white; border: none; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; }
+    .badge-success { background-color: #2e7d32; } /* Güvenli Yeşil */
+    .badge-warning { background-color: #f9a825; color: #000; } /* Dikkat Sarı */
+    .badge-danger { background-color: #c62828; } /* Kritik Kırmızı */
+    .nav-stats { border-left: 4px solid var(--gold-accent); }
+</style>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="text-primary fw-bold"><i class="fas fa-tachometer-alt me-2"></i>Genel Durum Paneli</h2>
-    <a href="{{ url_for('export_excel') }}" class="btn btn-success shadow-sm">
-        <i class="fas fa-file-excel me-1"></i> Tüm Listeyi Excel'e Aktar
-    </a>
-</div>
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="font-weight-bold text-navy" style="color: var(--navy-primary);">EG Optimal Danışmanlık</h2>
+            <p class="text-muted">Sertifika ve Belge Yönetim Portalı</p>
+        </div>
+        <a href="{{ url_for('ekle') }}" class="btn btn-primary px-4 shadow" style="background-color: var(--navy-primary); border: none;">
+            <i class="fas fa-plus-circle mr-2"></i> Yeni Sertifika Ekle
+        </a>
+    </div>
 
-{% if suresi_dolan %}
-<div class="alert alert-danger shadow-sm mb-3">
-    <h6 class="mb-2">⛔ Süresi Dolmuş — {{ suresi_dolan|length }} kayıt</h6>
-    <ul class="mb-0 ps-3">
-        {% for e in suresi_dolan %}
-        <li>
-            <strong>{{ e.title }}</strong> {% if e.risk_value %} — {{ e.risk_value }}{% endif %}
-            <span class="badge bg-danger ms-1">{{ e.expiry_date.strftime('%d.%m.%Y') }}</span>
-            <a href="/edit/{{ e.id }}" class="ms-2 text-warning small">✏️</a>
-            <a href="/sil/{{ e.id }}" class="ms-1 text-danger small" onclick="return confirm('Silmek istiyor musunuz?')">🗑️</a>
-        </li>
-        {% endfor %}
-    </ul>
-</div>
-{% endif %}
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card nav-stats bg-white py-3 px-4">
+                <div class="text-muted small font-weight-bold">TOPLAM TAKİP</div>
+                <div class="h3 font-weight-bold mb-0 text-dark">{{ sertifikalar|length }} Adet</div>
+            </div>
+        </div>
+        </div>
 
-{% if kritik_30 %}
-<div class="alert alert-warning shadow-sm mb-3" style="border-left: 5px solid red;">
-    <h6 class="mb-2">🔴 30 Gün İçinde Dolacak — {{ kritik_30|length }} kayıt</h6>
-    <ul class="mb-0 ps-3">
-        {% for e in kritik_30 %}
-        <li>
-            <strong>{{ e.title }}</strong> — {{ (e.expiry_date - bugun).days }} gün kaldı
-            <a href="/edit/{{ e.id }}" class="ms-2 text-warning small">✏️</a>
-        </li>
-        {% endfor %}
-    </ul>
-</div>
-{% endif %}
-
-{% if uyari_60 %}
-<div class="alert alert-warning shadow-sm mb-3" style="background-color:#fff3cd; border-color:#ffc107;">
-    <h6 class="mb-2">🟡 60 Gün İçinde Dolacak — {{ uyari_60|length }} kayıt</h6>
-    <ul class="mb-0 ps-3">
-        {% for e in uyari_60 %}
-        <li><strong>{{ e.title }}</strong> — {{ (e.expiry_date - bugun).days }} gün <a href="/edit/{{ e.id }}" class="ms-2 text-warning small">✏️</a></li>
-        {% endfor %}
-    </ul>
-</div>
-{% endif %}
-
-<div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card bg-primary text-white shadow">
-            <div class="card-body"><h5>Üretim & Ürün</h5><h2>{{ urun }}</h2></div>
-            <div class="card-footer"><a class="small text-white stretched-link" href="/sertifikalar?cat=Urun">Detayları Gör</a></div>
+    <div class="card shadow-lg">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th class="pl-4">Belge / Firma Tanımı</th>
+                            <th>Bitiş Tarihi</th>
+                            <th>Kalan Süre</th>
+                            <th>Durum Analizi</th>
+                            <th class="text-center">İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody style="background-color: white;">
+                        {% for s in sertifikalar %}
+                        {% set kalan = (s.bitis_tarihi - bugun).days %}
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td class="pl-4 align-middle">
+                                <span class="font-weight-bold" style="color: var(--navy-dark);">{{ s.ad }}</span>
+                            </td>
+                            <td class="align-middle text-muted">{{ s.bitis_tarihi.strftime('%d.%m.%Y') }}</td>
+                            <td class="align-middle">
+                                <span class="badge px-3 py-2 {% if kalan <= 30 %}badge-danger{% elif kalan <= 90 %}badge-warning{% else %}badge-success{% endif %}" style="border-radius: 20px;">
+                                    {{ kalan }} Gün Kaldı
+                                </span>
+                            </td>
+                            <td class="align-middle">
+                                {% if kalan <= 0 %}
+                                    <small class="text-danger font-weight-bold"><i class="fas fa-ban"></i> SÜRESİ DOLMUŞ</small>
+                                {% elif kalan <= 180 %}
+                                    <small class="text-warning font-weight-bold"><i class="fas fa-clock"></i> YENİLEME SÜRECİ</small>
+                                {% else %}
+                                    <small class="text-success font-weight-bold"><i class="fas fa-shield-alt"></i> AKTİF / GÜVENLİ</small>
+                                {% endif %}
+                            </td>
+                            <td class="text-center align-middle">
+                                <a href="{{ url_for('sil', id=s.id) }}" class="btn btn-sm text-danger" onclick="return confirm('Bu kaydı sistemden silmek istediğinize emin misiniz?')">
+                                    <i class="fas fa-trash-alt"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-warning text-dark shadow">
-            <div class="card-body"><h5>Araç & Filo</h5><h2>{{ arac }}</h2></div>
-            <div class="card-footer"><a class="small text-dark stretched-link" href="/sertifikalar?cat=Arac">Detayları Gör</a></div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card bg-success text-white shadow">
-            <div class="card-body"><h5>Personel & SRC</h5><h2>{{ pers }}</h2></div>
-            <div class="card-footer"><a class="small text-white stretched-link" href="/sertifikalar?cat=Personel">Detayları Gör</a></div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card bg-danger text-white shadow">
-            <div class="card-body"><h5>Tesis & Mekan</h5><h2>{{ tesis }}</h2></div>
-            <div class="card-footer"><a class="small text-white stretched-link" href="/sertifikalar?cat=Tesis">Detayları Gör</a></div>
-        </div>
-    </div>
 </div>
-
-<div class="text-center mt-4">
-    <p class="text-muted small">💡 Kayıtları düzenlemek veya silmek için yukarıdaki uyarı listelerini veya ilgili kategori detaylarını kullanabilirsiniz.</p>
-</div>
-
-{% endblock %}   
+{% endblock %}
