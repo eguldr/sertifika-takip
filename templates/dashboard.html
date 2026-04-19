@@ -32,7 +32,6 @@
     
     .emergency-text { color: var(--danger-red); font-weight: bold; font-size: 1.1rem; }
     
-    /* BUTON - BU SEFER KESİN ÇALIŞACAK ŞEKİLDE AYARLANDI */
     .btn-action-final {
         background-color: var(--danger-red) !important;
         color: white !important;
@@ -53,6 +52,13 @@
         0% { box-shadow: 0 0 0 0 rgba(198, 40, 40, 0.7); }
         70% { box-shadow: 0 0 0 10px rgba(198, 40, 40, 0); }
         100% { box-shadow: 0 0 0 0 rgba(198, 40, 40, 0); }
+    }
+
+    /* Aksiyon Buton Grubu Stili */
+    .btn-action-group {
+        display: flex;
+        gap: 5px;
+        justify-content: center;
     }
 </style>
 
@@ -140,10 +146,19 @@
                             </span>
                         </td>
                         <td class="align-middle text-center">
-                            <a href="https://wa.me/{{ s.whatsapp_no }}?text=Sayın%20{{ s.firma_adi }},%20'{{ s.title }}'%20belgenizin%20bitmesine%20{{ kalan }}%20gün%20kalmıştır." 
-                               class="btn btn-sm btn-outline-success" target="_blank">
-                                <i class="fab fa-whatsapp"></i> WhatsApp
-                            </a>
+                            <div class="btn-action-group">
+                                <a href="https://wa.me/{{ s.whatsapp_no }}?text=Sayın%20{{ s.firma_adi }},%20'{{ s.title }}'%20belgenizin%20bitmesine%20{{ kalan }}%20gün%20kalmıştır." 
+                                   class="btn btn-sm btn-outline-success" target="_blank" title="Müşteriye Bildir">
+                                    <i class="fab fa-whatsapp"></i> Müşteri
+                                </a>
+
+                                {% if s.danisman_no %}
+                                <a href="https://wa.me/{{ s.danisman_no }}?text=BİLGİ:%20{{ s.firma_adi }}%20firmasının%20'{{ s.title }}'%20belgesi%20{{ kalan }}%20gün%20sonra%20doluyor.%20Aksiyon%20alınması%20önerilir." 
+                                   class="btn btn-sm btn-outline-primary" target="_blank" title="Danışmana/Ofise Bildir">
+                                    <i class="fas fa-user-shield"></i> Takipçi
+                                </a>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
