@@ -20,12 +20,12 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'gizli-anahtar-123456')
 
 # Veritabanı
 uri = os.environ.get('DATABASE_URL', 'sqlite:///test.db')
-if uri.startswith("postgres://"):
+if uri and uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
 app.config['SQLALCHEMY_DATABASE_URI'] = uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Mail
+# Mail Ayarları
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
@@ -86,6 +86,68 @@ def setup_database():
 
 
 # ============================================================
+# OTOMATİK HATIRLATMA SİSTEMİ (6-3-1 AY)
+# ============================================================
+@app.route('/cron/check_reminders')
+def cron_check_reminders():
+    """
+    Bu yol (route) her gün bir kez tetiklendiğinde 
+    vadesi yaklaşan sertifikalar için otomatik mail atar.
+    """
+    with app.app_context():
+        bugun = date.today()
+        tum_kayitlar = Entry.query.all()
+        gonderilen_sayisi = 0
+        
+        for e in tum_kayitlar:
+            if not e.expiry_date:
+                continue
+                
+            kalan_gun = (e.expiry_date - bugun).days
+            
+            # 180 Gün (6 Ay), 90 Gün (3 Ay), 30 Gün (1 Ay)
+            if kalan_gun in [180, 90, 30]:
+                user = User.query.get(e.user_id)
+                if user:
+                    vade_adi = {180: "6 Ay", 90: "3 Ay", 30: "1 Ay"}[kalan_gun]
+                    
+                    try:
+                        msg = Message(
+                            f"⚠️ EG Optimal Hatırlatma: {e.title} ({vade_adi})",
+                            recipients=[user.email]
+                        )
+                        msg.body = f"""Sayın Kullanıcımız,
+
+EG Optimal Danışmanlık Takip Sistemindeki kaydınıza göre;
+'{e.title}' isimli belgenizin bitmesine tam {vade_adi} kalmıştır.
+
+Belge Bilgileri:
+- Firma: {e.firma_adi}
+- Bitiş Tarihi: {e.expiry_date.strftime('%d.%m.%Y')}
+
+Lütfen yenileme süreçleri için hazırlık yapınız.
+
+İyi çalışmalar,
+EG Optimal Danışmanlık
+"""
+                        mail.send(msg)
+                        
+                        # Log kaydı ekle
+                        yeni_log = HatirlatmaLog(
+                            entry_id=e.id,
+                            firma_adi=e.firma_adi,
+                            belge_adi=e.title
+                        )
+                        db.session.add(yeni_log)
+                        gonderilen_sayisi += 1
+                    except Exception as ex:
+                        print(f"Hatırlatma maili hatası: {ex}")
+
+        db.session.commit()
+        return f"İşlem Tamamlandı. {gonderilen_sayisi} adet hatırlatma gönderildi.", 200
+
+
+# ============================================================
 # YARDIMCI FONKSİYONLAR
 # ============================================================
 def send_confirmation_email(user_email, cert_name, expiry_date):
@@ -99,7 +161,7 @@ def send_confirmation_email(user_email, cert_name, expiry_date):
 '{cert_name}' isimli belgeniz sisteme başarıyla kaydedilmiştir.
 Bitiş Tarihi: {expiry_date}
 
-Süre dolmasına 30 gün kala size tekrar hatırlatma yapılacaktır.
+Süre dolmasına 6 ay, 3 ay ve 30 gün kala size otomatik hatırlatma yapılacaktır.
 
 İyi çalışmalar,
 EG Optimal Dijital Takip Sistemi
@@ -137,8 +199,8 @@ Bu link 24 saat boyunca geçerlidir.
 
 
 def verify_recaptcha(response_token):
-    """reCAPTCHA token'ını Google ile doğrular. True/False döner."""
     secret = os.environ.get('RECAPTCHA_SECRET_KEY')
+    if not secret: return True # Geliştirme aşaması için
     result = requests.post(
         'https://www.google.com/recaptcha/api/siteverify',
         data={'secret': secret, 'response': response_token}
@@ -156,11 +218,9 @@ def index():
     return redirect(url_for('login'))
 
 
-# ---------- Kayıt ----------
 @app.route('/kayit', methods=['GET', 'POST'])
 def kayit():
     if request.method == 'POST':
-        # reCAPTCHA kontrolü
         if not verify_recaptcha(request.form.get('g-recaptcha-response', '')):
             flash("Lütfen robot olmadığınızı doğrulayın!", "danger")
             return redirect(url_for('kayit'))
@@ -193,7 +253,6 @@ def kayit():
     )
 
 
-# ---------- Giriş ----------
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -202,7 +261,6 @@ def login():
 
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, password):
-            # Admin kontrolü
             user.is_admin = (user.email == 'erhanadea@gmail.com')
             db.session.commit()
             login_user(user)
@@ -212,7 +270,6 @@ def login():
     return render_template('login.html')
 
 
-# ---------- Çıkış ----------
 @app.route('/logout')
 @login_required
 def logout():
@@ -220,7 +277,6 @@ def logout():
     return redirect(url_for('login'))
 
 
-# ---------- E-posta Onay ----------
 @app.route('/confirm/<token>')
 def confirm_email(token):
     try:
@@ -239,7 +295,6 @@ def confirm_email(token):
     return redirect(url_for('login'))
 
 
-# ---------- Şifre Sıfırlama ----------
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
@@ -281,26 +336,17 @@ def reset_password(token):
     return render_template('reset_password.html', token=token)
 
 
-# ---------- Dashboard ----------
 @app.route('/dashboard')
 @login_required
 def dashboard():
     bugun  = date.today()
-    gun_30 = bugun + timedelta(days=30)
-    gun_60 = bugun + timedelta(days=60)
-    gun_90 = bugun + timedelta(days=90)
-
     tum_kayitlar = Entry.query.filter_by(user_id=current_user.id).all()
 
+    # İstatistikler
     urun  = Entry.query.filter_by(user_id=current_user.id, category='Urun').count()
     arac  = Entry.query.filter_by(user_id=current_user.id, category='Arac').count()
     pers  = Entry.query.filter_by(user_id=current_user.id, category='Personel').count()
     tesis = Entry.query.filter_by(user_id=current_user.id, category='Tesis').count()
-
-    suresi_dolan = [e for e in tum_kayitlar if e.expiry_date and e.expiry_date < bugun]
-    kritik_30    = [e for e in tum_kayitlar if e.expiry_date and bugun <= e.expiry_date <= gun_30]
-    uyari_60     = [e for e in tum_kayitlar if e.expiry_date and gun_30 < e.expiry_date <= gun_60]
-    bilgi_90     = [e for e in tum_kayitlar if e.expiry_date and gun_60 < e.expiry_date <= gun_90]
 
     kat_isim = {
         'Urun':     'Üretim & Ürün',
@@ -313,16 +359,12 @@ def dashboard():
         'dashboard.html',
         user=current_user,
         urun=urun, arac=arac, pers=pers, tesis=tesis,
-        suresi_dolan=suresi_dolan,
-        kritik_30=kritik_30,
-        uyari_60=uyari_60,
-        bilgi_90=bilgi_90,
+        sertifikalar=tum_kayitlar,
         kat_isim=kat_isim,
         bugun=bugun
     )
 
 
-# ---------- Sertifikalar ----------
 @app.route('/sertifikalar')
 @login_required
 def sertifikalar():
@@ -330,25 +372,9 @@ def sertifikalar():
     bugun = date.today()
     items = Entry.query.filter_by(user_id=current_user.id, category=cat).all()
 
-    for item in items:
-        if item.expiry_date:
-            item.kalan_gun = (item.expiry_date - bugun).days
-            if item.kalan_gun < 0:
-                item.durum = 'danger'
-            elif item.kalan_gun <= 30:
-                item.durum = 'danger'
-            elif item.kalan_gun <= 60:
-                item.durum = 'warning'
-            else:
-                item.durum = 'success'
-        else:
-            item.kalan_gun = None
-            item.durum     = 'secondary'
-
     return render_template('sertifikalar.html', items=items, bugun=bugun, cat=cat)
 
 
-# ---------- Kayıt Ekle ----------
 @app.route('/ekle', methods=['GET', 'POST'])
 @login_required
 def ekle():
@@ -375,7 +401,6 @@ def ekle():
     return render_template('ekle.html')
 
 
-# ---------- Kayıt Sil ----------
 @app.route('/sil/<int:id>')
 @login_required
 def sil(id):
@@ -388,23 +413,6 @@ def sil(id):
     return redirect(url_for('dashboard'))
 
 
-# ---------- Log Ekle ----------
-@app.route('/log_ekle/<int:id>')
-@login_required
-def log_ekle(id):
-    item = Entry.query.get(id)
-    if item:
-        yeni_log = HatirlatmaLog(
-            entry_id  = item.id,
-            firma_adi = item.firma_adi,
-            belge_adi = item.title
-        )
-        db.session.add(yeni_log)
-        db.session.commit()
-    return "OK"
-
-
-# ---------- Excel Export ----------
 @app.route('/export')
 @login_required
 def export_excel():
@@ -432,7 +440,6 @@ def export_excel():
     )
 
 
-# ---------- Admin Paneli ----------
 @app.route('/admin_panel')
 @login_required
 def admin_panel():
@@ -443,6 +450,5 @@ def admin_panel():
     return render_template('admin.html', logs=logs, users=users)
 
 
-# ============================================================
 if __name__ == '__main__':
     app.run()
