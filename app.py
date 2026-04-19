@@ -189,11 +189,13 @@ def login():
     return render_template('login.html')
 
 
+import os
+
 @app.route('/kayit', methods=['GET', 'POST'])
 def kayit():
-    if request.method == 'POST':
-        # reCAPTCHA Doğrulama
-        recaptcha_response = request.form.get('g-recaptcha-response')
+    # ... diğer kodlar
+    return render_template('kayit.html', 
+        recaptcha_site_key=os.environ.get('RECAPTCHA_SITE_KEY'))
         verify_response = requests.post(
             'https://www.google.com/recaptcha/api/siteverify',
             data={
