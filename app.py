@@ -10,6 +10,11 @@ from datetime import datetime, timedelta, date
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
 app = Flask(__name__)
+@app.route('/')
+def index():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('login'))
 app.secret_key = os.environ.get('SECRET_KEY', 'erhan-gizli-anahtar-99')
 from itsdangerous import URLSafeTimedSerializer
 ts = URLSafeTimedSerializer(app.secret_key)
