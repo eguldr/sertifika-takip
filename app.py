@@ -77,10 +77,8 @@ def load_user(user_id):
 def setup_database():
     if not hasattr(app, 'db_initialized'):
         with app.app_context():
-            # BU SATIR ESKİ VERİTABANINI TAMAMEN SİLER:
-            db.drop_all() 
-            # BU SATIR YENİ SÜTUNLARLA TERTEMİZ KURAR:
-            
+            # SADECE BU SATIR KALSIN:
+            db.create_all()
         app.db_initialized = True
 
 # ============================================================
