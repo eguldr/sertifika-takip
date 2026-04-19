@@ -8,98 +8,94 @@
     }
     body { background-color: var(--silver-light); font-family: 'Segoe UI', sans-serif; }
     
-    /* Kart Ayarları */
     .card { border: none; border-radius: 12px; transition: 0.3s; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
     .card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
     
-    /* Tablo ve Yazı Rengi Düzeltmesi */
     .table-container { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
     .table thead th { background-color: var(--navy-primary); color: white; border: none; font-size: 0.75rem; padding: 15px; }
     
-    /* Kalan Gün Yazı Rengi: Siyah/Koyu Lacivert yaparak görünür kıldık */
+    /* Yazı Rengi Fix */
     .kalan-gun-text { color: #121858 !important; font-weight: bold; }
 
-    /* Acil Uyarı Barı ve Buton Fix */
-    .alert-bar { 
-        background: linear-gradient(90deg, #c62828, #b71c1c); 
-        color: white; 
-        border: none;
-        border-radius: 10px; 
-        font-weight: bold;
-        position: relative;
-        overflow: hidden;
+    /* ACİL DURUM BARI - YENİ TASARIM */
+    .emergency-box {
+        background: white;
+        border-left: 10px solid #c62828;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 15px rgba(198, 40, 40, 0.2);
     }
     
-    /* Butonu tıklanabilir kılmak için en üste taşıyan özel sınıf */
-    .btn-fix {
-        position: relative !important;
-        z-index: 9999 !important;
-        cursor: pointer !important;
+    .emergency-text { color: #c62828; font-weight: bold; font-size: 1.1rem; }
+    
+    /* ÇALIŞMA GARANTİLİ BUTON */
+    .btn-action {
+        background-color: #c62828;
+        color: white;
+        border: none;
+        padding: 10px 25px;
+        border-radius: 8px;
+        font-weight: bold;
+        transition: 0.3s;
+        text-transform: uppercase;
+        box-shadow: 0 4px 10px rgba(198, 40, 40, 0.3);
     }
-
-    .animate-pulse {
-        animation: pulse-red 2s infinite;
-    }
-    @keyframes pulse-red {
-        0% { box-shadow: 0 0 0 0 rgba(198, 40, 40, 0.7); }
-        70% { box-shadow: 0 0 0 10px rgba(198, 40, 40, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(198, 40, 40, 0); }
-    }
+    .btn-action:hover { background-color: #b71c1c; transform: scale(1.05); color: white; }
 </style>
 
 <div class="container-fluid py-4">
 
     {% set bu_hafta = sertifikalar|selectattr('expiry_date', 'le', bugun + timedelta(days=7))|list %}
     {% if bu_hafta|length > 0 %}
-    <div class="alert alert-bar shadow-sm d-flex justify-content-between align-items-center p-3 mb-4 animate-pulse">
-        <span><i class="fas fa-exclamation-triangle mr-2"></i> DİKKAT: Bu hafta süresi dolacak {{ bu_hafta|length }} adet kritik belgeniz var!</span>
-        <button type="button" class="btn btn-sm btn-light font-weight-bold px-3 btn-fix" 
-                onclick="event.stopPropagation(); filterTable('danger');">
-            Hemen İncele
+    <div class="emergency-box animate__animated animate__pulse animate__infinite">
+        <div class="emergency-text">
+            <i class="fas fa-exclamation-circle fa-lg mr-2"></i>
+            DİKKAT: Bu hafta süresi dolacak {{ bu_hafta|length }} adet kritik belgeniz var!
+        </div>
+        <button type="button" class="btn btn-action" onclick="filterTable('danger')">
+            HEMEN İNCELE
         </button>
     </div>
     {% endif %}
 
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="font-weight-bold" style="color: var(--navy-primary); margin-bottom: 0;">EG Optimal Dashboard</h2>
-            <p class="text-muted small">İşinizi ve Belgelerinizi Geleceğe Yönelik Yönetin</p>
+            <h2 class="font-weight-bold" style="color: var(--navy-primary);">EG Optimal Dashboard</h2>
+            <p class="text-muted small">Yönetim Paneli | Verimlilik Analizi</p>
         </div>
-        <div class="d-flex border rounded bg-white shadow-sm overflow-hidden">
+        <div class="d-flex border rounded bg-white shadow-sm">
             <a href="{{ url_for('ekle', cat='Urun') }}" class="btn btn-primary border-0 rounded-0 px-4" style="background-color: var(--navy-primary);">
                 <i class="fas fa-plus mr-2"></i> Yeni Ekle
             </a>
             <a href="{{ url_for('export_excel') }}" class="btn btn-light border-0 rounded-0 px-3">
-                <i class="fas fa-file-excel text-success"></i>
+                <i class="fas fa-file-excel text-success text-lg"></i>
             </a>
         </div>
     </div>
 
     <div class="row mb-4">
         <div class="col-md-4 mb-3" onclick="filterTable('danger')">
-            <div class="card shadow-sm h-100 py-2 bg-white" style="border-left: 5px solid #c62828;">
+            <div class="card h-100 py-2 bg-white" style="border-left: 5px solid #c62828;">
                 <div class="card-body">
                     <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">KRİTİK (SON 30 GÜN)</div>
-                    <div class="h3 mb-0 font-weight-bold text-dark">
-                        {{ sertifikalar|selectattr('expiry_date', 'le', bugun + timedelta(days=30))|list|length }} <small>Adet</small>
-                    </div>
+                    <div class="h3 mb-0 font-weight-bold text-dark">{{ sertifikalar|selectattr('expiry_date', 'le', bugun + timedelta(days=30))|list|length }} <small>Adet</small></div>
                 </div>
             </div>
         </div>
-
         <div class="col-md-4 mb-3" onclick="filterTable('warning')">
-            <div class="card shadow-sm h-100 py-2 bg-white" style="border-left: 5px solid #f9a825;">
+            <div class="card h-100 py-2 bg-white" style="border-left: 5px solid #f9a825;">
                 <div class="card-body">
                     <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">YAKLAŞAN (1-3 AY)</div>
-                    <div class="h3 mb-0 font-weight-bold text-dark">
-                        {{ sertifikalar|selectattr('expiry_date', 'gt', bugun + timedelta(days=30))|selectattr('expiry_date', 'le', bugun + timedelta(days=90))|list|length }} <small>Adet</small>
-                    </div>
+                    <div class="h3 mb-0 font-weight-bold text-dark">{{ sertifikalar|selectattr('expiry_date', 'gt', bugun + timedelta(days=30))|selectattr('expiry_date', 'le', bugun + timedelta(days=90))|list|length }} <small>Adet</small></div>
                 </div>
             </div>
         </div>
-
         <div class="col-md-4 mb-3" onclick="filterTable('all')">
-            <div class="card shadow-sm h-100 py-2 bg-white" style="border-left: 5px solid var(--navy-primary);">
+            <div class="card h-100 py-2 bg-white" style="border-left: 5px solid var(--navy-primary);">
                 <div class="card-body">
                     <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">TÜM BELGELER</div>
                     <div class="h3 mb-0 font-weight-bold text-dark">{{ sertifikalar|length }} <small>Adet</small></div>
@@ -113,10 +109,10 @@
             <table class="table table-hover mb-0" id="sertifikaTable">
                 <thead>
                     <tr>
-                        <th class="pl-4">Belge / Firma Tanımı</th>
-                        <th>Bitiş Tarihi</th>
-                        <th>Kalan Gün</th>
-                        <th class="text-center">Hızlı Aksiyon</th>
+                        <th class="pl-4 py-3">Belge / Firma Tanımı</th>
+                        <th class="py-3">Bitiş Tarihi</th>
+                        <th class="py-3">Kalan Gün</th>
+                        <th class="text-center py-3">Hızlı Aksiyon</th>
                     </tr>
                 </thead>
                 <tbody style="background-color: white;">
