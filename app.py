@@ -80,7 +80,7 @@ def setup_database():
             # BU SATIR ESKİ VERİTABANINI TAMAMEN SİLER:
             db.drop_all() 
             # BU SATIR YENİ SÜTUNLARLA TERTEMİZ KURAR:
-            db.create_all()
+            
         app.db_initialized = True
 
 # ============================================================
