@@ -1,336 +1,195 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="card shadow border-0">
-    <div class="card-header bg-primary text-white py-3">
-        <h4 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Yeni Kayıt Ekle (v4 Final)</h4>
-    </div>
-    <div class="card-body p-4">
-        <form method="POST" action="/ekle">
-            <input type="hidden" name="category" value="{{ request.args.get('cat', 'Urun') }}">
-
-            <div class="mb-3">
-                <label class="form-label fw-bold text-success"><i class="fab fa-whatsapp me-1"></i> WhatsApp Numarası (Hatırlatma İçin)</label>
-                <input type="text" name="whatsapp_no" class="form-control border-success shadow-sm" placeholder="905321234567" required>
-                <div class="form-text text-muted">Başına 90 ekleyerek yazın.</div>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label fw-bold">Firma / Kurum Adı</label>
-                <input type="text" name="firma_adi" class="form-control shadow-sm" placeholder="Firma adını yazın">
-            </div>
-
-            {% if request.args.get('cat') == 'Arac' %}
-            <div class="mb-3">
-                <label class="form-label fw-bold">Araç Tipi</label>
-                <select id="aracTipi" class="form-select shadow-sm" onchange="aracTipiDegisti(this)">
-                    <option value="">-- Önce araç tipini seçin --</option>
-                    <option value="binek">🚗 Binek Otomobil</option>
-                    <option value="ticari_hafif">🚐 Hafif Ticari</option>
-                    <option value="ticari_agir">🚛 Ağır Ticari</option>
-                </select>
-            </div>
-            <div id="aracBelgeDiv" style="display:none;">
-                <label class="form-label fw-bold">İşlem / Belge Türü</label>
-                <select name="title" id="aracSelect" class="form-select shadow-sm" onchange="checkDiger(this)">
-                    <option value="">-- Seçiniz --</option>
-                </select>
-            </div>
-
-            {% elif request.args.get('cat') == 'Tesis' %}
-            <div class="mb-3">
-                <label class="form-label fw-bold">Tesis Belgesi Seçin</label>
-                <select name="title" class="form-select shadow-sm" onchange="checkDiger(this)" required>
-                    <option value="" disabled selected>-- Seçiniz --</option>
-                    <option>Sanayi Sicil Belgesi</option>
-                    <option>Yıllık İşletme Cetveli</option>
-                    <option>İtfaiye Uygunluk Raporu</option>
-                    <option>Kapasite Raporu</option>
-                    <option>İşyeri Açma ve Çalışma Ruhsatı</option>
-                    <option>Emisyon Ölçümü</option>
-                    <option value="Diger">➕ LİSTEDE YOK</option>
-                </select>
-            </div>
-{% elif request.args.get('cat') == 'Personel' %}
-<div class="alert alert-warning shadow-sm border-start border-4 border-warning">
-    <i class="fas fa-exclamation-triangle me-1"></i> <strong>Önemli Hatırlatma:</strong> MYK belgelerinde 5 yıllık sürenin dolmasına <strong>6 ay kala</strong> başvuru yapılmalıdır. 2 yıl çalışma kanıtı sunanlar sınavsız yenileyebilir.
-</div>
-
-<div class="row">
-    <div class="col-md-6 mb-3">
-        <label class="form-label fw-bold">Personel Ad Soyad</label>
-        <input type="text" name="firma_adi" class="form-control shadow-sm" placeholder="Ad Soyad yazın" required>
-    </div>
-    <div class="col-md-6 mb-3">
-        <label class="form-label fw-bold">TC Kimlik / Ehliyet No</label>
-        <input type="text" name="risk_value" class="form-control shadow-sm" maxlength="11" placeholder="Bilgi notu veya TC">
-    </div>
-</div>
-
-<div class="mb-3">
-    <label class="form-label fw-bold">Belge Türü Seçin</label>
-    
-    <select name="title" id="personelSelect" class="form-select shadow-sm" size="10" required onchange="checkDiger(this)">
-        <option value="" disabled selected>-- Belge Tipini Seçin --</option>
+<div class="container py-4">
+    <div class="card shadow-lg border-0" style="border-radius: 15px;">
+        <div class="card-header p-4 {% if cat == 'Arac' %}bg-warning text-dark{% elif cat == 'Personel' %}bg-info text-white{% elif cat == 'Tesis' %}bg-secondary text-white{% else %}bg-primary text-white{% endif %}" style="border-radius: 15px 15px 0 0;">
+            <h3 class="mb-0">
+                <i class="fas fa-plus-circle mr-2"></i> Yeni Kayıt: 
+                {% if cat == 'Arac' %}Araç & Filo{% elif cat == 'Personel' %}Personel & SRC{% elif cat == 'Tesis' %}Tesis & Mekan{% else %}Üretim & Ürün{% endif %}
+            </h3>
+        </div>
         
-        <optgroup label="🚚 ULAŞIM & SÜRÜCÜ BELGELERİ">
-            <option>SRC 1 (Uluslararası Yolcu)</option>
-            <option>SRC 2 (Yurtiçi Yolcu)</option>
-            <option>SRC 3 (Uluslararası Eşya/Kargo)</option>
-            <option>SRC 4 (Yurtiçi Eşya/Kargo)</option>
-            <option>SRC 5 (Tehlikeli Madde Taşımacılığı)</option>
-            <option>Psikoteknik Değerlendirme Raporu</option>
-            <option>Ehliyet Yenileme / Sağlık Raporu</option>
-        </optgroup>
+        <div class="card-body p-4 bg-white">
+            <form method="POST">
+                <input type="hidden" name="category" value="{{ cat }}">
 
-        <optgroup label="🛡️ MYK YENİ ZORUNLU MESLEKLER (2026)">
-            <option>Atık Ayırma İşçisi (Seviye 3)</option>
-            <option>Atık Koordinatörü (Seviye 5)</option>
-            <option>Biyogaz Sistemleri Personeli</option>
-            <option>Fotovoltaik Güç Sistemleri Personeli</option>
-            <option>Güneş Isıl Sistem Personeli</option>
-            <option>Rüzgar Güç Sistemi Personeli</option>
-            <option>Tehlikeli Atık Toplayıcısı</option>
-            <option>Batarya Elektrikli Araç Bakım Onarımcısı</option>
-            <option>Hibrit Araç Bakım Onarımcısı</option>
-            <option>Elektrikli Araç Montaj Elemanı</option>
-            <option>Tehlikeli Madde Taşımacılığı Şoförü</option>
-        </optgroup>
-
-        <optgroup label="🏗️ İNŞAAT, METAL & TEKNİK">
-            <option>Çelik Kaynakçısı (MYK)</option>
-            <option>Köprülü Vinç Operatörü (MYK)</option>
-            <option>Kule Vinç Operatörü (MYK)</option>
-            <option>İskele Kurulum Elemanı (MYK)</option>
-            <option>İş Makinesi Operatörlük Belgesi (G Sınıfı)</option>
-            <option>Kızgın Yağ Kazanı Operatörü</option>
-        </optgroup>
-
-        <option value="Diger">➕ LİSTEDE YOK (ELLE YAZ)</option>
-    </select>
-</div>
-
-            {% else %}
-            <div class="mb-3">
-                <label class="form-label fw-bold">Sertifika Seçin</label>
-               
-                <select name="title" id="sertifikaSelect" class="form-select shadow-sm" size="10" onchange="checkDiger(this)" required>
-                    <option value="" disabled selected>-- Listeden Seçin --</option>
-                    <option>ACS (Sağlık Uygunluk Sertifikası)</option>
-                    <option>ADR Sertifikaları</option>
-                    <option>AD 2000 CODE</option>
-                    <option>AS/EN/JISQ 9100</option>
-                    <option>ATEX Sertifikası</option>
-                    <option>BASEC Sertifikası</option>
-                    <option>BENOR Sertifikası</option>
-                    <option>BRC Sertifikası</option>
-                    <option>Kalibrasyon Sertifikası</option>
-                    <option>CARB Sertifikası</option>
-                    <option>CB Sertifikası</option>
-                    <option>CCC Sertifikası</option>
-                    <option>CE İşareti</option>
-                    <option>CLASS Sertifikası</option>
-                    <option>CMIM Mark</option>
-                    <option>CMMI Dev</option>
-                    <option>COSMOS Sertifikaları</option>
-                    <option>Crash Test Certificate</option>
-                    <option>Cradle to Cradle</option>
-                    <option>CTUV İşareti</option>
-                    <option>DIN Belgeleri</option>
-                    <option>DOP Sertifikası</option>
-                    <option>EAC Sertifikası</option>
-                    <option>ECE Sertifikası</option>
-                    <option>EC Type Examination</option>
-                    <option>ECM Sertifikası</option>
-                    <option>Ecolabel</option>
-                    <option>Ecocert</option>
-                    <option>EHEDG</option>
-                    <option>EMC Sertifikası</option>
-                    <option>EN Belgeleri</option>
-                    <option>ENPLUS</option>
-                    <option>Ergonomic Product</option>
-                    <option>ETA</option>
-                    <option>EU Type Examination</option>
-                    <option>EUCERTPLAST</option>
-                    <option>Free Sales Certificate</option>
-                    <option>Eurovent</option>
-                    <option>F4 Star</option>
-                    <option>FAMI-QS</option>
-                    <option>FIBC Test</option>
-                    <option>Florida Product Approval</option>
-                    <option>FM Approvals</option>
-                    <option>FSSC 22000</option>
-                    <option>G Mark</option>
-                    <option>Gastec</option>
-                    <option>Blue Angel</option>
-                    <option>Global Security Report</option>
-                    <option>GMP</option>
-                    <option>GMP+</option>
-                    <option>GDP</option>
-                    <option>GS Sertifikası</option>
-                    <option>HACCP</option>
-                    <option>HAR</option>
-                    <option>Helal Belgesi</option>
-                    <option>Hijyen Sertifikası</option>
-                    <option>Indoor Air Quality</option>
-                    <option>Insta-Cert</option>
-                    <option>CSC Sertifikası</option>
-                    <option>ISCC</option>
-                    <option>ISO 9001</option>
-                    <option>ISO 14001</option>
-                    <option>ISO 22000</option>
-                    <option>ISO 27001</option>
-                    <option>ISO 45001</option>
-                    <option>ISO 13485</option>
-                    <option>ISO 50001</option>
-                    <option>ISO 22301</option>
-                    <option>ISO 10002</option>
-                    <option>ISO 37001</option>
-                    <option>İyi Tarım Uygulamaları</option>
-                    <option>JIS</option>
-                    <option>KEMA KEUR</option>
-                    <option>KEYMARK</option>
-                    <option>KITEMARK</option>
-                    <option>KTW-UBA</option>
-                    <option>KRAV</option>
-                    <option>Steel Forging Approval</option>
-                    <option>Master Certificate</option>
-                    <option>Marine Certificate</option>
-                    <option>MDR</option>
-                    <option>MDSAP</option>
-                    <option>Miami Dade NOA</option>
-                    <option>MIL-STD-461F</option>
-                    <option>MIL-STD-810G</option>
-                    <option>MSC Chain</option>
-                    <option>KOT Sertifikası</option>
-                    <option>NF Sertifikası</option>
-                    <option>Operation Clean Sweep</option>
-                    <option>Organik Tarım</option>
-                    <option>NON-GMO</option>
-                    <option>Nordic Swan</option>
-                    <option>OK Biobased</option>
-                    <option>Organik Ürün</option>
-                    <option>Q-Mark</option>
-                    <option>RAL</option>
-                    <option>RMP</option>
-                    <option>RecyClass</option>
-                    <option>Recycled Claim</option>
-                    <option>RTN</option>
-                    <option>SIL Sertifikası</option>
-                    <option>Screened Chemistry</option>
-                    <option>S-Mark</option>
-                    <option>Solar Certificate</option>
-                    <option>Solar Power Certificate</option>
-                    <option>Solar Keymark</option>
-                    <option>SERT Belgesi</option>
-                    <option>StandardsMark</option>
-                    <option>SRCCS</option>
-                    <option>Teknik Reglement</option>
-                    <option>Teknik Svidetelstvo</option>
-                    <option>Toxproof</option>
-                    <option>Transaction Certificate</option>
-                    <option>TQP</option>
-                    <option>TSI Sertifikası</option>
-                    <option>Type Approval</option>
-                    <option>Type Test</option>
-                    <option>UKCA</option>
-                    <option>Ukrsepro</option>
-                    <option>Uygunluk Sertifikası</option>
-                    <option>VDE</option>
-                    <option>VDI 2700</option>
-                    <option>Araç Yedek Parça Sertifikası</option>
-                    <option>Verified Product</option>
-                    <option>VI-1</option>
-                    <option>WRAS</option>
-                    <option>Watermark</option>
-                    <option>Yangın Sertifikası</option>
-                    <option value="Diger">➕ LİSTEDE YOK</option>
-                </select>
-            </div>
-            {% endif %}
-
-            <div id="otherInputDiv" class="mb-3" style="display:none;">
-                <label class="form-label text-primary fw-bold">Yeni Belge Adını Yazın</label>
-                <input type="text" id="otherTitleInput" class="form-control border-primary shadow-sm">
-            </div>
-
-            <div class="row">
-                <div class="col-md-12 mb-3">
-                    <label class="form-label fw-bold">Plaka / TC / Not</label>
-                    <input type="text" name="risk_value" class="form-control shadow-sm">
+                <div class="row">
+                    <div class="col-md-6 form-group mb-4">
+                        <label class="font-weight-bold text-success"><i class="fab fa-whatsapp"></i> WhatsApp No (905...)</label>
+                        <input type="text" name="whatsapp_no" class="form-control form-control-lg" placeholder="905321234567" required>
+                    </div>
+                    <div class="col-md-6 form-group mb-4">
+                        <label class="font-weight-bold text-dark">Firma / Müşteri Adı</label>
+                        <input type="text" name="firma_adi" class="form-control form-control-lg" placeholder="Firma adını yazın" required>
+                    </div>
                 </div>
-            </div>
 
-            <div class="mb-4">
-                <label class="form-label fw-bold text-danger">Bitiş Tarihi</label>
-                <input type="date" name="expiry_date" id="expiry_date" class="form-control border-danger shadow-sm" required>
-            </div>
+                <div class="form-group mb-4">
+                    <label class="font-weight-bold text-dark">Belge / Sertifika Tipi Seçin (Tüm Liste)</label>
+                    <select name="title" class="form-control form-control-lg" required size="12">
+                        <optgroup label="⭐ BU KATEGORİ İÇİN ÖNERİLENLER">
+                            {% if cat == 'Arac' %}
+                                <option value="Araç Muayenesi">🚚 Araç Muayenesi</option>
+                                <option value="Zorunlu Trafik Sigortası">🛡️ Zorunlu Trafik Sigortası</option>
+                                <option value="Kasko Sigortası">📈 Kasko Sigortası</option>
+                            {% elif cat == 'Personel' %}
+                                <option value="SRC 1/2/3/4 Belgesi">🪪 SRC Belgesi</option>
+                                <option value="Psikoteknik Belgesi">🧠 Psikoteknik Belgesi</option>
+                            {% elif cat == 'Tesis' %}
+                                <option value="Yangın Tüpü Kontrolü">🔥 Yangın Tüpü Kontrolü</option>
+                                <option value="Asansör Periyodik Bakımı">🛗 Asansör Periyodik Bakımı</option>
+                            {% endif %}
+                        </optgroup>
 
-            <button type="submit" class="btn btn-success btn-lg w-100 shadow">Verileri Kaydet ve Takibe Al</button>
-        </form>
+                        <optgroup label="📋 TÜM SERTİFİKA KÜTÜPHANESİ">
+                            <option>ACS (Sağlık Uygunluk Sertifikası)</option>
+                            <option>ADR Sertifikaları</option>
+                            <option>AD 2000 CODE</option>
+                            <option>AS/EN/JISQ 9100</option>
+                            <option>ATEX Sertifikası</option>
+                            <option>BASEC Sertifikası</option>
+                            <option>BENOR Sertifikası</option>
+                            <option>BRC Sertifikası</option>
+                            <option>Kalibrasyon Sertifikası</option>
+                            <option>CARB Sertifikası</option>
+                            <option>CB Sertifikası</option>
+                            <option>CCC Sertifikası</option>
+                            <option>CE İşareti</option>
+                            <option>CLASS Sertifikası</option>
+                            <option>CMIM Mark</option>
+                            <option>CMMI Dev</option>
+                            <option>COSMOS Sertifikaları</option>
+                            <option>Crash Test Certificate</option>
+                            <option>Cradle to Cradle</option>
+                            <option>CTUV İşareti</option>
+                            <option>DIN Belgeleri</option>
+                            <option>DOP Sertifikası</option>
+                            <option>EAC Sertifikası</option>
+                            <option>ECE Sertifikası</option>
+                            <option>EC Type Examination</option>
+                            <option>ECM Sertifikası</option>
+                            <option>Ecolabel</option>
+                            <option>Ecocert</option>
+                            <option>EHEDG</option>
+                            <option>EMC Sertifikası</option>
+                            <option>EN Belgeleri</option>
+                            <option>ENPLUS</option>
+                            <option>Ergonomic Product</option>
+                            <option>ETA</option>
+                            <option>EU Type Examination</option>
+                            <option>EUCERTPLAST</option>
+                            <option>Free Sales Certificate</option>
+                            <option>Eurovent</option>
+                            <option>F4 Star</option>
+                            <option>FAMI-QS</option>
+                            <option>FIBC Test</option>
+                            <option>Florida Product Approval</option>
+                            <option>FM Approvals</option>
+                            <option>FSSC 22000</option>
+                            <option>G Mark</option>
+                            <option>Gastec</option>
+                            <option>Blue Angel</option>
+                            <option>Global Security Report</option>
+                            <option>GMP</option>
+                            <option>GMP+</option>
+                            <option>GDP</option>
+                            <option>GS Sertifikası</option>
+                            <option>HACCP</option>
+                            <option>HAR</option>
+                            <option>Helal Belgesi</option>
+                            <option>Hijyen Sertifikası</option>
+                            <option>Indoor Air Quality</option>
+                            <option>Insta-Cert</option>
+                            <option>CSC Sertifikası</option>
+                            <option>ISCC</option>
+                            <option>ISO 9001</option>
+                            <option>ISO 14001</option>
+                            <option>ISO 22000</option>
+                            <option>ISO 27001</option>
+                            <option>ISO 45001</option>
+                            <option>ISO 13485</option>
+                            <option>ISO 50001</option>
+                            <option>ISO 22301</option>
+                            <option>ISO 10002</option>
+                            <option>ISO 37001</option>
+                            <option>İyi Tarım Uygulamaları</option>
+                            <option>JIS</option>
+                            <option>KEMA KEUR</option>
+                            <option>KEYMARK</option>
+                            <option>KITEMARK</option>
+                            <option>KTW-UBA</option>
+                            <option>KRAV</option>
+                            <option>Steel Forging Approval</option>
+                            <option>Master Certificate</option>
+                            <option>Marine Certificate</option>
+                            <option>MDR</option>
+                            <option>MDSAP</option>
+                            <option>Miami Dade NOA</option>
+                            <option>MIL-STD-461F</option>
+                            <option>MIL-STD-810G</option>
+                            <option>MSC Chain</option>
+                            <option>KOT Sertifikası</option>
+                            <option>NF Sertifikası</option>
+                            <option>Operation Clean Sweep</option>
+                            <option>Organik Tarım</option>
+                            <option>NON-GMO</option>
+                            <option>Nordic Swan</option>
+                            <option>OK Biobased</option>
+                            <option>Organik Ürün</option>
+                            <option>Q-Mark</option>
+                            <option>RAL</option>
+                            <option>RMP</option>
+                            <option>RecyClass</option>
+                            <option>Recycled Claim</option>
+                            <option>RTN</option>
+                            <option>SIL Sertifikası</option>
+                            <option>Screened Chemistry</option>
+                            <option>S-Mark</option>
+                            <option>Solar Certificate</option>
+                            <option>Solar Power Certificate</option>
+                            <option>Solar Keymark</option>
+                            <option>SERT Belgesi</option>
+                            <option>StandardsMark</option>
+                            <option>SRCCS</option>
+                            <option>Teknik Reglement</option>
+                            <option>Teknik Svidetelstvo</option>
+                            <option>Toxproof</option>
+                            <option>Transaction Certificate</option>
+                            <option>TQP</option>
+                            <option>TSI Sertifikası</option>
+                            <option>Type Approval</option>
+                            <option>Type Test</option>
+                            <option>UKCA</option>
+                            <option>Ukrsepro</option>
+                            <option>Uygunluk Sertifikası</option>
+                            <option>VDE</option>
+                            <option>VDI 2700</option>
+                            <option>Araç Yedek Parça Sertifikası</option>
+                            <option>Verified Product</option>
+                            <option>VI-1</option>
+                            <option>WRAS</option>
+                            <option>Watermark</option>
+                            <option>Yangın Sertifikası</option>
+                            <option value="Diger">➕ LİSTEDE YOK / DİĞER</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div class="form-group mb-4">
+                    <label class="font-weight-bold text-dark">Plaka / TC No / Özel Not</label>
+                    <input type="text" name="note" class="form-control form-control-lg" placeholder="Örn: 34 ABC 123">
+                </div>
+
+                <div class="form-group mb-4">
+                    <label class="font-weight-bold text-danger">Belge Bitiş Tarihi</label>
+                    <input type="date" name="expiry_date" class="form-control form-control-lg border-danger" required>
+                </div>
+
+                <button type="submit" class="btn btn-success btn-block btn-lg shadow-lg py-3">
+                    <i class="fas fa-save mr-2"></i> Sisteme Kaydet ve Takibi Başlat
+                </button>
+            </form>
+        </div>
     </div>
 </div>
-
-<script>
-// "Listede Yok" Kontrolü
-function checkDiger(sel) {
-    const div = document.getElementById('otherInputDiv');
-    const inp = document.getElementById('otherTitleInput');
-    if (sel.value === 'Diger') {
-        div.style.display = 'block';
-        inp.required = true;
-        inp.name = 'title';
-        sel.removeAttribute('name');
-    } else {
-        div.style.display = 'none';
-        inp.required = false;
-        inp.removeAttribute('name');
-        sel.name = 'title';
-        otomatikTarih(sel.value);
-    }
-}
-
-// Otomatik Tarih Hesaplama
-const sureler = {
-    'Araç Muayenesi': 365, 'Trafik Sigortası': 365, 'Kasko (İhtiyari Mali Mesuliyet)': 365,
-    'Sanayi Sicil Belgesi': 730, 'Yıllık İşletme Cetveli': 120,
-    'Kış Lastiği Değişimi': 180, 'Yaz Lastiği Değişimi': 180, 'Egzoz Emisyon Ölçümü': 365
-};
-
-function otomatikTarih(val) {
-    const t = document.getElementById('expiry_date');
-    if (!t || !val) return;
-    const gun = sureler[val] || 365;
-    const d = new Date();
-    d.setDate(d.getDate() + gun);
-    t.value = d.toISOString().split('T')[0];
-}
-
-// Araç Belge Listeleri (Kasko ve Lastik Değişimleri Buraya Özel!)
-const aracBelgeleri = {
-    binek: ['Araç Muayenesi', 'Trafik Sigortası', 'Kasko (İhtiyari Mali Mesuliyet)', 'Egzoz Emisyon Ölçümü', 'Kış Lastiği Değişimi', 'Yaz Lastiği Değişimi'],
-    ticari_hafif: ['Araç Muayenesi', 'Trafik Sigortası', 'K2 Yetki Belgesi', 'Egzoz Emisyon Ölçümü', 'Kış Lastiği Değişimi', 'Yaz Lastiği Değişimi'],
-    ticari_agir: ['Araç Muayenesi', 'Trafik Sigortası', 'Takoğraf Kalibrasyonu', 'Egzoz Emisyon Ölçümü', 'Kış Lastiği Değişimi', 'Yaz Lastiği Değişimi']
-};
-
-function aracTipiDegisti(sel) {
-    const div = document.getElementById('aracBelgeDiv');
-    const s = document.getElementById('aracSelect');
-    div.style.display = sel.value ? 'block' : 'none';
-    s.innerHTML = '<option value="">-- Seçiniz --</option>';
-    if(sel.value) {
-        aracBelgeleri[sel.value].forEach(b => {
-            let o = document.createElement('option'); o.value=b; o.text=b; s.appendChild(o);
-        });
-        let d = document.createElement('option'); d.value='Diger'; d.text='➕ LİSTEDE YOK'; s.appendChild(d);
-    }
-}
-
-// Arama Motoru
-document.getElementById('searchInput')?.addEventListener('input', function() {
-    const f = this.value.toUpperCase();
-    document.getElementById('sertifikaSelect').querySelectorAll('option').forEach(o => {
-        o.style.display = o.text.toUpperCase().includes(f) ? '' : 'none';
-    });
-});
-</script>
 {% endblock %}
