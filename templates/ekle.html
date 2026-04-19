@@ -4,8 +4,8 @@
     <div class="card shadow-lg border-0" style="border-radius: 15px;">
         <div class="card-header p-4 {% if cat == 'Arac' %}bg-warning text-dark{% elif cat == 'Personel' %}bg-info text-white{% elif cat == 'Tesis' %}bg-secondary text-white{% else %}bg-primary text-white{% endif %}" style="border-radius: 15px 15px 0 0;">
             <h3 class="mb-0">
-                <i class="fas fa-plus-circle mr-2"></i> Yeni Kayıt: 
-                {% if cat == 'Arac' %}Araç & Filo{% elif cat == 'Personel' %}Personel & SRC{% elif cat == 'Tesis' %}Tesis & Mekan{% else %}Üretim & Ürün{% endif %}
+                <i class="fas {% if cat == 'Arac' %}fa-truck{% elif cat == 'Personel' %}fa-user-tie{% elif cat == 'Tesis' %}fa-industry{% else %}fa-box-open{% endif %} mr-2"></i> 
+                Yeni Kayıt: {% if cat == 'Arac' %}Araç & Filo{% elif cat == 'Personel' %}Personel & SRC{% elif cat == 'Tesis' %}Tesis & Mekan{% else %}Üretim & Ürün{% endif %}
             </h3>
         </div>
         
@@ -15,33 +15,73 @@
 
                 <div class="row">
                     <div class="col-md-6 form-group mb-4">
-                        <label class="font-weight-bold text-success"><i class="fab fa-whatsapp"></i> WhatsApp No (905...)</label>
+                        <label class="font-weight-bold text-success"><i class="fab fa-whatsapp"></i> Hatırlatma WhatsApp (905...)</label>
                         <input type="text" name="whatsapp_no" class="form-control form-control-lg" placeholder="905321234567" required>
                     </div>
                     <div class="col-md-6 form-group mb-4">
-                        <label class="font-weight-bold text-dark">Firma / Müşteri Adı</label>
-                        <input type="text" name="firma_adi" class="form-control form-control-lg" placeholder="Firma adını yazın" required>
+                        <label class="font-weight-bold text-dark">Firma / Kurum Adı</label>
+                        <input type="text" name="firma_adi" class="form-control form-control-lg" placeholder="Müşteri/Firma adını yazın" required>
                     </div>
                 </div>
 
-                <div class="form-group mb-4">
-                    <label class="font-weight-bold text-dark">Belge / Sertifika Tipi Seçin (Tüm Liste)</label>
-                    <select name="title" class="form-control form-control-lg" required size="12">
-                        <optgroup label="⭐ BU KATEGORİ İÇİN ÖNERİLENLER">
-                            {% if cat == 'Arac' %}
-                                <option value="Araç Muayenesi">🚚 Araç Muayenesi</option>
-                                <option value="Zorunlu Trafik Sigortası">🛡️ Zorunlu Trafik Sigortası</option>
-                                <option value="Kasko Sigortası">📈 Kasko Sigortası</option>
-                            {% elif cat == 'Personel' %}
-                                <option value="SRC 1/2/3/4 Belgesi">🪪 SRC Belgesi</option>
-                                <option value="Psikoteknik Belgesi">🧠 Psikoteknik Belgesi</option>
-                            {% elif cat == 'Tesis' %}
-                                <option value="Yangın Tüpü Kontrolü">🔥 Yangın Tüpü Kontrolü</option>
-                                <option value="Asansör Periyodik Bakımı">🛗 Asansör Periyodik Bakımı</option>
-                            {% endif %}
-                        </optgroup>
+                <div class="row bg-light p-3 rounded mb-4 shadow-sm border">
+                    {% if cat == 'Arac' %}
+                    <div class="col-md-12">
+                        <label class="font-weight-bold text-primary">Araç Detayları (Plaka / Marka / Model)</label>
+                        <input type="text" name="note" class="form-control form-control-lg" placeholder="Örn: 34 ABC 123 - Mercedes Axor" required>
+                    </div>
+                    {% elif cat == 'Personel' %}
+                    <div class="col-md-12">
+                        <label class="font-weight-bold text-primary">Personel Bilgileri (Ad Soyad / TC No / Uyruk)</label>
+                        <input type="text" name="note" class="form-control form-control-lg" placeholder="Örn: Erhan ADEA - 12345678901 - T.C." required>
+                    </div>
+                    {% else %}
+                    <div class="col-md-12">
+                        <label class="font-weight-bold text-primary">Tanımlayıcı Not (Üretim Hattı / Ürün Grubu / Ek Bilgi)</label>
+                        <input type="text" name="note" class="form-control form-control-lg" placeholder="Belgeye dair ayırt edici notu buraya yazın">
+                    </div>
+                    {% endif %}
+                </div>
 
-                        <optgroup label="📋 TÜM SERTİFİKA KÜTÜPHANESİ">
+                <div class="form-group mb-4">
+                    <label class="font-weight-bold text-dark">Sertifika / Belge Tipi Seçin</label>
+                    <select name="title" class="form-control form-control-lg" required size="12">
+                        
+                        {% if cat == 'Arac' %}
+                            <optgroup label="🚚 ARAÇ & FİLO ÖZEL">
+                                <option value="Araç Muayenesi (TÜVTÜRK)">Araç Muayenesi</option>
+                                <option value="Zorunlu Trafik Sigortası">Zorunlu Trafik Sigortası</option>
+                                <option value="Kasko Sigortası">Kasko Sigortası</option>
+                                <option value="Egzoz Emisyon Ölçümü">Egzoz Emisyon Ölçümü</option>
+                                <option value="K Belgesi (Yetki Belgesi)">K Belgesi</option>
+                                <option value="Takograf Muayenesi">Takograf Muayenesi</option>
+                                <option value="VDI 2700 (Yük Güvenliği)">VDI 2700</option>
+                                <option value="Araç Yedek Parça Sertifikası">Araç Yedek Parça Sertifikası</option>
+                            </optgroup>
+                        {% elif cat == 'Personel' %}
+                            <optgroup label="👤 PERSONEL & SRC ÖZEL">
+                                <option value="SRC 1 (Uluslararası Yolcu)">SRC 1 Belgesi</option>
+                                <option value="SRC 2 (Yurtiçi Yolcu)">SRC 2 Belgesi</option>
+                                <option value="SRC 3 (Uluslararası Eşya)">SRC 3 Belgesi</option>
+                                <option value="SRC 4 (Yurtiçi Eşya)">SRC 4 Belgesi</option>
+                                <option value="Psikoteknik Değerlendirme">Psikoteknik Belgesi</option>
+                                <option value="Dijital Ehliyet Kartı">Dijital Ehliyet Kartı</option>
+                                <option value="İSG Eğitimi">İSG Eğitimi</option>
+                                <option value="Mesleki Yeterlilik Belgesi">Mesleki Yeterlilik</option>
+                            </optgroup>
+                        {% elif cat == 'Tesis' %}
+                            <optgroup label="🏢 TESİS & MEKAN ÖZEL">
+                                <option value="Kapasite Raporu">Kapasite Raporu</option>
+                                <option value="Yıllık İşletme Cetveli">Yıllık İşletme Cetveli</option>
+                                <option value="İtfaiye Uygunluk Raporu">İtfaiye Uygunluk Raporu</option>
+                                <option value="Sanayi Sicil Belgesi">Sanayi Sicil Belgesi</option>
+                                <option value="İşyeri Açma ve Çalışma Ruhsatı">İşyeri Açma Ruhsatı</option>
+                                <option value="Yangın Sertifikası">Yangın Sertifikası</option>
+                                <option value="Asansör Bakımı">Asansör Bakımı</option>
+                            </optgroup>
+                        {% endif %}
+
+                        <optgroup label="📦 ÜRETİM & ÜRÜN KÜTÜPHANESİ (TAM LİSTE)">
                             <option>ACS (Sağlık Uygunluk Sertifikası)</option>
                             <option>ADR Sertifikaları</option>
                             <option>AD 2000 CODE</option>
@@ -163,21 +203,13 @@
                             <option>Ukrsepro</option>
                             <option>Uygunluk Sertifikası</option>
                             <option>VDE</option>
-                            <option>VDI 2700</option>
-                            <option>Araç Yedek Parça Sertifikası</option>
                             <option>Verified Product</option>
                             <option>VI-1</option>
                             <option>WRAS</option>
                             <option>Watermark</option>
-                            <option>Yangın Sertifikası</option>
-                            <option value="Diger">➕ LİSTEDE YOK / DİĞER</option>
                         </optgroup>
+                        <option value="Diger">➕ LİSTEDE YOK / MANUEL YAZACAĞIM</option>
                     </select>
-                </div>
-
-                <div class="form-group mb-4">
-                    <label class="font-weight-bold text-dark">Plaka / TC No / Özel Not</label>
-                    <input type="text" name="note" class="form-control form-control-lg" placeholder="Örn: 34 ABC 123">
                 </div>
 
                 <div class="form-group mb-4">
@@ -186,7 +218,7 @@
                 </div>
 
                 <button type="submit" class="btn btn-success btn-block btn-lg shadow-lg py-3">
-                    <i class="fas fa-save mr-2"></i> Sisteme Kaydet ve Takibi Başlat
+                    <i class="fas fa-check-double mr-2"></i> Verileri Kaydet ve Takibe Al
                 </button>
             </form>
         </div>
