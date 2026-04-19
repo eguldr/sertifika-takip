@@ -2,41 +2,85 @@
 {% block content %}
 <style>
     :root {
-        --navy-primary: #1a237e; /* Derin Lacivert */
+        --navy-primary: #1a237e;
         --navy-dark: #121858;
         --silver-light: #f5f7fa;
         --silver-accent: #e0e0e0;
-        --gold-accent: #c5a059; /* Hafif Altın Vurgu */
+        --gold-accent: #c5a059;
     }
     body { background-color: var(--silver-light); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    .card { border: none; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-    .bg-navy { background-color: var(--navy-primary) !important; color: white; }
-    .table thead th { background-color: var(--navy-primary); color: white; border: none; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; }
-    .badge-success { background-color: #2e7d32; } /* Güvenli Yeşil */
-    .badge-warning { background-color: #f9a825; color: #000; } /* Dikkat Sarı */
-    .badge-danger { background-color: #c62828; } /* Kritik Kırmızı */
-    .nav-stats { border-left: 4px solid var(--gold-accent); }
+    .card { border: none; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); transition: 0.3s; }
+    .card:hover { transform: translateY(-5px); }
+    .table thead th { background-color: var(--navy-primary); color: white; border: none; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; }
+    .badge-success { background-color: #2e7d32; color: white; }
+    .badge-warning { background-color: #f9a825; color: #000; }
+    .badge-danger { background-color: #c62828; color: white; }
 </style>
 
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="font-weight-bold text-navy" style="color: var(--navy-primary);">EG Optimal Danışmanlık</h2>
-            <p class="text-muted">Sertifika ve Belge Yönetim Portalı</p>
+            <h2 class="font-weight-bold" style="color: var(--navy-primary); margin-bottom: 0;">EG Optimal Danışmanlık</h2>
+            <p class="text-muted small">Sertifika ve Belge Yönetim Portalı</p>
         </div>
-        <a href="{{ url_for('ekle') }}" class="btn btn-primary px-4 shadow" style="background-color: var(--navy-primary); border: none;">
+        <a href="{{ url_for('ekle') }}" class="btn btn-primary px-4 shadow" style="background-color: var(--navy-primary); border: none; border-radius: 8px;">
             <i class="fas fa-plus-circle mr-2"></i> Yeni Sertifika Ekle
         </a>
     </div>
 
-    <div class="row">
-        <div class="col-md-4 mb-4">
-            <div class="card nav-stats bg-white py-3 px-4">
-                <div class="text-muted small font-weight-bold">TOPLAM TAKİP</div>
-                <div class="h3 font-weight-bold mb-0 text-dark">{{ sertifikalar|length }} Adet</div>
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm h-100 py-2" style="border-left: 5px solid #c62828;">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">KRİTİK (SON 30 GÜN)</div>
+                            <div class="h4 mb-0 font-weight-bold text-dark">
+                                {{ sertifikalar|selectattr('expiry_date', 'le', bugun + timedelta(days=30))|list|length }} Adet
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-danger"></i>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm h-100 py-2" style="border-left: 5px solid #f9a825;">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">YAKLAŞAN (1-3 AY)</div>
+                            <div class="h4 mb-0 font-weight-bold text-dark">
+                                {{ sertifikalar|selectattr('expiry_date', 'gt', bugun + timedelta(days=30))|selectattr('expiry_date', 'le', bugun + timedelta(days=90))|list|length }} Adet
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-warning"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="card shadow-sm h-100 py-2" style="border-left: 5px solid var(--navy-primary);">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">TOPLAM TAKİP</div>
+                            <div class="h4 mb-0 font-weight-bold text-dark">{{ sertifikalar|length }} Adet</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-list-ul fa-2x text-primary"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="card shadow-lg">
         <div class="card-body p-0">
@@ -44,37 +88,42 @@
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th class="pl-4">Belge / Firma Tanımı</th>
-                            <th>Bitiş Tarihi</th>
-                            <th>Kalan Süre</th>
-                            <th>Durum Analizi</th>
-                            <th class="text-center">İşlemler</th>
+                            <th class="pl-4 py-3">Belge / Firma Tanımı</th>
+                            <th class="py-3">Bitiş Tarihi</th>
+                            <th class="py-3">Kalan Süre</th>
+                            <th class="py-3">Durum Analizi</th>
+                            <th class="text-center py-3">İşlemler</th>
                         </tr>
                     </thead>
                     <tbody style="background-color: white;">
                         {% for s in sertifikalar %}
-                        {% set kalan = (s.bitis_tarihi - bugun).days %}
+                        {% set kalan = (s.expiry_date - bugun).days %}
                         <tr style="border-bottom: 1px solid #eee;">
                             <td class="pl-4 align-middle">
-                                <span class="font-weight-bold" style="color: var(--navy-dark);">{{ s.ad }}</span>
+                                <span class="font-weight-bold" style="color: var(--navy-dark);">{{ s.title }}</span><br>
+                                <small class="text-muted">{{ s.firma_adi }}</small>
                             </td>
-                            <td class="align-middle text-muted">{{ s.bitis_tarihi.strftime('%d.%m.%Y') }}</td>
+                            <td class="align-middle text-muted">{{ s.expiry_date.strftime('%d.%m.%Y') }}</td>
                             <td class="align-middle">
                                 <span class="badge px-3 py-2 {% if kalan <= 30 %}badge-danger{% elif kalan <= 90 %}badge-warning{% else %}badge-success{% endif %}" style="border-radius: 20px;">
-                                    {{ kalan }} Gün Kaldı
+                                    {{ kalan }} Gün
                                 </span>
                             </td>
                             <td class="align-middle">
                                 {% if kalan <= 0 %}
                                     <small class="text-danger font-weight-bold"><i class="fas fa-ban"></i> SÜRESİ DOLMUŞ</small>
-                                {% elif kalan <= 180 %}
+                                {% elif kalan <= 90 %}
                                     <small class="text-warning font-weight-bold"><i class="fas fa-clock"></i> YENİLEME SÜRECİ</small>
                                 {% else %}
-                                    <small class="text-success font-weight-bold"><i class="fas fa-shield-alt"></i> AKTİF / GÜVENLİ</small>
+                                    <small class="text-success font-weight-bold"><i class="fas fa-shield-alt"></i> GÜVENLİ</small>
                                 {% endif %}
                             </td>
                             <td class="text-center align-middle">
-                                <a href="{{ url_for('sil', id=s.id) }}" class="btn btn-sm text-danger" onclick="return confirm('Bu kaydı sistemden silmek istediğinize emin misiniz?')">
+                                <a href="https://wa.me/{{ s.whatsapp_no }}?text=Merhaba%20{{ s.firma_adi }},%20EG%20Optimal%20sistemimizdeki%20kayd%C4%B1n%C4%B1za%20g%C3%B6re%20'{{ s.title }}'%20belgenizin%20bitmesine%20az%20bir%20s%C3%BCre%20kalm%C4%B1%C5%9Ft%C4%B1r.%20Yenileme%20i%C5%9Flemleri%20i%C3%A7in%20bilgi%20alabilirsiniz." 
+                                   class="btn btn-sm btn-outline-success mr-2" target="_blank" title="WhatsApp Hatırlatması Gönder">
+                                    <i class="fab fa-whatsapp"></i>
+                                </a>
+                                <a href="{{ url_for('sil', id=s.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bu kaydı silmek istediğinize emin misiniz?')">
                                     <i class="fas fa-trash-alt"></i>
                                 </a>
                             </td>
