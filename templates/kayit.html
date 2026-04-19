@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% block content %}
-
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 <div class="row justify-content-center mt-5">
 <div class="col-md-4">
     <div class="text-center mb-4">
@@ -23,6 +23,7 @@
                     <label class="form-label">Şifre</label>
                     <input type="password" name="password" class="form-control" required>
                 </div>
+                <div class="g-recaptcha" data-sitekey="6Lfdnb8sAAAAAE0zhhXIG644BiU2IrdyWkFpd6V2"></div>
                 <button type="submit" class="btn btn-primary w-100">Kayıt Ol</button>
             </form>
             <hr>
