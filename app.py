@@ -25,7 +25,7 @@ if uri and uri.startswith("postgres://"):
 app.config['SQLALCHEMY_DATABASE_URI'] = uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Mail Ayarları (Kendi Gmail bilgilerini buraya sabitledim)
+# Mail Ayarları
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
@@ -58,9 +58,9 @@ class Entry(db.Model):
     title       = db.Column(db.String(100))
     firma_adi   = db.Column(db.String(100))
     whatsapp_no = db.Column(db.String(20))
-    danisman_no = db.Column(db.String(20)) # Danışman/OSGB Takip No
+    danisman_no = db.Column(db.String(20))
     expiry_date = db.Column(db.Date)
-    risk_value  = db.Column(db.String(100)) # Notlar alanı olarak kullanılır
+    risk_value  = db.Column(db.String(100))
 
 class HatirlatmaLog(db.Model):
     id        = db.Column(db.Integer, primary_key=True)
@@ -77,12 +77,11 @@ def load_user(user_id):
 def setup_database():
     if not hasattr(app, 'db_initialized'):
         with app.app_context():
-            # SADECE BU SATIR KALSIN:
             db.create_all()
         app.db_initialized = True
 
 # ============================================================
-# ŞİFRE SIFIRLAMA VE DOĞRULAMA
+# ŞİFRE SIFIRLAMA VE ONAY SİSTEMİ
 # ============================================================
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
@@ -92,10 +91,10 @@ def forgot_password():
         if user:
             token = ts.dumps(email, salt='recover-key')
             recover_url = url_for('reset_password', token=token, _external=True)
-            msg = Message("EG Optimal - Şifre Sıfırlama Talebi", recipients=[email])
-            msg.body = f"Şifrenizi sıfırlamak için tıklayın: {recover_url}\nSüre: 1 Saat."
+            msg = Message("EG Optimal - Şifre Sıfırlama", recipients=[email])
+            msg.body = f"Şifrenizi sıfırlamak için tıklayın: {recover_url}"
             mail.send(msg)
-            flash('Sıfırlama e-postası gönderildi.', 'success')
+            flash('Şifre sıfırlama maili gönderildi.', 'success')
             return redirect(url_for('login'))
         flash('E-posta bulunamadı.', 'danger')
     return render_template('forgot_password.html')
@@ -105,7 +104,7 @@ def reset_password(token):
     try:
         email = ts.loads(token, salt='recover-key', max_age=3600)
     except:
-        flash('Bağlantı geçersiz veya süresi dolmuş.', 'danger')
+        flash('Link geçersiz.', 'danger')
         return redirect(url_for('forgot_password'))
     if request.method == 'POST':
         user = User.query.filter_by(email=email).first()
@@ -129,7 +128,7 @@ def confirm_email(token):
     return redirect(url_for('login'))
 
 # ============================================================
-# ANA ROTALAR VE DASHBOARD
+# DASHBOARD VE SERTİFİKA İŞLEMLERİ
 # ============================================================
 @app.route('/')
 def index():
@@ -144,7 +143,7 @@ def login():
             db.session.commit()
             login_user(user)
             return redirect(url_for('dashboard'))
-        flash('Hata!', 'danger')
+        flash('Giriş başarısız!', 'danger')
     return render_template('login.html')
 
 @app.route('/kayit', methods=['GET', 'POST'])
@@ -152,13 +151,13 @@ def kayit():
     if request.method == 'POST':
         email = request.form.get('email')
         if User.query.filter_by(email=email).first():
-            flash('Zaten kayıtlı.', 'warning')
+            flash('Bu mail zaten kayıtlı.', 'warning')
             return redirect(url_for('kayit'))
-        new_user = User(email=email, password=generate_password_hash(request.form.get('password')), company_name=request.form.get('company_name'), is_confirmed=False)
+        new_user = User(email=email, password=generate_password_hash(request.form.get('password')), company_name=request.form.get('company_name'))
         db.session.add(new_user); db.session.commit()
         token = ts.dumps(email, salt='email-confirm')
         confirm_url = url_for('confirm_email', token=token, _external=True)
-        msg = Message("Onay Maili", recipients=[email]); msg.body = f"Onay: {confirm_url}"; mail.send(msg)
+        msg = Message("EG Optimal Onay", recipients=[email]); msg.body = f"Onay linki: {confirm_url}"; mail.send(msg)
         flash('Onay maili gönderildi.', 'success')
         return redirect(url_for('login'))
     return render_template('kayit.html')
@@ -207,11 +206,20 @@ def sil(id):
 @login_required
 def export_excel():
     entries = Entry.query.filter_by(user_id=current_user.id).all()
-    data = [{"Firma": e.firma_adi, "Belge": e.title, "Not": e.risk_value, "Müşteri No": e.whatsapp_no, "Takipçi No": e.danisman_no, "Bitiş": e.expiry_date.strftime('%d.%m.%Y') if e.expiry_date else ""} for e in entries]
+    data = [{"Firma": e.firma_adi, "Belge": e.title, "Not": e.risk_value, "WhatsApp": e.whatsapp_no, "Danisman No": e.danisman_no, "Bitiş": e.expiry_date.strftime('%d.%m.%Y') if e.expiry_date else ""} for e in entries]
     df = pd.DataFrame(data); output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer: df.to_excel(writer, index=False)
     output.seek(0)
-    return send_file(output, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", as_attachment=True, download_name="Rapor.xlsx")
+    return send_file(output, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", as_attachment=True, download_name="EG_Optimal_Rapor.xlsx")
+
+@app.route('/admin_panel')
+@login_required
+def admin_panel():
+    if not current_user.email == 'erhanadea@gmail.com':
+        return redirect(url_for('dashboard'))
+    logs  = HatirlatmaLog.query.order_by(HatirlatmaLog.tarih.desc()).limit(50).all()
+    users = User.query.all()
+    return render_template('admin.html', logs=logs, users=users)
 
 @app.route('/logout')
 @login_required
