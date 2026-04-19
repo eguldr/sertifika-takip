@@ -355,7 +355,7 @@ def dashboard():
         'Tesis':    'Tesis & Mekan'
     }
 
-   return render_template(
+  return render_template(
         'dashboard.html',
         user=current_user,
         urun=urun, arac=arac, pers=pers, tesis=tesis,
