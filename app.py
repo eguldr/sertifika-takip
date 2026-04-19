@@ -60,6 +60,7 @@ class Entry(db.Model):
     title       = db.Column(db.String(100))
     firma_adi   = db.Column(db.String(100))
     whatsapp_no = db.Column(db.String(20))
+    danisman_no = db.Column(db.String(20)) # YENİ SÜTUN: OSGB/Danışman için
     expiry_date = db.Column(db.Date)
     risk_value  = db.Column(db.String(100))
 
@@ -291,12 +292,11 @@ def sertifikalar():
 @app.route('/ekle', methods=['GET', 'POST'])
 @login_required
 def ekle():
-    # Sayfa hangi kategoriden çağrıldı? (Varsayılan: Urun)
     cat = request.args.get('cat', 'Urun')
     
     if request.method == 'POST':
         exp_str     = request.form.get('expiry_date')
-        category    = request.form.get('category') # Formdan gelen gizli kategori verisi
+        category    = request.form.get('category')
         title       = request.form.get('title')
         expiry_date = datetime.strptime(exp_str, '%Y-%m-%d').date() if exp_str else None
 
@@ -306,13 +306,13 @@ def ekle():
             title       = title,
             firma_adi   = request.form.get('firma_adi', ''),
             whatsapp_no = request.form.get('whatsapp_no', ''),
-            risk_value  = request.form.get('note', ''), # risk_value alanını Notlar için kullanıyoruz
+            danisman_no = request.form.get('danisman_no', ''), # Danışman nosunu alıyoruz
+            risk_value  = request.form.get('note', ''),
             expiry_date = expiry_date
         )
         db.session.add(new_entry)
         db.session.commit()
         send_confirmation_email(current_user.email, title, expiry_date)
-        # Kayıttan sonra geldiği kategoriye geri dön
         return redirect(url_for('sertifikalar', cat=category))
 
     return render_template('ekle.html', cat=cat)
@@ -339,7 +339,8 @@ def export_excel():
             "Firma Adı":    e.firma_adi,
             "Belge Adı":    e.title,
             "Plaka/TC/Not": e.risk_value,
-            "WhatsApp":     e.whatsapp_no,
+            "Müşteri WhatsApp": e.whatsapp_no,
+            "Danışman WhatsApp": e.danisman_no, # Excel'e yeni sütun
             "Bitiş Tarihi": e.expiry_date.strftime('%d.%m.%Y') if e.expiry_date else ""
         }
         for e in entries
