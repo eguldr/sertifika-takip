@@ -90,10 +90,6 @@ def setup_database():
 # ============================================================
 @app.route('/cron/check_reminders')
 def cron_check_reminders():
-    """
-    Bu yol (route) her gün bir kez tetiklendiğinde 
-    vadesi yaklaşan sertifikalar için otomatik mail atar.
-    """
     with app.app_context():
         bugun = date.today()
         tum_kayitlar = Entry.query.all()
@@ -105,7 +101,6 @@ def cron_check_reminders():
                 
             kalan_gun = (e.expiry_date - bugun).days
             
-            # 180 Gün (6 Ay), 90 Gün (3 Ay), 30 Gün (1 Ay)
             if kalan_gun in [180, 90, 30]:
                 user = User.query.get(e.user_id)
                 if user:
@@ -132,7 +127,6 @@ EG Optimal Danışmanlık
 """
                         mail.send(msg)
                         
-                        # Log kaydı ekle
                         yeni_log = HatirlatmaLog(
                             entry_id=e.id,
                             firma_adi=e.firma_adi,
@@ -198,16 +192,6 @@ Bu link 24 saat boyunca geçerlidir.
         return False
 
 
-def verify_recaptcha(response_token):
-    secret = os.environ.get('RECAPTCHA_SECRET_KEY')
-    if not secret: return True # Geliştirme aşaması için
-    result = requests.post(
-        'https://www.google.com/recaptcha/api/siteverify',
-        data={'secret': secret, 'response': response_token}
-    ).json()
-    return result.get('success', False)
-
-
 # ============================================================
 # ROTALAR
 # ============================================================
@@ -221,10 +205,6 @@ def index():
 @app.route('/kayit', methods=['GET', 'POST'])
 def kayit():
     if request.method == 'POST':
-        if not verify_recaptcha(request.form.get('g-recaptcha-response', '')):
-            flash("Lütfen robot olmadığınızı doğrulayın!", "danger")
-            return redirect(url_for('kayit'))
-
         email        = request.form.get('email', '').strip()
         password     = request.form.get('password', '')
         company_name = request.form.get('company_name', '').strip()
@@ -237,7 +217,6 @@ def kayit():
             email=email,
             password=generate_password_hash(password),
             company_name=company_name,
-            is_admin=False,
             is_confirmed=False
         )
         db.session.add(new_user)
@@ -247,10 +226,7 @@ def kayit():
         flash('Kayıt başarılı! Lütfen e-postanızı onaylayın.', 'success')
         return redirect(url_for('login'))
 
-    return render_template(
-        'kayit.html',
-        recaptcha_site_key=os.environ.get('RECAPTCHA_SITE_KEY', '')
-    )
+    return render_template('kayit.html')
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -275,65 +251,6 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for('login'))
-
-
-@app.route('/confirm/<token>')
-def confirm_email(token):
-    try:
-        email = ts.loads(token, salt='email-confirm', max_age=86400)
-    except Exception:
-        flash('Onay linki geçersiz veya süresi dolmuş.', 'danger')
-        return redirect(url_for('login'))
-
-    user = User.query.filter_by(email=email).first_or_404()
-    if user.is_confirmed:
-        flash('Hesabınız zaten onaylanmış.', 'info')
-    else:
-        user.is_confirmed = True
-        db.session.commit()
-        flash('Hesabınız başarıyla onaylandı! Giriş yapabilirsiniz.', 'success')
-    return redirect(url_for('login'))
-
-
-@app.route('/forgot_password', methods=['GET', 'POST'])
-def forgot_password():
-    if request.method == 'POST':
-        email = request.form.get('email', '').strip()
-        user  = User.query.filter_by(email=email).first()
-        if user:
-            token       = ts.dumps(email, salt='recover-key')
-            recover_url = url_for('reset_password', token=token, _external=True)
-            msg = Message(
-                "Şifre Sıfırlama Talebi - Sertifika Takip",
-                recipients=[email]
-            )
-            msg.body = (
-                f"Şifrenizi sıfırlamak için şu bağlantıya tıklayın:\n\n"
-                f"{recover_url}\n\nBu bağlantı 30 dakika geçerlidir."
-            )
-            mail.send(msg)
-        flash('E-posta adresiniz kayıtlıysa şifre sıfırlama bağlantısı gönderilecektir.', 'info')
-        return redirect(url_for('login'))
-    return render_template('forgot_password.html')
-
-
-@app.route('/reset_password/<token>', methods=['GET', 'POST'])
-def reset_password(token):
-    try:
-        email = ts.loads(token, salt='recover-key', max_age=1800)
-    except Exception:
-        flash('Şifre sıfırlama bağlantısı geçersiz veya süresi dolmuş.', 'danger')
-        return redirect(url_for('forgot_password'))
-
-    if request.method == 'POST':
-        password = request.form.get('password', '')
-        user     = User.query.filter_by(email=email).first()
-        if user:
-            user.password = generate_password_hash(password)
-            db.session.commit()
-            flash('Şifreniz başarıyla güncellendi. Giriş yapabilirsiniz.', 'success')
-            return redirect(url_for('login'))
-    return render_template('reset_password.html', token=token)
 
 
 @app.route('/dashboard')
@@ -368,16 +285,18 @@ def sertifikalar():
     cat   = request.args.get('cat')
     bugun = date.today()
     items = Entry.query.filter_by(user_id=current_user.id, category=cat).all()
-
     return render_template('sertifikalar.html', items=items, bugun=bugun, cat=cat)
 
 
 @app.route('/ekle', methods=['GET', 'POST'])
 @login_required
 def ekle():
+    # Sayfa hangi kategoriden çağrıldı? (Varsayılan: Urun)
+    cat = request.args.get('cat', 'Urun')
+    
     if request.method == 'POST':
         exp_str     = request.form.get('expiry_date')
-        category    = request.form.get('category')
+        category    = request.form.get('category') # Formdan gelen gizli kategori verisi
         title       = request.form.get('title')
         expiry_date = datetime.strptime(exp_str, '%Y-%m-%d').date() if exp_str else None
 
@@ -387,15 +306,16 @@ def ekle():
             title       = title,
             firma_adi   = request.form.get('firma_adi', ''),
             whatsapp_no = request.form.get('whatsapp_no', ''),
-            risk_value  = request.form.get('risk_value', ''),
+            risk_value  = request.form.get('note', ''), # risk_value alanını Notlar için kullanıyoruz
             expiry_date = expiry_date
         )
         db.session.add(new_entry)
         db.session.commit()
         send_confirmation_email(current_user.email, title, expiry_date)
-        return redirect(url_for('sertifikalar', cat=new_entry.category))
+        # Kayıttan sonra geldiği kategoriye geri dön
+        return redirect(url_for('sertifikalar', cat=category))
 
-    return render_template('ekle.html')
+    return render_template('ekle.html', cat=cat)
 
 
 @app.route('/sil/<int:id>')
@@ -435,7 +355,6 @@ def export_excel():
         as_attachment=True,
         download_name="EG_Optimal_Rapor.xlsx"
     )
-
 
 @app.route('/admin_panel')
 @login_required
