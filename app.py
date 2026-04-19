@@ -192,7 +192,7 @@ def kayit():
         verify_response = requests.post(
             'https://www.google.com/recaptcha/api/siteverify',
             data={
-                'secret': '6Lfdnb8sAAAAAM1H61QijX4-opiKk8_EFM7oofhg',
+                'secret': '6LdXpb8sAAAAAF9M42YWYdQStV9o-1DjOB2AeELk',
                 'response': recaptcha_response
             }
         ).json()
