@@ -339,23 +339,19 @@ def reset_password(token):
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    bugun  = date.today()
+    bugun = date.today()
     tum_kayitlar = Entry.query.filter_by(user_id=current_user.id).all()
-
-    # İstatistikler
-    urun  = Entry.query.filter_by(user_id=current_user.id, category='Urun').count()
-    arac  = Entry.query.filter_by(user_id=current_user.id, category='Arac').count()
-    pers  = Entry.query.filter_by(user_id=current_user.id, category='Personel').count()
+    urun = Entry.query.filter_by(user_id=current_user.id, category='Urun').count()
+    arac = Entry.query.filter_by(user_id=current_user.id, category='Arac').count()
+    pers = Entry.query.filter_by(user_id=current_user.id, category='Personel').count()
     tesis = Entry.query.filter_by(user_id=current_user.id, category='Tesis').count()
-
     kat_isim = {
-        'Urun':     'Üretim & Ürün',
-        'Arac':     'Araç & Filo',
+        'Urun': 'Üretim & Ürün',
+        'Arac': 'Araç & Filo',
         'Personel': 'Personel & SRC',
-        'Tesis':    'Tesis & Mekan'
+        'Tesis': 'Tesis & Mekan'
     }
-
-  return render_template(
+    return render_template(
         'dashboard.html',
         user=current_user,
         urun=urun, arac=arac, pers=pers, tesis=tesis,
