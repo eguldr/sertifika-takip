@@ -12,13 +12,23 @@
     .card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
     .table thead th { background-color: var(--navy-primary); color: white; border: none; font-size: 0.75rem; }
     .alert-bar { background: linear-gradient(90deg, #c62828, #b71c1c); color: white; border-radius: 8px; font-weight: bold; }
+    
+    /* Yanıp sönen efekt için ekledim */
+    .animate-pulse {
+        animation: pulse-red 2s infinite;
+    }
+    @keyframes pulse-red {
+        0% { box-shadow: 0 0 0 0 rgba(198, 40, 40, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(198, 40, 40, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(198, 40, 40, 0); }
+    }
 </style>
 
 <div class="container-fluid py-4">
 
     {% set bu_hafta = sertifikalar|selectattr('expiry_date', 'le', bugun + timedelta(days=7))|list %}
     {% if bu_hafta|length > 0 %}
-    <div class="alert alert-bar shadow-sm d-flex justify-content-between align-items-center p-3 mb-4 animate__animated animate__pulse animate__infinite">
+    <div class="alert alert-bar shadow-sm d-flex justify-content-between align-items-center p-3 mb-4 animate-pulse">
         <span><i class="fas fa-exclamation-triangle mr-2"></i> DİKKAT: Bu hafta süresi dolacak {{ bu_hafta|length }} adet kritik belgeniz var!</span>
         <button class="btn btn-sm btn-light font-weight-bold" onclick="filterTable('danger')">Hemen İncele</button>
     </div>
@@ -68,7 +78,7 @@
         </div>
     </div>
 
-    <div class="card shadow-lg overflow-hidden">
+    <div class="card shadow-lg overflow-hidden" id="tabloBolumu">
         <div class="card-body p-0">
             <div class="table-responsive">
                 <table class="table table-hover mb-0" id="sertifikaTable">
@@ -112,7 +122,10 @@
 
 <script>
 function filterTable(status) {
+    // Tüm satırları bul
     const rows = document.querySelectorAll('.table-row');
+    
+    // Filtreleme işlemi
     rows.forEach(row => {
         if (status === 'all') {
             row.style.display = '';
@@ -120,6 +133,10 @@ function filterTable(status) {
             row.style.display = row.getAttribute('data-status') === status ? '' : 'none';
         }
     });
+
+    // Sayfayı tabloya kaydır (Odaklanma)
+    const element = document.getElementById("tabloBolumu");
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 </script>
 {% endblock %}
