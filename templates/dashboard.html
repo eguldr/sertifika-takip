@@ -15,10 +15,9 @@
     .table-container { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
     .table thead th { background-color: var(--navy-primary); color: white; border: none; font-size: 0.75rem; padding: 15px; text-transform: uppercase; }
     
-    /* Kalan Gün Yazı Rengi Fix */
     .kalan-gun-text { color: var(--navy-dark) !important; font-weight: bold; }
 
-    /* ACİL DURUM BARI - YENİ TASARIM */
+    /* ACİL DURUM BARI */
     .emergency-box {
         background: white;
         border-left: 10px solid var(--danger-red);
@@ -33,25 +32,23 @@
     
     .emergency-text { color: var(--danger-red); font-weight: bold; font-size: 1.1rem; }
     
-    /* HEMEN İNCELE BUTONU - HTML LINKINE DONUSTURULDU (KESIN COZUM) */
-    .btn-final {
+    /* BUTON - BU SEFER KESİN ÇALIŞACAK ŞEKİLDE AYARLANDI */
+    .btn-action-final {
         background-color: var(--danger-red) !important;
         color: white !important;
-        padding: 12px 30px;
+        padding: 12px 25px;
         border-radius: 8px;
         font-weight: bold;
-        text-decoration: none !important;
-        display: inline-block;
-        transition: 0.3s;
-        text-transform: uppercase;
         border: none;
-        box-shadow: 0 4px 10px rgba(198, 40, 40, 0.3);
+        cursor: pointer !important;
+        display: inline-block;
+        text-decoration: none !important;
+        z-index: 1000;
+        position: relative;
     }
-    .btn-final:hover { background-color: #b71c1c !important; transform: scale(1.05); }
+    .btn-action-final:hover { background-color: #b71c1c !important; }
 
-    .animate-pulse {
-        animation: pulse-red 2s infinite;
-    }
+    .animate-pulse { animation: pulse-red 2s infinite; }
     @keyframes pulse-red {
         0% { box-shadow: 0 0 0 0 rgba(198, 40, 40, 0.7); }
         70% { box-shadow: 0 0 0 10px rgba(198, 40, 40, 0); }
@@ -65,10 +62,10 @@
     {% if bu_hafta|length > 0 %}
     <div class="emergency-box animate-pulse">
         <div class="emergency-text">
-            <i class="fas fa-exclamation-circle fa-lg mr-2"></i>
+            <i class="fas fa-exclamation-triangle fa-lg mr-2"></i>
             DİKKAT: Bu hafta süresi dolacak {{ bu_hafta|length }} adet kritik belgeniz var!
         </div>
-        <a href="#tabloBolumu" class="btn-final" onclick="filterTable('danger')">
+        <a href="#tabloBolumu" class="btn-action-final" onclick="filterTable('danger'); return true;">
             HEMEN İNCELE
         </a>
     </div>
@@ -77,7 +74,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="font-weight-bold" style="color: var(--navy-primary); margin-bottom: 0;">EG Optimal Dashboard</h2>
-            <p class="text-muted small">Yönetim Paneli | Verimlilik ve SRC Takip Analizi</p>
+            <p class="text-muted small">Dijital Risk Yönetimi ve Mevzuat Uyumluluk Paneli</p>
         </div>
         <div class="d-flex border rounded bg-white shadow-sm overflow-hidden">
             <a href="{{ url_for('ekle', cat='Urun') }}" class="btn btn-primary border-0 rounded-0 px-4" style="background-color: var(--navy-primary);">
@@ -138,7 +135,7 @@
                         </td>
                         <td class="align-middle text-muted">{{ s.expiry_date.strftime('%d.%m.%Y') }}</td>
                         <td class="align-middle">
-                            <span class="badge badge-{{ status }} px-3 py-2 kalan-gun-text" style="border-radius: 20px; min-width: 80px;">
+                            <span class="badge badge-{{ status }} px-3 py-2 kalan-gun-text" style="border-radius: 20px;">
                                 {{ kalan }} Gün
                             </span>
                         </td>
@@ -157,7 +154,6 @@
 </div>
 
 <script>
-// Filtreleme Fonksiyonu
 function filterTable(status) {
     const rows = document.querySelectorAll('.table-row');
     rows.forEach(row => {
@@ -169,7 +165,6 @@ function filterTable(status) {
         }
     });
 
-    // Sayfayı tabloya kaydır (Garanti Yöntem)
     const target = document.getElementById("tabloBolumu");
     if (target) {
         target.scrollIntoView({ behavior: 'smooth' });
