@@ -75,7 +75,7 @@ def setup_database():
         app.db_initialized = True
 
 # ============================================================
-# GÜVENLİK VE TİCARİ DENETİM
+# TİCARİ DENETİM VE GÜVENLİK
 # ============================================================
 def check_trial_period():
     if current_user.is_authenticated and not current_user.is_admin:
@@ -85,71 +85,80 @@ def check_trial_period():
     return True
 
 # ============================================================
-# ADMİN PANELİ VE SİLME FONKSİYONLARI (KRİTİK BÖLÜM)
+# OTOMATIK MAIL TARAMA MOTORU (CRON JOB)
+# ============================================================
+@app.route('/cron/check_reminders')
+def cron_check_reminders():
+    bugun = date.today()
+    kritik_vade = bugun + timedelta(days=7) 
+    entries = Entry.query.filter(Entry.expiry_date <= kritik_vade).all()
+    count = 0
+    for e in entries:
+        owner = User.query.get(e.user_id)
+        if owner and owner.email:
+            kalan = (e.expiry_date - bugun).days
+            durum = "BUGÜN DOLUYOR!" if kalan == 0 else (f"{kalan} GÜN KALDI!" if kalan > 0 else "SÜRESİ GEÇTİ!")
+            try:
+                msg = Message(f"EG Optimal Hatırlatma: {e.title} ({durum})", recipients=[owner.email])
+                msg.body = f"Sayın {owner.company_name or 'Üyemiz'},\n\nMüşteri: {e.firma_adi}\nBelge: {e.title}\nBitiş: {e.expiry_date.strftime('%d.%m.%Y')}\nDurum: {durum}\n\nLütfen yenileme işlemini başlatın."
+                mail.send(msg)
+                count += 1
+            except: pass
+    return f"Tamamlandı. {count} mail gönderildi.", 200
+
+# ============================================================
+# ADMİN PANELİ VE YÖNETİM
 # ============================================================
 @app.route('/admin_panel')
 @login_required
 def admin_panel():
     if not current_user.is_admin:
-        flash('Bu sayfaya erişim yetkiniz yok.', 'danger')
         return redirect(url_for('dashboard'))
-    
     users = User.query.filter(User.email != 'erhanadea@gmail.com').all()
     bugun = date.today()
-    kritik_belgeler = Entry.query.filter(Entry.expiry_date <= bugun + timedelta(days=30)).all()
+    entries = Entry.query.filter(Entry.expiry_date <= bugun + timedelta(days=30)).all()
     user_map = {u.id: u for u in User.query.all()}
-    
-    return render_template('admin.html', users=users, entries=kritik_belgeler, bugun=bugun, user_objects=user_map)
+    return render_template('admin.html', users=users, entries=entries, bugun=bugun, user_objects=user_map)
 
 @app.route('/admin/update_payment/<int:uid>', methods=['POST'])
 @login_required
 def update_payment(uid):
     if current_user.is_admin:
         u = User.query.get(uid)
-        if u:
-            u.company_name = request.form.get('company_name')
-            u.payment_status = request.form.get('status')
-            u.admin_notes = request.form.get('notes')
-            db.session.commit()
-            flash(f'{u.company_name} bilgileri güncellendi.', 'success')
+        u.company_name = request.form.get('company_name')
+        u.payment_status = request.form.get('status')
+        u.admin_notes = request.form.get('notes')
+        db.session.commit()
+        flash(f'{u.company_name} bilgileri güncellendi.', 'success')
     return redirect(url_for('admin_panel'))
 
-# Loglardaki 500 hatasını düzelten asıl fonksiyon budur:
 @app.route('/admin/delete_user/<int:uid>', methods=['POST'])
 @login_required
 def delete_user(uid):
-    if not current_user.is_admin:
-        return redirect(url_for('dashboard'))
-    
-    user_to_delete = User.query.get(uid)
-    if user_to_delete:
-        # Önce kullanıcıya ait sertifikaları siliyoruz
-        Entry.query.filter_by(user_id=uid).delete()
-        # Sonra kullanıcıyı siliyoruz
-        db.session.delete(user_to_delete)
-        db.session.commit()
-        flash('Kurum ve tüm verileri kalıcı olarak silindi.', 'danger')
+    if current_user.is_admin:
+        u = User.query.get(uid)
+        if u:
+            Entry.query.filter_by(user_id=uid).delete()
+            db.session.delete(u)
+            db.session.commit()
+            flash('Kullanıcı ve tüm verileri silindi.', 'danger')
     return redirect(url_for('admin_panel'))
 
 # ============================================================
-# KULLANICI İŞLEMLERİ
+# DASHBOARD VE KULLANICI İŞLEMLERİ
 # ============================================================
 @app.route('/dashboard')
 @login_required
 def dashboard():
     if not check_trial_period():
-        flash('Deneme süreniz doldu. Lütfen ödeme yapın.', 'danger')
         logout_user()
+        flash('Deneme süresi doldu.', 'danger')
         return redirect(url_for('login'))
-    
-    bugun = date.today()
-    sertifikalar = Entry.query.filter_by(user_id=current_user.id).all()
-    return render_template('dashboard.html', sertifikalar=sertifikalar, bugun=bugun, timedelta=timedelta)
+    return render_template('dashboard.html', sertifikalar=Entry.query.filter_by(user_id=current_user.id).all(), bugun=date.today(), timedelta=timedelta)
 
 @app.route('/sertifikalar')
 @login_required
 def sertifikalar():
-    if not check_trial_period(): return redirect(url_for('login'))
     cat = request.args.get('cat')
     items = Entry.query.filter_by(user_id=current_user.id, category=cat).all()
     return render_template('sertifikalar.html', items=items, bugun=date.today(), cat=cat)
@@ -157,26 +166,13 @@ def sertifikalar():
 @app.route('/ekle', methods=['GET', 'POST'])
 @login_required
 def ekle():
-    if not check_trial_period(): return redirect(url_for('login'))
     if request.method == 'POST':
         title = request.form.get('title')
-        if title and "LİSTEDE YOK" in title:
-            title = request.form.get('manual_title')
-        
-        new_entry = Entry(
-            user_id=current_user.id,
-            category=request.form.get('category'),
-            title=title,
-            firma_adi=request.form.get('firma_adi'),
-            whatsapp_no=request.form.get('whatsapp_no'),
-            danisman_no=request.form.get('danisman_no'),
-            risk_value=request.form.get('note'),
-            expiry_date=datetime.strptime(request.form.get('expiry_date'), '%Y-%m-%d').date()
-        )
-        db.session.add(new_entry)
+        if title and "LİSTEDE YOK" in title: title = request.form.get('manual_title')
+        new_e = Entry(user_id=current_user.id, category=request.form.get('category'), title=title, firma_adi=request.form.get('firma_adi'), whatsapp_no=request.form.get('whatsapp_no'), danisman_no=request.form.get('danisman_no'), risk_value=request.form.get('note'), expiry_date=datetime.strptime(request.form.get('expiry_date'), '%Y-%m-%d').date())
+        db.session.add(new_e)
         db.session.commit()
-        flash('Yeni kayıt başarıyla eklendi.', 'success')
-        return redirect(url_for('sertifikalar', cat=new_entry.category))
+        return redirect(url_for('sertifikalar', cat=new_e.category))
     return render_template('ekle.html', cat=request.args.get('cat', 'Urun'))
 
 @app.route('/sil/<int:id>')
@@ -187,7 +183,6 @@ def sil(id):
         cat = item.category
         db.session.delete(item)
         db.session.commit()
-        flash('Kayıt silindi.', 'info')
         return redirect(url_for('sertifikalar', cat=cat))
     return redirect(url_for('dashboard'))
 
@@ -203,7 +198,7 @@ def export_excel():
     return send_file(output, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", as_attachment=True, download_name="EG_Rapor.xlsx")
 
 # ============================================================
-# AUTH & reCAPTCHA
+# GİRİŞ / KAYIT / ŞİFRE SIFIRLAMA (reCAPTCHA DAHİL)
 # ============================================================
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -211,53 +206,39 @@ def login():
         user = User.query.filter_by(email=request.form.get('email')).first()
         if user and check_password_hash(user.password, request.form.get('password')):
             if not user.is_confirmed:
-                flash('Lütfen mail onayı yapın.', 'warning')
+                flash('Mail onayı gerekli.', 'warning')
                 return redirect(url_for('login'))
             user.is_admin = (user.email == 'erhanadea@gmail.com')
             db.session.commit()
             login_user(user)
             return redirect(url_for('dashboard'))
-        flash('Giriş bilgileri hatalı.', 'danger')
+        flash('Hatalı giriş.', 'danger')
     return render_template('login.html')
 
 @app.route('/kayit', methods=['GET', 'POST'])
 def kayit():
     if request.method == 'POST':
-        # reCAPTCHA Kontrolü
-        recaptcha_response = request.form.get('g-recaptcha-response')
-        verify = requests.post('https://www.google.com/recaptcha/api/siteverify', 
-                               data={'secret': '6Leewb8sAAAAAEnUeD7XNq4u_88Z5P_uF6o7h1hS', 'response': recaptcha_response}).json()
+        verify = requests.post('https://www.google.com/recaptcha/api/siteverify', data={'secret': '6Leewb8sAAAAAEnUeD7XNq4u_88Z5P_uF6o7h1hS', 'response': request.form.get('g-recaptcha-response')}).json()
         if not verify.get('success'):
-            flash('Güvenlik doğrulamasını (reCAPTCHA) yapmalısınız.', 'danger')
+            flash('reCAPTCHA hatası.', 'danger')
             return redirect(url_for('kayit'))
-
         email = request.form.get('email')
         if User.query.filter_by(email=email).first():
-            flash('Bu mail zaten kayıtlı.', 'warning')
+            flash('Mail kayıtlı.', 'warning')
             return redirect(url_for('kayit'))
-        
         is_p = (email == 'erhanadea@gmail.com')
-        new_u = User(
-            email=email,
-            password=generate_password_hash(request.form.get('password')),
-            company_name=request.form.get('company_name'),
-            is_confirmed=is_p,
-            payment_status='Odendi' if is_p else 'Bekliyor'
-        )
+        new_u = User(email=email, password=generate_password_hash(request.form.get('password')), company_name=request.form.get('company_name'), is_confirmed=is_p, payment_status='Odendi' if is_p else 'Bekliyor')
         db.session.add(new_u)
         db.session.commit()
-        
         if not is_p:
             token = ts.dumps(email, salt='email-confirm')
-            confirm_url = url_for('confirm_email', token=token, _external=True)
-            msg = Message("EG Optimal - Hesap Onayı", recipients=[email])
-            msg.body = f"Onaylamak için tıklayın: {confirm_url}"
+            msg = Message("EG Optimal Onay", recipients=[email])
+            msg.body = f"Onay Linki: {url_for('confirm_email', token=token, _external=True)}"
             mail.send(msg)
-            flash('Kayıt başarılı! Lütfen mailinizi onaylayın.', 'info')
+            flash('Onay maili gönderildi.', 'info')
         return redirect(url_for('login'))
     return render_template('kayit.html')
 
-# --- ŞİFRE İŞLEMLERİ ---
 @app.route('/confirm/<token>')
 def confirm_email(token):
     try:
@@ -265,7 +246,7 @@ def confirm_email(token):
         user = User.query.filter_by(email=email).first_or_404()
         user.is_confirmed = True
         db.session.commit()
-        flash('Mail doğrulandı!', 'success')
+        flash('Doğrulandı.', 'success')
     except: flash('Link geçersiz.', 'danger')
     return redirect(url_for('login'))
 
@@ -279,7 +260,7 @@ def forgot_password():
             msg = Message("Şifre Sıfırlama", recipients=[email])
             msg.body = f"Link: {url_for('reset_password', token=token, _external=True)}"
             mail.send(msg)
-            flash('Talimatlar gönderildi.', 'info')
+            flash('Mail gönderildi.', 'info')
         return redirect(url_for('login'))
     return render_template('forgot_password.html')
 
@@ -291,7 +272,7 @@ def reset_password(token):
         user = User.query.filter_by(email=email).first()
         user.password = generate_password_hash(request.form.get('password'))
         db.session.commit()
-        flash('Şifre güncellendi.', 'success')
+        flash('Güncellendi.', 'success')
         return redirect(url_for('login'))
     return render_template('reset_password.html', token=token)
 
