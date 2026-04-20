@@ -74,7 +74,7 @@ def load_user(user_id):
 def setup_database():
     if not hasattr(app, 'db_initialized'):
         with app.app_context():
-            db.drop_all() # BU SATIRI EKLE (Eski tabloyu siler)
+            
             db.create_all() # (Yeni sütunlarla beraber tekrar kurar)
         app.db_initialized = True
 
