@@ -67,7 +67,7 @@ def load_user(user_id): return User.query.get(int(user_id))
 def setup_database():
     if not hasattr(app, 'db_initialized'):
         with app.app_context():
-            db.drop_all() # <-- BU SATIRI EKLE
+            
             db.create_all()
         app.db_initialized = True
 
