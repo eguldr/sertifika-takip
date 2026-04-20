@@ -1,38 +1,81 @@
 {% extends 'base.html' %}
+
 {% block content %}
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
 <div class="row justify-content-center mt-5">
-<div class="col-md-4">
-    <div class="text-center mb-4">
-        <i class="fas fa-certificate fa-3x text-primary"></i>
-        <h3 class="mt-2">SertifikaTakip</h3>
-    </div>
-    <div class="card">
-        <div class="card-body p-4">
-            <h5 class="mb-4">Hesap Oluştur</h5>
-            <form method="POST">
-                <div class="mb-3">
-                    <label class="form-label">Firma Adı</label>
-                    <input type="text" name="firma_adi" class="form-control" required>
+    <div class="col-md-4">
+        <div class="text-center mb-4">
+            <i class="fas fa-certificate fa-3x text-primary shadow-sm p-3 bg-white rounded-circle"></i>
+            <h3 class="mt-2 fw-bold text-primary">SertifikaTakip</h3>
+        </div>
+        
+        <div class="card border-0 shadow-lg" style="border-radius: 15px;">
+            <div class="card-body p-4">
+                <h5 class="mb-4 fw-bold"><i class="fas fa-user-plus me-2"></i>Hesap Oluştur</h5>
+                
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Firma / Kurum Adı</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="fas fa-building text-muted"></i></span>
+                            <input type="text" name="company_name" class="form-control" placeholder="Örn: ADEA Danışmanlık" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">E-posta Adresi</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="fas fa-envelope text-muted"></i></span>
+                            <input type="email" name="email" class="form-control" placeholder="ornek@mail.com" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Şifre</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="fas fa-lock text-muted"></i></span>
+                            <input type="password" name="password" class="form-control" placeholder="******" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 d-flex justify-content-center">
+                        <div class="g-recaptcha" data-sitekey="6Leewb8sAAAAAG-fOE4VY7aYZ1T-S_1H21ckRpsO"></div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow">
+                        <i class="fas fa-paper-plane me-2"></i>Kayıt Ol ve Onay Maili Gönder
+                    </button>
+                </form>
+
+                <hr class="my-4">
+                
+                <div class="text-center">
+                    <p class="mb-0 text-muted">Zaten hesabınız var mı? 
+                        <a href="{{ url_for('login') }}" class="text-primary fw-bold text-decoration-none">Giriş Yap</a>
+                    </p>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">E-posta</label>
-                    <input type="email" name="email" class="form-control" required>
-                </div>
-                <div class="mb-4">
-                    <label class="form-label">Şifre</label>
-                    <input type="password" name="password" class="form-control" required>
-                </div>
-                <div class="g-recaptcha" data-sitekey="6Leewb8sAAAAAG-fOE4VY7aYZ1T-S_1H21ckRpsO"></div>
-                <button type="submit" class="btn btn-primary w-100">Kayıt Ol</button>
-            </form>
-            <hr>
-            <div class="text-center">
-                <small>Zaten hesabınız var mı? <a href="{{ url_for('login') }}">Giriş Yap</a></small>
             </div>
+        </div>
+        
+        <div class="text-center mt-4 text-muted">
+            <small>&copy; 2026 EG Optimal İş Sağlığı ve Güvenliği</small>
         </div>
     </div>
 </div>
-</div>
+
+<style>
+    /* Mobilde kartın kenar boşluklarını düzenle */
+    @media (max-width: 768px) {
+        .col-md-4 {
+            padding: 0 25px;
+        }
+    }
+    /* Kartın giriş alanlarına odaklandığında parlaması */
+    .form-control:focus {
+        border-color: #1a1c4b;
+        box-shadow: 0 0 0 0.25rem rgba(26, 28, 75, 0.1);
+    }
+</style>
 
 {% endblock %}
