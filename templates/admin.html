@@ -37,7 +37,7 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editUser{{ u.id }}">
+                                        <button class="btn btn-sm btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#editUser{{ u.id }}">
                                             <i class="fas fa-cog"></i> Yönet
                                         </button>
                                     </td>
@@ -67,19 +67,18 @@
                                                     </div>
                                                     <div class="mb-3">
                                                         <label class="form-label fw-bold">Sistem Notları (Özel)</label>
-                                                        <textarea name="notes" class="form-control" rows="3">{{ u.admin_notes }}</textarea>
+                                                        <textarea name="notes" class="form-control" rows="3" placeholder="Özel hatırlatmalar...">{{ u.admin_notes }}</textarea>
                                                     </div>
 
-                                                    <button type="submit" class="btn btn-success w-100 fw-bold py-2 shadow-sm">
+                                                    <button type="submit" class="btn btn-success w-100 fw-bold py-2 shadow-sm mb-3">
                                                         <i class="fas fa-check-circle"></i> Değişiklikleri Kaydet
                                                     </button>
 
-                                                    <hr class="my-4">
+                                                    <hr>
                                                     <div class="text-center">
-                                                        <p class="small text-muted mb-2">Firmayı sistemden tamamen çıkarmak için:</p>
                                                         <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                                onclick="if(confirm('DİKKAT! {{ u.company_name }} kurumunu ve tüm verilerini SİLMEK istediğinize emin misiniz?')) { document.getElementById('delete-form-{{ u.id }}').submit(); }">
-                                                            <i class="fas fa-user-times"></i> Kurumu Tamamen Sil
+                                                                onclick="if(confirm('{{ u.company_name }} kurumunu ve tüm verilerini TAMAMEN SİLMEK istediğinize emin misiniz?')) { document.getElementById('delete-form-{{ u.id }}').submit(); }">
+                                                            <i class="fas fa-user-times"></i> Kurumu Sistemden Sil
                                                         </button>
                                                     </div>
                                                 </div>
@@ -100,15 +99,15 @@
             <div class="card shadow border-0" style="border-radius: 15px;">
                 <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center" style="border-radius: 15px 15px 0 0;">
                     <h5 class="m-0 fw-bold"><i class="fas fa-broadcast-tower"></i> Global Radar: Kritik Belgeler</h5>
-                    <span class="badge bg-white text-danger fw-bold shadow-sm">{{ entries|length }} Kritik Belge</span>
+                    <span class="badge bg-white text-danger fw-bold shadow-sm">{{ entries|length }} Kayıt</span>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-sm align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th class="ps-3 py-3">Sorumlu / Müşteri</th>
-                                    <th>Belge Tipi</th>
+                                    <th class="ps-3 py-3">Kurum / Alt Firma</th>
+                                    <th>Belge</th>
                                     <th>Vade</th>
                                     <th class="text-center">Aksiyon</th>
                                 </tr>
@@ -117,8 +116,8 @@
                                 {% for e in entries %}
                                 <tr>
                                     <td class="ps-3 py-3">
-                                        <span class="badge bg-info text-dark mb-1" style="font-size: 0.7rem; font-weight: 600;">
-                                            {{ user_objects[e.user_id].company_name if user_objects[e.user_id].company_name else 'Kurum Belirsiz' }}
+                                        <span class="badge bg-info text-dark mb-1" style="font-size: 0.7rem;">
+                                            {{ user_objects[e.user_id].company_name if user_objects[e.user_id].company_name else 'İsimsiz Kurum' }}
                                         </span><br>
                                         <strong class="text-dark">{{ e.firma_adi }}</strong>
                                     </td>
@@ -126,17 +125,17 @@
                                     <td>
                                         {% set kalan = (e.expiry_date - bugun).days %}
                                         <span class="fw-bold {% if kalan <= 7 %}text-danger animate-pulse{% else %}text-warning{% endif %}">
-                                            {{ kalan }} Gün Kaldı
+                                            {{ kalan }} Gün
                                         </span>
                                     </td>
                                     <td class="text-center">
                                         <div class="btn-group shadow-sm">
-                                            <a href="https://wa.me/{{ e.whatsapp_no }}?text=Sayın {{ e.firma_adi }} yetkilisi, {{ user_objects[e.user_id].company_name }} olarak hatırlatırız: {{ e.title }} belgeniz kritik seviyededir." 
-                                               target="_blank" class="btn btn-sm btn-success">
+                                            <a href="https://wa.me/{{ e.whatsapp_no }}?text=Sayın%20{{ e.firma_adi }}%20yetkilisi,%20{{ user_objects[e.user_id].company_name }}%20olarak%20hatırlatırız:%20{{ e.title }}%20belgeniz%20kritik%20vadededir." 
+                                               target="_blank" class="btn btn-sm btn-success" title="Müşteriye Yaz">
                                                 <i class="fab fa-whatsapp"></i> Müşteri
                                             </a>
-                                            <a href="https://wa.me/{{ e.danisman_no }}?text=Bilgi: {{ e.firma_adi }} firmasının {{ e.title }} belgesi {{ kalan }} gün sonra doluyor. Lütfen süreci takip edin." 
-                                               target="_blank" class="btn btn-sm btn-info text-white">
+                                            <a href="https://wa.me/{{ e.danisman_no }}?text=Bilgi:%20{{ e.firma_adi }}%20firmasının%20{{ e.title }}%20belgesi%20{{ kalan }}%20gün%20sonra%20doluyor.%20Lütfen%20takip%20edin." 
+                                               target="_blank" class="btn btn-sm btn-info text-white" title="Sorumluya Yaz">
                                                 <i class="fas fa-paper-plane"></i> Sorumlu
                                             </a>
                                         </div>
@@ -153,13 +152,10 @@
 </div>
 
 <style>
-    .animate-pulse { 
-        animation: pulse-red 2s infinite; 
-        display: inline-block;
-    }
+    .animate-pulse { animation: pulse-red 2s infinite; display: inline-block; }
     @keyframes pulse-red {
         0% { transform: scale(1); }
-        50% { transform: scale(1.1); color: #dc3545; text-shadow: 0 0 5px rgba(220, 53, 69, 0.5); }
+        50% { transform: scale(1.1); color: #dc3545; }
         100% { transform: scale(1); }
     }
     .table-responsive { max-height: 75vh; overflow-y: auto; }
