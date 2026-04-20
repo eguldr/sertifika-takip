@@ -60,7 +60,7 @@
                             <option value="Takograf Muayenesi">⏱️ Takograf Muayenesi</option>
                             <option value="VDI 2700 (Yük Güvenliği)">📦 VDI 2700</option>
                             <option value="Araç Yedek Parça Sertifikası">⚙️ Yedek Parça Sertifikası</option>
-                            <option value="Diger">➕ LİSTEDE YOK / MANUEL YAZ</option>
+                            <option value="LİSTEDE YOK / MANUEL YAZ">➕ LİSTEDE YOK / MANUEL YAZ</option>
 
                         {% elif cat == 'Personel' %}
                             <option value="SRC 1 (Uluslararası Yolcu)">🪪 SRC 1 Belgesi</option>
@@ -72,7 +72,7 @@
                             <option value="Dijital Ehliyet Kartı">💳 Dijital Ehliyet Kartı</option>
                             <option value="İSG Eğitimi">👷 İSG Eğitimi</option>
                             <option value="Mesleki Yeterlilik Belgesi">🎓 Mesleki Yeterlilik</option>
-                            <option value="Diger">➕ LİSTEDE YOK / MANUEL YAZ</option>
+                            <option value="LİSTEDE YOK / MANUEL YAZ">➕ LİSTEDE YOK / MANUEL YAZ</option>
 
                         {% elif cat == 'Tesis' %}
                             <option value="Kapasite Raporu">📊 Kapasite Raporu</option>
@@ -86,7 +86,7 @@
                             <option value="Tehlikeli Atık Bildirimi (TABS)">☣️ TABS Bildirimi</option>
                             <option value="Yangın Sertifikası">🧯 Yangın Sertifikası</option>
                             <option value="Asansör Bakımı">🛗 Asansör Bakımı</option>
-                            <option value="Diger">➕ LİSTEDE YOK / MANUEL YAZ</option>
+                            <option value="LİSTEDE YOK / MANUEL YAZ">➕ LİSTEDE YOK / MANUEL YAZ</option>
 
                         {% else %}
                             <optgroup label="📦 ÜRETİM & ÜRÜN KÜTÜPHANESİ">
@@ -215,10 +215,15 @@
                                 <option>VI-1</option>
                                 <option>WRAS</option>
                                 <option>Watermark</option>
-                                <option value="Diger">➕ LİSTEDE YOK / MANUEL YAZ</option>
+                                <option value="LİSTEDE YOK / MANUEL YAZ">➕ LİSTEDE YOK / MANUEL YAZ</option>
                             </optgroup>
                         {% endif %}
                     </select>
+                </div>
+
+                <div id="manualInputDiv" class="form-group mb-4" style="display: none;">
+                    <label class="font-weight-bold text-danger">Lütfen Belge Adını Manuel Yazın</label>
+                    <input type="text" name="manual_title" id="manual_title" class="form-control form-control-lg border-danger" placeholder="Örn: Özel Eğitim Sertifikası">
                 </div>
 
                 <div class="form-group mb-4">
