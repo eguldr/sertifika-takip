@@ -3,122 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EG Optimal | Sertifika Takip</title>
+    <title>EG Optimal | Sertifika Takip Sistemi</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         :root {
-            --primary-dark: #1a1c4b;
-            --accent-gold: #c5a059;
-            --sidebar-width: 250px;
+            --p-dark: #1a1c4b;
+            --accent: #c5a059;
+            --sidebar-w: 250px;
         }
 
         body {
             background-color: #f4f7f6;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
+            overflow-x: hidden;
         }
 
-        /* --- ANA YAPI --- */
+        /* --- ANA TASARIM --- */
         .wrapper {
             display: flex;
             width: 100%;
             align-items: stretch;
         }
 
-        /* --- SIDEBAR (MASAÜSTÜ) --- */
         #sidebar {
-            min-width: var(--sidebar-width);
-            max-width: var(--sidebar-width);
-            background: var(--primary-dark);
+            min-width: var(--sidebar-w);
+            max-width: var(--sidebar-w);
+            background: var(--p-dark);
             color: #fff;
             min-height: 100vh;
-            transition: all 0.3s;
+            transition: all 0.3s cubic-bezier(0.945, 0.020, 0.270, 0.665);
         }
 
         #sidebar .sidebar-header {
-            padding: 20px;
-            background: rgba(0,0,0,0.1);
+            padding: 25px;
+            background: rgba(0,0,0,0.2);
             text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
         }
 
         #sidebar .sidebar-header h3 {
-            color: var(--accent-gold);
-            font-weight: bold;
+            color: var(--accent);
+            font-weight: 800;
+            letter-spacing: 1px;
             margin: 0;
         }
 
         #sidebar ul.components {
-            padding: 20px 0;
+            padding: 25px 0;
         }
 
         #sidebar ul li a {
-            padding: 15px 20px;
+            padding: 15px 25px;
+            font-size: 1.05rem;
             display: block;
-            color: rgba(255,255,255,0.8);
+            color: rgba(255,255,255,0.7);
             text-decoration: none;
             transition: 0.3s;
         }
 
+        #sidebar ul li a i {
+            width: 30px;
+            text-align: center;
+        }
+
         #sidebar ul li a:hover, #sidebar ul li.active > a {
             color: #fff;
-            background: rgba(255,255,255,0.1);
-            border-left: 4px solid var(--accent-gold);
+            background: rgba(255,255,255,0.05);
+            border-left: 5px solid var(--accent);
         }
 
         #content {
             width: 100%;
-            padding: 20px;
+            padding: 35px;
             min-height: 100vh;
+            transition: all 0.3s;
         }
 
-        /* --- MOBİL UYUMLULUK (MEDIA QUERY) --- */
+        /* --- SENİN İSTEDİĞİN MOBİL HATA DÜZELTMESİ (BURAYA EKLENDİ) --- */
         @media (max-width: 768px) {
             .wrapper {
-                flex-direction: column; /* Mobilde yan yana değil, alt alta yap */
+                flex-direction: column !important;
             }
 
             #sidebar {
-                min-width: 100%;
-                max-width: 100%;
-                min-height: auto;
+                min-width: 100% !important;
+                max-width: 100% !important;
+                min-height: auto !important;
                 position: relative;
             }
 
             #sidebar .sidebar-header {
-                padding: 10px;
+                padding: 15px;
             }
 
             #sidebar ul.components {
-                display: flex; /* Menüleri yan yana diz */
+                display: flex;
                 flex-wrap: wrap;
-                padding: 5px;
+                padding: 10px;
                 justify-content: center;
             }
 
             #sidebar ul li a {
-                padding: 10px 15px;
-                font-size: 0.9rem;
-                text-align: center;
+                padding: 12px 15px;
+                font-size: 0.85rem;
                 border-left: none !important;
-                border-bottom: 2px solid transparent;
+                border-bottom: 3px solid transparent;
             }
 
             #sidebar ul li a:hover, #sidebar ul li.active > a {
-                border-bottom: 2px solid var(--accent-gold);
+                border-bottom: 3px solid var(--accent);
             }
 
             #content {
-                padding: 15px;
+                padding: 20px 15px;
+                width: 100% !important;
             }
         }
 
-        /* --- EKSTRA STİLLER --- */
-        .card { border: none; border-radius: 15px; }
-        .btn-primary { background-color: var(--primary-dark); border: none; }
-        .btn-primary:hover { background-color: #2a2d7a; }
-        .text-gold { color: var(--accent-gold); }
+        /* Flash Mesajları Stili */
+        .alert {
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: none;
+        }
     </style>
 </head>
 <body>
@@ -126,59 +136,89 @@
     <div class="wrapper">
         <nav id="sidebar">
             <div class="sidebar-header">
-                <h3>EG Optimal</h3>
+                <h3>EG OPTIMAL</h3>
             </div>
 
             <ul class="list-unstyled components">
                 <li class="{{ 'active' if request.endpoint == 'dashboard' }}">
-                    <a href="{{ url_for('dashboard') }}"><i class="fas fa-chart-line me-2"></i> Dashboard</a>
+                    <a href="{{ url_for('dashboard') }}"><i class="fas fa-th-large"></i> Dashboard</a>
                 </li>
                 <li>
-                    <a href="{{ url_for('sertifikalar', cat='Urun') }}"><i class="fas fa-box me-2"></i> Üretim & Ürün</a>
+                    <a href="{{ url_for('sertifikalar', cat='Urun') }}"><i class="fas fa-award"></i> Üretim & Ürün</a>
                 </li>
                 <li>
-                    <a href="{{ url_for('sertifikalar', cat='Arac') }}"><i class="fas fa-car me-2"></i> Araç & Filo</a>
+                    <a href="{{ url_for('sertifikalar', cat='Arac') }}"><i class="fas fa-shuttle-van"></i> Araç & Filo</a>
                 </li>
                 <li>
-                    <a href="{{ url_for('sertifikalar', cat='Personel') }}"><i class="fas fa-users-cog me-2"></i> Personel & SRC</a>
+                    <a href="{{ url_for('sertifikalar', cat='Personel') }}"><i class="fas fa-user-check"></i> Personel & SRC</a>
                 </li>
                 <li>
-                    <a href="{{ url_for('sertifikalar', cat='Tesis') }}"><i class="fas fa-building me-2"></i> Tesis & Mekan</a>
+                    <a href="{{ url_for('sertifikalar', cat='Tesis') }}"><i class="fas fa-industry"></i> Tesis & Mekan</a>
                 </li>
 
                 {% if current_user.is_authenticated and current_user.is_admin %}
-                <hr class="bg-light mx-3">
+                <hr style="opacity: 0.1; margin: 15px 25px;">
                 <li class="{{ 'active' if request.endpoint == 'admin_panel' }}">
-                    <a href="{{ url_for('admin_panel') }}" class="text-info"><i class="fas fa-user-shield me-2"></i> Admin Paneli</a>
+                    <a href="{{ url_for('admin_panel') }}" style="color: #5bc0de;"><i class="fas fa-user-crown"></i> Admin Paneli</a>
                 </li>
                 {% endif %}
 
                 {% if current_user.is_authenticated %}
                 <li>
-                    <a href="{{ url_for('logout') }}" class="text-danger"><i class="fas fa-sign-out-alt me-2"></i> Çıkış</a>
+                    <a href="{{ url_for('logout') }}" style="color: #ff6b6b;"><i class="fas fa-power-off"></i> Güvenli Çıkış</a>
                 </li>
                 {% endif %}
             </ul>
         </nav>
 
         <div id="content">
-            <div class="container">
+            <div class="container-fluid">
                 {% with messages = get_flashed_messages(with_categories=true) %}
                   {% if messages %}
                     {% for category, message in messages %}
                       <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        <i class="fas fa-info-circle me-2"></i> {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Kapat"></button>
                       </div>
                     {% endfor %}
                   {% endif %}
                 {% endwith %}
-            </div>
 
-            {% block content %}{% endblock %}
+                {% block content %}{% endblock %}
+            </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        /* --- LİSTEDE YOK / MANUEL GİRİŞ HATASI DÜZELTMESİ (BURAYA EKLENDİ) --- */
+        document.addEventListener('change', function(event) {
+            if (event.target && event.target.name === 'title') {
+                const manualDiv = document.getElementById('manualInputDiv');
+                const manualInput = document.getElementById('manual_title');
+                
+                if (manualDiv && manualInput) {
+                    if (event.target.value.includes('LİSTEDE YOK')) {
+                        manualDiv.style.display = 'block';
+                        manualInput.setAttribute('required', 'required');
+                        manualInput.focus();
+                    } else {
+                        manualDiv.style.display = 'none';
+                        manualInput.removeAttribute('required');
+                    }
+                }
+            }
+        });
+
+        /* Flash mesajlarını 5 saniye sonra otomatik kapat */
+        setTimeout(function() {
+            let alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                let bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+    </script>
 </body>
 </html>
