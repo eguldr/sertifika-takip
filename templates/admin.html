@@ -67,7 +67,7 @@
                                                     </div>
                                                     <div class="mb-3">
                                                         <label class="form-label fw-bold">Sistem Notları (Özel)</label>
-                                                        <textarea name="notes" class="form-control" rows="3" placeholder="Ödeme tarihi veya özel hatırlatmalar...">{{ u.admin_notes }}</textarea>
+                                                        <textarea name="notes" class="form-control" rows="3">{{ u.admin_notes }}</textarea>
                                                     </div>
 
                                                     <button type="submit" class="btn btn-success w-100 fw-bold py-2 shadow-sm">
@@ -78,8 +78,8 @@
                                                     <div class="text-center">
                                                         <p class="small text-muted mb-2">Firmayı sistemden tamamen çıkarmak için:</p>
                                                         <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                                onclick="if(confirm('DİKKAT! {{ u.company_name }} kurumunu ve tüm verilerini sistemden kalıcı olarak silmek istediğinize emin misiniz?')) { document.getElementById('delete-form-{{ u.id }}').submit(); }">
-                                                            <i class="fas fa-user-times"></i> Kurumu ve Verileri Tamamen Sil
+                                                                onclick="if(confirm('DİKKAT! {{ u.company_name }} kurumunu ve tüm verilerini SİLMEK istediğinize emin misiniz?')) { document.getElementById('delete-form-{{ u.id }}').submit(); }">
+                                                            <i class="fas fa-user-times"></i> Kurumu Tamamen Sil
                                                         </button>
                                                     </div>
                                                 </div>
@@ -153,7 +153,6 @@
 </div>
 
 <style>
-    /* Radar Animasyonu */
     .animate-pulse { 
         animation: pulse-red 2s infinite; 
         display: inline-block;
@@ -163,9 +162,6 @@
         50% { transform: scale(1.1); color: #dc3545; text-shadow: 0 0 5px rgba(220, 53, 69, 0.5); }
         100% { transform: scale(1); }
     }
-    
-    /* Masaüstü ve Mobil Uyum Düzenlemeleri */
-    .table-responsive { max-height: 70vh; overflow-y: auto; }
-    .card-header { font-size: 1.1rem; }
+    .table-responsive { max-height: 75vh; overflow-y: auto; }
 </style>
 {% endblock %}
