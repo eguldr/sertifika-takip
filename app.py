@@ -44,7 +44,7 @@ class User(UserMixin, db.Model):
     password     = db.Column(db.String(256))
     company_name = db.Column(db.String(100))
     is_admin     = db.Column(db.Boolean, default=False)
-    is_confirmed = db.Column(db.Boolean, default=False)
+    is_confirmed = db.Column(db.Boolean, default=False) # Mail Onayı
     payment_status = db.Column(db.String(20), default='Bekliyor')
     admin_notes    = db.Column(db.Text)
 
@@ -74,13 +74,26 @@ def load_user(user_id):
 def setup_database():
     if not hasattr(app, 'db_initialized'):
         with app.app_context():
-            
-            db.create_all() # (Yeni sütunlarla beraber tekrar kurar)
+            db.create_all()
         app.db_initialized = True
 
 # ============================================================
-# ŞİFRE SIFIRLAMA
+# DOĞRULAMA VE ŞİFRE SIFIRLAMA
 # ============================================================
+@app.route('/confirm/<token>')
+def confirm_email(token):
+    try:
+        email = ts.loads(token, salt='email-confirm', max_age=86400)
+    except:
+        flash('Onay linki geçersiz veya süresi dolmuş.', 'danger')
+        return redirect(url_for('login'))
+    
+    user = User.query.filter_by(email=email).first_or_404()
+    user.is_confirmed = True
+    db.session.commit()
+    flash('Hesabınız başarıyla doğrulandı! Giriş yapabilirsiniz.', 'success')
+    return redirect(url_for('login'))
+
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
@@ -92,18 +105,15 @@ def forgot_password():
             msg = Message("EG Optimal - Şifre Sıfırlama", recipients=[email])
             msg.body = f"Şifrenizi sıfırlamak için tıklayın: {recover_url}"
             mail.send(msg)
-            flash('Sıfırlama e-postası gönderildi.', 'success')
+            flash('Sıfırlama maili gönderildi.', 'success')
             return redirect(url_for('login'))
         flash('E-posta bulunamadı.', 'danger')
     return render_template('forgot_password.html')
 
 @app.route('/reset_password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
-    try:
-        email = ts.loads(token, salt='recover-key', max_age=3600)
-    except:
-        flash('Link geçersiz veya süresi dolmuş.', 'danger')
-        return redirect(url_for('forgot_password'))
+    try: email = ts.loads(token, salt='recover-key', max_age=3600)
+    except: return redirect(url_for('forgot_password'))
     if request.method == 'POST':
         user = User.query.filter_by(email=email).first()
         user.password = generate_password_hash(request.form.get('password'))
@@ -112,31 +122,17 @@ def reset_password(token):
         return redirect(url_for('login'))
     return render_template('reset_password.html')
 
-@app.route('/confirm/<token>')
-def confirm_email(token):
-    try:
-        email = ts.loads(token, salt='email-confirm', max_age=86400)
-    except:
-        flash('Onay linki geçersiz.', 'danger')
-        return redirect(url_for('login'))
-    user = User.query.filter_by(email=email).first_or_404()
-    user.is_confirmed = True
-    db.session.commit()
-    flash('Hesabınız onaylandı!', 'success')
-    return redirect(url_for('login'))
-
 # ============================================================
-# BÜYÜK PATRON (ADMIN)
+# ADMIN VE EXCEL
 # ============================================================
-@app.route('/admin_panel', methods=['GET', 'POST'])
+@app.route('/admin_panel')
 @login_required
 def admin_panel():
     if current_user.email != 'erhanadea@gmail.com':
         return redirect(url_for('dashboard'))
     users = User.query.filter(User.email != 'erhanadea@gmail.com').all()
     bugun = date.today()
-    kritik_sinir = bugun + timedelta(days=30)
-    all_entries = Entry.query.filter(Entry.expiry_date <= kritik_sinir).order_by(Entry.expiry_date.asc()).all()
+    all_entries = Entry.query.filter(Entry.expiry_date <= bugun + timedelta(days=30)).all()
     user_map = {u.id: u.company_name for u in User.query.all()}
     return render_template('admin.html', users=users, entries=all_entries, bugun=bugun, user_map=user_map)
 
@@ -148,26 +144,35 @@ def update_payment(uid):
         u.payment_status = request.form.get('status')
         u.admin_notes = request.form.get('notes')
         db.session.commit()
-        flash('Güncellendi.', 'success')
     return redirect(url_for('admin_panel'))
 
-# ============================================================
-# STANDART ROTALAR
-# ============================================================
-@app.route('/')
-def index():
-    return redirect(url_for('dashboard')) if current_user.is_authenticated else redirect(url_for('login'))
+@app.route('/export')
+@login_required
+def export_excel():
+    entries = Entry.query.filter_by(user_id=current_user.id).all()
+    data = [{"Firma": e.firma_adi, "Belge": e.title, "WhatsApp": e.whatsapp_no, "Bitis": e.expiry_date} for e in entries]
+    df = pd.DataFrame(data)
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer: df.to_excel(writer, index=False)
+    output.seek(0)
+    return send_file(output, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", as_attachment=True, download_name="EG_Optimal_Rapor.xlsx")
 
+# ============================================================
+# GİRİŞ / ÇIKIŞ / KAYIT
+# ============================================================
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         user = User.query.filter_by(email=request.form.get('email')).first()
         if user and check_password_hash(user.password, request.form.get('password')):
+            if not user.is_confirmed:
+                flash('Lütfen önce e-posta adresinizi doğrulayın!', 'warning')
+                return redirect(url_for('login'))
             user.is_admin = (user.email == 'erhanadea@gmail.com')
             db.session.commit()
             login_user(user)
             return redirect(url_for('dashboard'))
-        flash('Giriş başarısız!', 'danger')
+        flash('Hatalı giriş bilgileri.', 'danger')
     return render_template('login.html')
 
 @app.route('/kayit', methods=['GET', 'POST'])
@@ -175,13 +180,38 @@ def kayit():
     if request.method == 'POST':
         email = request.form.get('email')
         if User.query.filter_by(email=email).first():
-            flash('Bu mail zaten kayıtlı.', 'warning')
+            flash('Bu e-posta zaten kayıtlı.', 'warning')
             return redirect(url_for('kayit'))
-        new_user = User(email=email, password=generate_password_hash(request.form.get('password')), company_name=request.form.get('company_name'), is_confirmed=True)
-        db.session.add(new_user); db.session.commit()
-        flash('Kayıt başarılı!', 'success')
+        
+        # Patron için otomatik onay, diğerleri için False
+        is_patron = (email == 'erhanadea@gmail.com')
+        new_user = User(
+            email=email, 
+            password=generate_password_hash(request.form.get('password')), 
+            company_name=request.form.get('company_name'),
+            is_confirmed=is_patron 
+        )
+        db.session.add(new_user)
+        db.session.commit()
+
+        if not is_patron:
+            token = ts.dumps(email, salt='email-confirm')
+            confirm_url = url_for('confirm_email', token=token, _external=True)
+            msg = Message("EG Optimal - E-posta Doğrulama", recipients=[email])
+            msg.body = f"Hesabınızı doğrulamak için lütfen bu linke tıklayın: {confirm_url}"
+            mail.send(msg)
+            flash('Kayıt başarılı! Lütfen mail adresinize gelen onay linkine tıklayın.', 'info')
+        else:
+            flash('Büyük Patron hoş geldiniz! Direkt giriş yapabilirsiniz.', 'success')
+            
         return redirect(url_for('login'))
     return render_template('kayit.html')
+
+# ============================================================
+# DASHBOARD VE DİĞERLERİ
+# ============================================================
+@app.route('/')
+def index(): return redirect(url_for('dashboard')) if current_user.is_authenticated else redirect(url_for('login'))
 
 @app.route('/dashboard')
 @login_required
@@ -215,8 +245,6 @@ def sertifikalar():
 
 @app.route('/logout')
 @login_required
-def logout():
-    logout_user(); return redirect(url_for('login'))
+def logout(): logout_user(); return redirect(url_for('login'))
 
-if __name__ == '__main__':
-    app.run()
+if __name__ == '__main__': app.run()
