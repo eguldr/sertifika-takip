@@ -26,8 +26,8 @@
                                 {% for u in users %}
                                 <tr>
                                     <td>
-                                        <strong>{{ u.company_name }}</strong><br>
-                                        <small class="text-muted">Kayıt: {{ u.created_at.strftime('%d.%m.%Y') }}</small>
+                                        <strong>{{ u.company_name if u.company_name else 'İsimsiz Kurum (None)' }}</strong><br>
+                                        <small class="text-muted">{{ u.email }}</small>
                                     </td>
                                     <td>
                                         {% if u.payment_status == 'Odendi' %}
@@ -38,7 +38,7 @@
                                     </td>
                                     <td>
                                         <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editUser{{ u.id }}">
-                                            <i class="fas fa-edit"></i>
+                                            <i class="fas fa-edit"></i> Düzenle
                                         </button>
                                     </td>
                                 </tr>
@@ -47,25 +47,31 @@
                                     <div class="modal-dialog">
                                         <form action="{{ url_for('update_payment', uid=u.id) }}" method="POST" class="modal-content text-dark">
                                             <div class="modal-header bg-primary text-white">
-                                                <h5 class="modal-title">Kurum Yönetimi: {{ u.company_name }}</h5>
+                                                <h5 class="modal-title">Kurum Yönetimi: {{ u.email }}</h5>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                             </div>
                                             <div class="modal-body">
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">Kurum / OSGB Adı</label>
+                                                    <input type="text" name="company_name" class="form-control border-primary" 
+                                                           value="{{ u.company_name if u.company_name else '' }}" 
+                                                           placeholder="Örn: ADEA Danışmanlık">
+                                                    <small class="text-muted">Buraya yazacağınız isim WhatsApp mesajlarında görünecektir.</small>
+                                                </div>
                                                 <div class="mb-3">
                                                     <label class="form-label fw-bold">Ödeme Durumu</label>
                                                     <select name="status" class="form-select border-primary">
                                                         <option value="Bekliyor" {% if u.payment_status == 'Bekliyor' %}selected{% endif %}>Ödeme Bekliyor / Askıda</option>
                                                         <option value="Odendi" {% if u.payment_status == 'Odendi' %}selected{% endif %}>Ödendi / Aktif</option>
                                                     </select>
-                                                    <small class="text-muted">Not: 'Bekliyor' seçilirse ve 30 gün dolmuşsa kullanıcı Dashboard'a giremez.</small>
                                                 </div>
                                                 <div class="mb-3">
                                                     <label class="form-label fw-bold">Patron Notları (Özel)</label>
-                                                    <textarea name="notes" class="form-control" rows="4" placeholder="Örn: Haziran ayı ödemesi elden alındı...">{{ u.admin_notes }}</textarea>
+                                                    <textarea name="notes" class="form-control" rows="3">{{ u.admin_notes }}</textarea>
                                                 </div>
                                             </div>
                                             <div class="modal-footer">
-                                                <button type="submit" class="btn btn-success w-100">Değişiklikleri Kaydet</button>
+                                                <button type="submit" class="btn btn-success w-100">Bilgileri Güncelle</button>
                                             </div>
                                         </form>
                                     </div>
@@ -90,16 +96,18 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>Sorumlu / Müşteri</th>
-                                    <th>Belge Tanımı</th>
+                                    <th>Belge</th>
                                     <th>Vade</th>
-                                    <th class="text-center">Hızlı Aksiyon</th>
+                                    <th class="text-center">Aksiyon</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for e in entries %}
                                 <tr>
                                     <td class="ps-3">
-                                        <span class="badge bg-info text-dark" style="font-size: 0.7rem;">{{ user_objects[e.user_id].company_name }}</span><br>
+                                        <span class="badge bg-info text-dark" style="font-size: 0.7rem;">
+                                            {{ user_objects[e.user_id].company_name if user_objects[e.user_id].company_name else 'Kurum Belirsiz' }}
+                                        </span><br>
                                         <strong>{{ e.firma_adi }}</strong>
                                     </td>
                                     <td>{{ e.title }}</td>
@@ -110,24 +118,19 @@
                                         </span>
                                     </td>
                                     <td class="text-center">
-                                        <div class="btn-group shadow-sm">
-                                            <a href="https://wa.me/{{ e.whatsapp_no }}?text=Sayın {{ e.firma_adi }} yetkilisi, {{ user_objects[e.user_id].company_name }} olarak hatırlatırız ki {{ e.title }} belgenizin süresi doluyor. Lütfen aksiyon alınız." 
-                                               target="_blank" class="btn btn-sm btn-success" title="Müşteriye Yaz">
+                                        <div class="btn-group">
+                                            <a href="https://wa.me/{{ e.whatsapp_no }}?text=Sayın {{ e.firma_adi }} yetkilisi, {{ user_objects[e.user_id].company_name if user_objects[e.user_id].company_name else 'Sertifika Takip Merkezi' }} olarak hatırlatırız ki {{ e.title }} belgenizin süresi doluyor." 
+                                               target="_blank" class="btn btn-sm btn-success">
                                                 <i class="fab fa-whatsapp"></i> Müşteri
                                             </a>
-                                            <a href="https://wa.me/{{ e.danisman_no }}?text=Sayın İş Ortağımız ({{ user_objects[e.user_id].company_name }}), yönettiğiniz {{ e.firma_adi }} firmasının {{ e.title }} belgesi {{ (e.expiry_date - bugun).days }} gün sonra doluyor. Bilginize." 
-                                               target="_blank" class="btn btn-sm btn-info text-white" title="Danışmana Yaz">
+                                            <a href="https://wa.me/{{ e.danisman_no }}?text=Sayın İş Ortağımız ({{ user_objects[e.user_id].company_name }}), yönettiğiniz {{ e.firma_adi }} firmasının {{ e.title }} belgesi kritik seviyede." 
+                                               target="_blank" class="btn btn-sm btn-info text-white">
                                                 <i class="fas fa-paper-plane"></i> Sorumlu
                                             </a>
                                         </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
-                                {% if not entries %}
-                                <tr>
-                                    <td colspan="4" class="text-center py-4 text-muted">Şu an sistem genelinde kritik bir belge bulunmuyor.</td>
-                                </tr>
-                                {% endif %}
                             </tbody>
                         </table>
                     </div>
@@ -138,12 +141,11 @@
 </div>
 
 <style>
-    .btn-xs { padding: 0.25rem 0.4rem; font-size: 0.75rem; }
     .animate-pulse { animation: pulse-red 2s infinite; }
     @keyframes pulse-red {
-        0% { color: #dc3545; }
-        50% { color: #ff0000; font-size: 1.1em; }
-        100% { color: #dc3545; }
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); color: #ff0000; }
+        100% { transform: scale(1); }
     }
 </style>
 {% endblock %}
