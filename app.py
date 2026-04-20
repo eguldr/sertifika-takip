@@ -1,5 +1,4 @@
 import os
-import requests
 import pandas as pd
 from io import BytesIO
 from datetime import datetime, timedelta, date
@@ -36,7 +35,7 @@ login_manager.login_view = 'login'
 ts = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
 # ============================================================
-# GÜNCELLENMİŞ VERİTABANI MODELLERİ
+# MODELLER
 # ============================================================
 class User(UserMixin, db.Model):
     __tablename__ = 'kullanici_tablosu'
@@ -46,18 +45,17 @@ class User(UserMixin, db.Model):
     company_name = db.Column(db.String(100))
     is_admin     = db.Column(db.Boolean, default=False)
     is_confirmed = db.Column(db.Boolean, default=False)
-    # Patron için yeni alanlar:
-    payment_status = db.Column(db.String(20), default='Bekliyor') # 'Odendi', 'Bekliyor'
-    admin_notes    = db.Column(db.Text) 
+    payment_status = db.Column(db.String(20), default='Bekliyor')
+    admin_notes    = db.Column(db.Text)
 
 class Entry(db.Model):
     id          = db.Column(db.Integer, primary_key=True)
-    user_id     = db.Column(db.Integer) # Bu belgenin sahibi olan OSGB ID'si
+    user_id     = db.Column(db.Integer)
     category    = db.Column(db.String(50))
     title       = db.Column(db.String(100))
     firma_adi   = db.Column(db.String(100))
-    whatsapp_no = db.Column(db.String(20)) # Müşteri Numarası
-    danisman_no = db.Column(db.String(20)) # OSGB / Danışman Numarası
+    whatsapp_no = db.Column(db.String(20))
+    danisman_no = db.Column(db.String(20))
     expiry_date = db.Column(db.Date)
     risk_value  = db.Column(db.String(100))
 
@@ -76,31 +74,69 @@ def load_user(user_id):
 def setup_database():
     if not hasattr(app, 'db_initialized'):
         with app.app_context():
-            # Not: Eğer sütun hatası alırsan db.drop_all() yapıp tekrar başlatmalısın
             db.create_all()
         app.db_initialized = True
 
 # ============================================================
-# PATRON (ADMIN) OPERASYON MERKEZİ
+# ŞİFRE SIFIRLAMA
+# ============================================================
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+        if user:
+            token = ts.dumps(email, salt='recover-key')
+            recover_url = url_for('reset_password', token=token, _external=True)
+            msg = Message("EG Optimal - Şifre Sıfırlama", recipients=[email])
+            msg.body = f"Şifrenizi sıfırlamak için tıklayın: {recover_url}"
+            mail.send(msg)
+            flash('Sıfırlama e-postası gönderildi.', 'success')
+            return redirect(url_for('login'))
+        flash('E-posta bulunamadı.', 'danger')
+    return render_template('forgot_password.html')
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    try:
+        email = ts.loads(token, salt='recover-key', max_age=3600)
+    except:
+        flash('Link geçersiz veya süresi dolmuş.', 'danger')
+        return redirect(url_for('forgot_password'))
+    if request.method == 'POST':
+        user = User.query.filter_by(email=email).first()
+        user.password = generate_password_hash(request.form.get('password'))
+        db.session.commit()
+        flash('Şifreniz güncellendi.', 'success')
+        return redirect(url_for('login'))
+    return render_template('reset_password.html')
+
+@app.route('/confirm/<token>')
+def confirm_email(token):
+    try:
+        email = ts.loads(token, salt='email-confirm', max_age=86400)
+    except:
+        flash('Onay linki geçersiz.', 'danger')
+        return redirect(url_for('login'))
+    user = User.query.filter_by(email=email).first_or_404()
+    user.is_confirmed = True
+    db.session.commit()
+    flash('Hesabınız onaylandı!', 'success')
+    return redirect(url_for('login'))
+
+# ============================================================
+# BÜYÜK PATRON (ADMIN)
 # ============================================================
 @app.route('/admin_panel', methods=['GET', 'POST'])
 @login_required
 def admin_panel():
     if current_user.email != 'erhanadea@gmail.com':
-        flash('Bu alana sadece Büyük Patron girebilir!', 'danger')
         return redirect(url_for('dashboard'))
-    
-    # 1. Tüm OSGB'leri (Kullanıcıları) getir
     users = User.query.filter(User.email != 'erhanadea@gmail.com').all()
-    
-    # 2. Tüm sistemdeki Kritik Belgeleri (Son 30 gün) getir
     bugun = date.today()
     kritik_sinir = bugun + timedelta(days=30)
     all_entries = Entry.query.filter(Entry.expiry_date <= kritik_sinir).order_by(Entry.expiry_date.asc()).all()
-    
-    # 3. OSGB Bilgilerini hızlıca eşleştirmek için bir sözlük
-    user_map = {u.id: u.company_name for u in users}
-    
+    user_map = {u.id: u.company_name for u in User.query.all()}
     return render_template('admin.html', users=users, entries=all_entries, bugun=bugun, user_map=user_map)
 
 @app.route('/admin/update_payment/<int:uid>', methods=['POST'])
@@ -111,11 +147,11 @@ def update_payment(uid):
         u.payment_status = request.form.get('status')
         u.admin_notes = request.form.get('notes')
         db.session.commit()
-        flash('OSGB bilgileri güncellendi.', 'success')
+        flash('Güncellendi.', 'success')
     return redirect(url_for('admin_panel'))
 
 # ============================================================
-# DİĞER STANDART ROTALAR (Login, Dashboard, vb.)
+# STANDART ROTALAR
 # ============================================================
 @app.route('/')
 def index():
@@ -126,6 +162,8 @@ def login():
     if request.method == 'POST':
         user = User.query.filter_by(email=request.form.get('email')).first()
         if user and check_password_hash(user.password, request.form.get('password')):
+            user.is_admin = (user.email == 'erhanadea@gmail.com')
+            db.session.commit()
             login_user(user)
             return redirect(url_for('dashboard'))
         flash('Giriş başarısız!', 'danger')
@@ -138,14 +176,9 @@ def kayit():
         if User.query.filter_by(email=email).first():
             flash('Bu mail zaten kayıtlı.', 'warning')
             return redirect(url_for('kayit'))
-        new_user = User(
-            email=email, 
-            password=generate_password_hash(request.form.get('password')), 
-            company_name=request.form.get('company_name'),
-            is_confirmed=True # Şimdilik manuel onay uğraştırmasın
-        )
+        new_user = User(email=email, password=generate_password_hash(request.form.get('password')), company_name=request.form.get('company_name'), is_confirmed=True)
         db.session.add(new_user); db.session.commit()
-        flash('Kayıt başarılı! Giriş yapabilirsiniz.', 'success')
+        flash('Kayıt başarılı!', 'success')
         return redirect(url_for('login'))
     return render_template('kayit.html')
 
