@@ -55,8 +55,7 @@
                                                     <div class="mb-3">
                                                         <label class="form-label fw-bold">Kurum / Firma Adı</label>
                                                         <input type="text" name="company_name" class="form-control border-primary" 
-                                                               value="{{ u.company_name if u.company_name else '' }}" 
-                                                               placeholder="Örn: ADEA Danışmanlık">
+                                                               value="{{ u.company_name if u.company_name else '' }}">
                                                     </div>
                                                     <div class="mb-3">
                                                         <label class="form-label fw-bold">Üyelik Statüsü</label>
@@ -66,20 +65,13 @@
                                                         </select>
                                                     </div>
                                                     <div class="mb-3">
-                                                        <label class="form-label fw-bold">Sistem Notları (Özel)</label>
-                                                        <textarea name="notes" class="form-control" rows="3" placeholder="Özel hatırlatmalar...">{{ u.admin_notes }}</textarea>
+                                                        <label class="form-label fw-bold">Sistem Notları</label>
+                                                        <textarea name="notes" class="form-control" rows="3">{{ u.admin_notes }}</textarea>
                                                     </div>
-
-                                                    <button type="submit" class="btn btn-success w-100 fw-bold py-2 shadow-sm mb-3">
-                                                        <i class="fas fa-check-circle"></i> Değişiklikleri Kaydet
-                                                    </button>
-
+                                                    <button type="submit" class="btn btn-success w-100 fw-bold py-2 shadow-sm mb-3">Güncelle</button>
                                                     <hr>
                                                     <div class="text-center">
-                                                        <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                                onclick="if(confirm('{{ u.company_name }} kurumunu ve tüm verilerini TAMAMEN SİLMEK istediğinize emin misiniz?')) { document.getElementById('delete-form-{{ u.id }}').submit(); }">
-                                                            <i class="fas fa-user-times"></i> Kurumu Sistemden Sil
-                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="if(confirm('Silinsin mi?')) { document.getElementById('delete-form-{{ u.id }}').submit(); }">Sistemden Sil</button>
                                                     </div>
                                                 </div>
                                             </form>
@@ -98,15 +90,15 @@
         <div class="col-md-7">
             <div class="card shadow border-0" style="border-radius: 15px;">
                 <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center" style="border-radius: 15px 15px 0 0;">
-                    <h5 class="m-0 fw-bold"><i class="fas fa-broadcast-tower"></i> Global Radar: Kritik Belgeler</h5>
-                    <span class="badge bg-white text-danger fw-bold shadow-sm">{{ entries|length }} Kayıt</span>
+                    <h5 class="m-0 fw-bold"><i class="fas fa-broadcast-tower"></i> Global Radar</h5>
+                    <span class="badge bg-white text-danger fw-bold">{{ entries|length }} Kayıt</span>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-sm align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th class="ps-3 py-3">Kurum / Alt Firma</th>
+                                    <th class="ps-3 py-3">Kurum / Firma</th>
                                     <th>Belge</th>
                                     <th>Vade</th>
                                     <th class="text-center">Aksiyon</th>
@@ -117,17 +109,29 @@
                                 <tr>
                                     <td class="ps-3 py-3">
                                         <span class="badge bg-info text-dark mb-1" style="font-size: 0.7rem;">
-                                            {{ user_objects[e.user_id].company_name if user_objects[e.user_id].company_name else 'İsimsiz Kurum' }}
+                                            {{ user_objects[e.user_id].company_name if user_objects[e.user_id].company_name else 'İsimsiz' }}
                                         </span><br>
-                                        <strong class="text-dark">{{ e.firma_adi }}</strong>
+                                        <strong>{{ e.firma_adi }}</strong>
                                     </td>
                                     <td>{{ e.title }}</td>
                                     <td>
                                         {% set kalan = (e.expiry_date - bugun).days %}
-                                        <span class="fw-bold {% if kalan <= 7 %}text-danger animate-pulse{% else %}text-warning{% endif %}">
-                                            {{ kalan }} Gün
-                                        </span>
+                                        <span class="fw-bold {% if kalan <= 7 %}text-danger{% else %}text-warning{% endif %}">{{ kalan }} Gün</span>
                                     </td>
                                     <td class="text-center">
                                         <div class="btn-group shadow-sm">
-                                            <a href="https://wa.me/{{
+                                            <a href="https://wa.me/{{ e.whatsapp_no }}?text=Hatirlatma" target="_blank" class="btn btn-sm btn-success">Müşteri</a>
+                                            <a href="https://wa.me/{{ e.danisman_no }}?text=Bilgi" target="_blank" class="btn btn-sm btn-info text-white">Sorumlu</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
