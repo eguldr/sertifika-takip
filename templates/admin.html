@@ -85,54 +85,29 @@ def check_trial_period():
     return True
 
 # ============================================================
-# ŞİFRE SIFIRLAMA VE MAİL ONAYI
+# OTOMATIK MAIL TARAMA MOTORU (CRON JOB)
 # ============================================================
-@app.route('/confirm/<token>')
-def confirm_email(token):
-    try:
-        email = ts.loads(token, salt='email-confirm', max_age=86400)
-        user = User.query.filter_by(email=email).first_or_404()
-        user.is_confirmed = True
-        db.session.commit()
-        flash('E-posta doğrulandı! Giriş yapabilirsiniz.', 'success')
-    except:
-        flash('Onay linki geçersiz.', 'danger')
-    return redirect(url_for('login'))
-
-@app.route('/forgot_password', methods=['GET', 'POST'])
-def forgot_password():
-    if request.method == 'POST':
-        email = request.form.get('email')
-        user = User.query.filter_by(email=email).first()
-        if user:
-            token = ts.dumps(email, salt='recover-key')
-            recover_url = url_for('reset_password', token=token, _external=True)
-            msg = Message("EG Optimal - Şifre Sıfırlama", recipients=[email])
-            msg.body = f"Şifrenizi sıfırlamak için şu bağlantıya tıklayın: {recover_url}"
-            mail.send(msg)
-            flash('Sıfırlama talimatları e-postanıza gönderildi.', 'info')
-        else:
-            flash('Bu e-posta adresi sistemde kayıtlı değil.', 'warning')
-        return redirect(url_for('login'))
-    return render_template('forgot_password.html')
-
-@app.route('/reset_password/<token>', methods=['GET', 'POST'])
-def reset_password(token):
-    try:
-        email = ts.loads(token, salt='recover-key', max_age=3600)
-    except:
-        flash('Link geçersiz veya süresi dolmuş.', 'danger')
-        return redirect(url_for('forgot_password'))
-    if request.method == 'POST':
-        user = User.query.filter_by(email=email).first()
-        user.password = generate_password_hash(request.form.get('password'))
-        db.session.commit()
-        flash('Şifreniz başarıyla güncellendi.', 'success')
-        return redirect(url_for('login'))
-    return render_template('reset_password.html', token=token)
+@app.route('/cron/check_reminders')
+def cron_check_reminders():
+    bugun = date.today()
+    kritik_vade = bugun + timedelta(days=7) 
+    entries = Entry.query.filter(Entry.expiry_date <= kritik_vade).all()
+    count = 0
+    for e in entries:
+        owner = User.query.get(e.user_id)
+        if owner and owner.email:
+            kalan = (e.expiry_date - bugun).days
+            durum = "BUGÜN DOLUYOR!" if kalan == 0 else (f"{kalan} GÜN KALDI!" if kalan > 0 else "SÜRESİ GEÇTİ!")
+            try:
+                msg = Message(f"EG Optimal Hatırlatma: {e.title} ({durum})", recipients=[owner.email])
+                msg.body = f"Sayın {owner.company_name or 'Üyemiz'},\n\nMüşteri: {e.firma_adi}\nBelge: {e.title}\nBitiş: {e.expiry_date.strftime('%d.%m.%Y')}\nDurum: {durum}\n\nLütfen yenileme işlemini başlatın."
+                mail.send(msg)
+                count += 1
+            except: pass
+    return f"Tamamlandı. {count} mail gönderildi.", 200
 
 # ============================================================
-# ADMİN PANELİ VE KULLANICI SİSTEMDEN ATMA
+# ADMİN PANELİ VE YÖNETİM
 # ============================================================
 @app.route('/admin_panel')
 @login_required
@@ -166,40 +141,18 @@ def delete_user(uid):
             Entry.query.filter_by(user_id=uid).delete()
             db.session.delete(u)
             db.session.commit()
-            flash('Kullanıcı ve tüm verileri kalıcı olarak silindi.', 'danger')
+            flash('Kullanıcı ve tüm verileri silindi.', 'danger')
     return redirect(url_for('admin_panel'))
 
 # ============================================================
-# OTOMATIK MAIL TARAMA MOTORU (CRON JOB)
-# ============================================================
-@app.route('/cron/check_reminders')
-def cron_check_reminders():
-    bugun = date.today()
-    kritik_vade = bugun + timedelta(days=7) 
-    entries = Entry.query.filter(Entry.expiry_date <= kritik_vade).all()
-    count = 0
-    for e in entries:
-        owner = User.query.get(e.user_id)
-        if owner and owner.email:
-            kalan = (e.expiry_date - bugun).days
-            durum = "BUGÜN DOLUYOR!" if kalan == 0 else (f"{kalan} GÜN KALDI!" if kalan > 0 else "SÜRESİ GEÇTİ!")
-            try:
-                msg = Message(f"EG Optimal Hatırlatma: {e.title} ({durum})", recipients=[owner.email])
-                msg.body = f"Sayın {owner.company_name or 'Üyemiz'},\n\nMüşteri: {e.firma_adi}\nBelge: {e.title}\nBitiş: {e.expiry_date.strftime('%d.%m.%Y')}\nDurum: {durum}\n\nLütfen yenileme işlemini başlatın."
-                mail.send(msg)
-                count += 1
-            except: pass
-    return f"Tamamlandı. {count} mail gönderildi.", 200
-
-# ============================================================
-# KULLANICI İŞLEMLERİ (DASHBOARD, EKLE, SİL, EXCEL)
+# KULLANICI İŞLEMLERİ
 # ============================================================
 @app.route('/dashboard')
 @login_required
 def dashboard():
     if not check_trial_period():
         logout_user()
-        flash('Deneme süreniz doldu. Lütfen ödeme yapın.', 'danger')
+        flash('Deneme süresi doldu.', 'danger')
         return redirect(url_for('login'))
     return render_template('dashboard.html', sertifikalar=Entry.query.filter_by(user_id=current_user.id).all(), bugun=date.today(), timedelta=timedelta)
 
@@ -233,19 +186,8 @@ def sil(id):
         return redirect(url_for('sertifikalar', cat=cat))
     return redirect(url_for('dashboard'))
 
-@app.route('/export')
-@login_required
-def export_excel():
-    entries = Entry.query.filter_by(user_id=current_user.id).all()
-    df = pd.DataFrame([{"Müşteri": e.firma_adi, "Belge": e.title, "Vade": e.expiry_date} for e in entries])
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False)
-    output.seek(0)
-    return send_file(output, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", as_attachment=True, download_name="EG_Rapor.xlsx")
-
 # ============================================================
-# GİRİŞ / KAYIT / reCAPTCHA
+# AUTH & GÜVENLİK
 # ============================================================
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -253,7 +195,7 @@ def login():
         user = User.query.filter_by(email=request.form.get('email')).first()
         if user and check_password_hash(user.password, request.form.get('password')):
             if not user.is_confirmed:
-                flash('Lütfen mail onayı yapın.', 'warning')
+                flash('Mail onayı gerekli.', 'warning')
                 return redirect(url_for('login'))
             user.is_admin = (user.email == 'erhanadea@gmail.com')
             db.session.commit()
@@ -267,11 +209,11 @@ def kayit():
     if request.method == 'POST':
         verify = requests.post('https://www.google.com/recaptcha/api/siteverify', data={'secret': '6Leewb8sAAAAAEnUeD7XNq4u_88Z5P_uF6o7h1hS', 'response': request.form.get('g-recaptcha-response')}).json()
         if not verify.get('success'):
-            flash('reCAPTCHA doğrulaması başarısız.', 'danger')
+            flash('reCAPTCHA hatası.', 'danger')
             return redirect(url_for('kayit'))
         email = request.form.get('email')
         if User.query.filter_by(email=email).first():
-            flash('Mail zaten kayıtlı.', 'warning')
+            flash('Mail kayıtlı.', 'warning')
             return redirect(url_for('kayit'))
         is_p = (email == 'erhanadea@gmail.com')
         new_u = User(email=email, password=generate_password_hash(request.form.get('password')), company_name=request.form.get('company_name'), is_confirmed=is_p, payment_status='Odendi' if is_p else 'Bekliyor')
@@ -280,11 +222,48 @@ def kayit():
         if not is_p:
             token = ts.dumps(email, salt='email-confirm')
             msg = Message("EG Optimal Onay", recipients=[email])
-            msg.body = f"Onay için: {url_for('confirm_email', token=token, _external=True)}"
+            msg.body = f"Onay Linki: {url_for('confirm_email', token=token, _external=True)}"
             mail.send(msg)
             flash('Onay maili gönderildi.', 'info')
         return redirect(url_for('login'))
     return render_template('kayit.html')
+
+@app.route('/confirm/<token>')
+def confirm_email(token):
+    try:
+        email = ts.loads(token, salt='email-confirm', max_age=86400)
+        user = User.query.filter_by(email=email).first_or_404()
+        user.is_confirmed = True
+        db.session.commit()
+        flash('Doğrulandı.', 'success')
+    except: flash('Link geçersiz.', 'danger')
+    return redirect(url_for('login'))
+
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+        if user:
+            token = ts.dumps(email, salt='recover-key')
+            msg = Message("Şifre Sıfırlama", recipients=[email])
+            msg.body = f"Link: {url_for('reset_password', token=token, _external=True)}"
+            mail.send(msg)
+            flash('Mail gönderildi.', 'info')
+        return redirect(url_for('login'))
+    return render_template('forgot_password.html')
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    try: email = ts.loads(token, salt='recover-key', max_age=3600)
+    except: return redirect(url_for('forgot_password'))
+    if request.method == 'POST':
+        user = User.query.filter_by(email=email).first()
+        user.password = generate_password_hash(request.form.get('password'))
+        db.session.commit()
+        flash('Güncellendi.', 'success')
+        return redirect(url_for('login'))
+    return render_template('reset_password.html', token=token)
 
 @app.route('/logout')
 def logout():
