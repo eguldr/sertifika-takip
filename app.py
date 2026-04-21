@@ -328,7 +328,8 @@ def reset_password(token):
 def dashboard():
     # Admin ise tüm kayıtları görsün
     if current_user.email == 'erhanadea@gmail.com':
-        res = Entry.query.order_by(Entry.expiry_date.asc()).all()
+        res = Entry.query.filter_by(is_active=True)\
+                   .order_by(Entry.expiry_date.asc()).all()
     else:
         res = Entry.query.filter_by(user_id=current_user.id)\
                    .order_by(Entry.expiry_date.asc()).all()
