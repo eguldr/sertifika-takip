@@ -345,7 +345,7 @@ def dashboard():
 @login_required
 def sertifikalar(cat):
     if current_user.email == 'erhanadea@gmail.com':
-        res = Entry.query.filter_by(category=cat)\
+        Entry.query.filter_by(user_id=current_user.id, category=cat, is_active=True)
                    .order_by(Entry.expiry_date.asc()).all()
     else:
         res = Entry.query.filter_by(user_id=current_user.id, category=cat)\
