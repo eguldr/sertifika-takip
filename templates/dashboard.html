@@ -15,7 +15,6 @@
     .table-container { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
     .table thead th { background-color: var(--navy-primary); color: white; border: none; font-size: 0.75rem; padding: 15px; text-transform: uppercase; letter-spacing: 1px; }
     
-    /* ACİL DURUM BARI */
     .emergency-box {
         background: white;
         border-left: 10px solid var(--danger-red);
@@ -36,7 +35,6 @@
         100% { box-shadow: 0 0 0 0 rgba(198, 40, 40, 0); }
     }
 
-    /* DOSYA YÜKLEME BUTONU */
     .btn-excel-import {
         background: #e8f5e9;
         color: #2e7d32;
@@ -45,6 +43,16 @@
         transition: 0.3s;
     }
     .btn-excel-import:hover { background: #c8e6c9; }
+
+    /* Silme butonu için özel stil */
+    .btn-delete-row {
+        color: #cbd5e1;
+        transition: 0.2s;
+        border: none;
+        background: none;
+        padding: 5px 10px;
+    }
+    .btn-delete-row:hover { color: var(--danger-red); }
 </style>
 
 <div class="container-fluid py-4">
@@ -68,7 +76,6 @@
         </div>
         
         <div class="d-flex align-items-center gap-2">
-            {# AKILLI EXCEL İÇE AKTARMA FORMU #}
             <form action="{{ url_for('import_excel') }}" method="POST" enctype="multipart/form-data" class="d-inline">
                 <input type="file" name="excel_file" id="excel_file_input" style="display:none" onchange="this.form.submit()">
                 <button type="button" class="btn btn-excel-import px-3" onclick="document.getElementById('excel_file_input').click()">
@@ -77,7 +84,7 @@
             </form>
 
             <div class="d-flex border rounded bg-white shadow-sm overflow-hidden">
-                <a href="{{ url_for('ekle', cat='Genel') }}" class="btn btn-primary border-0 rounded-0 px-4 fw-bold" style="background-color: var(--navy-primary);">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-primary border-0 rounded-0 px-4 fw-bold" style="background-color: var(--navy-primary);">
                     <i class="fas fa-plus me-2"></i> Yeni Ekle
                 </a>
                 <a href="{{ url_for('export_excel') }}" class="btn btn-light border-0 rounded-0 px-3 border-start">
@@ -126,6 +133,7 @@
                         <th class="py-3">Kalan Gün</th>
                         <th class="text-center py-3">Hızlı Aksiyon</th>
                         <th class="text-center py-3">Dijital Arşiv</th>
+                        <th class="text-center py-3">İşlem</th>
                     </tr>
                 </thead>
                 <tbody style="background-color: white;">
@@ -135,7 +143,7 @@
                     <tr class="table-row" data-status="{{ status }}">
                         <td class="ps-4 align-middle">
                             <span class="fw-bold d-block mb-1" style="color: var(--navy-dark);">{{ s.title }}</span>
-                            <small class="text-muted"><i class="fas fa-info-circle me-1"></i> {{ s.risk_value or s.firma_adi }}</small>
+                            <small class="text-muted"><i class="fas fa-info-circle me-1"></i> {{ s.firma_adi or 'Tanımlanmadı' }}</small>
                         </td>
                         <td class="align-middle text-muted fw-bold">{{ s.expiry_date.strftime('%d.%m.%Y') }}</td>
                         <td class="align-middle">
@@ -144,12 +152,10 @@
                             </span>
                         </td>
                         <td class="align-middle text-center">
-                            <div class="btn-group">
-                                <a href="https://wa.me/{{ s.whatsapp_no or '' }}?text=Bilgi: {{ s.title }} vadesine {{ kalan }} gün kalmıştır." 
-                                   class="btn btn-sm btn-outline-success" target="_blank">
-                                   <i class="fab fa-whatsapp"></i> Mesaj
-                                </a>
-                            </div>
+                            <a href="https://wa.me/905320000000?text=Sayın Yetkili, {{ s.title }} belgenizin süresi {{ kalan }} gün sonra dolacaktır. Bilginize." 
+                               class="btn btn-sm btn-outline-success rounded-pill px-3" target="_blank">
+                               <i class="fab fa-whatsapp"></i> Hatırlat
+                            </a>
                         </td>
                         <td class="align-middle text-center">
                             {% if s.belge_url %}
@@ -164,6 +170,13 @@
                                     </label>
                                 </form>
                             {% endif %}
+                        </td>
+                        <td class="align-middle text-center">
+                            <a href="{{ url_for('delete_entry', id=s.id) }}" 
+                               class="btn-delete-row" 
+                               onclick="return confirm('Bu belgeyi sistemden tamamen silmek istediğinize emin misiniz?')">
+                               <i class="fas fa-trash-alt"></i>
+                            </a>
                         </td>
                     </tr>
                     {% endfor %}
