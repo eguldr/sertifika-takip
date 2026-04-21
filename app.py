@@ -15,15 +15,15 @@ from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy import text
 
 # ============================================================
-# UYGULAMA YAPILANDIRMASI (CONFIG)
+# 🛠️ UYGULAMA YAPILANDIRMASI (MASTER CONFIGURATION)
 # ============================================================
 app = Flask(__name__)
 app.config.update(
-    SECRET_KEY=os.environ.get('SECRET_KEY', 'eg_optimal_full_master_2026'),
+    SECRET_KEY=os.environ.get('SECRET_KEY', 'eg_optimal_final_master_v600_PRO_MAX'),
     SECURITY_PASSWORD_SALT='eg_salt_987'
 )
 
-# Veritabanı Bağlantısı (PostgreSQL & SQLite)
+# Veritabanı Yapılandırması (PostgreSQL & SQLite Otomatik Seçim)
 uri = os.environ.get('DATABASE_URL', 'sqlite:///test.db')
 if uri and uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
@@ -31,137 +31,181 @@ app.config['SQLALCHEMY_DATABASE_URI'] = uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-# Mail Servisi Yapılandırması
+# Gelişmiş Mail Servisi Yapılandırması
 app.config.update(
     MAIL_SERVER='smtp.gmail.com',
     MAIL_PORT=587,
     MAIL_USE_TLS=True,
-    MAIL_USERNAME='erhanadea@gmail.com',
-    MAIL_PASSWORD='bwdxhwamvoggqdko',
-    MAIL_DEFAULT_SENDER='erhanadea@gmail.com'
+    MAIL_USERNAME=os.environ.get('MAIL_USERNAME', 'erhanadea@gmail.com'),
+    MAIL_PASSWORD=os.environ.get('MAIL_PASSWORD', 'bwdxhwamvoggqdko'),
+    MAIL_DEFAULT_SENDER=os.environ.get('MAIL_USERNAME', 'erhanadea@gmail.com')
 )
 mail = Mail(app)
 ts = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# 🔥 CLOUDINARY MÜHÜRLÜ BAĞLANTI (401 HATASI FİX)
-# 'api_secret' kısmına senin "İncele" diyerek bulduğunun aynısını yazdım.
+# 🔥 CLOUDINARY MÜHÜRLÜ BAĞLANTI (401 HATASI KESİN ÇÖZÜM)
 cloudinary.config(
-    cloud_name='dh2pefkk',
+    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', 'dh2pefkk'),
     api_key='414697559795627',
     api_secret=os.environ.get('CLOUDINARY_API_SECRET', '0q2xexoiKr25EeuI6CmFF8CXf2c')
 )
 
 # ============================================================
-# VERİTABANI MODELLERİ (DATABASE MODELS)
+# 🗄️ VERİTABANI MODELLERİ (DATABASE ARCHITECTURE)
 # ============================================================
 class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(100), unique=True, nullable=False)
-    password = db.Column(db.String(256), nullable=False)
+    id           = db.Column(db.Integer, primary_key=True)
+    email        = db.Column(db.String(100), unique=True, nullable=False)
+    password     = db.Column(db.String(256), nullable=False)
     company_name = db.Column(db.String(100), default='')
     is_confirmed = db.Column(db.Boolean, default=False)
-    is_paid = db.Column(db.Boolean, default=True) # Sunum kolaylığı için True
-    admin_note = db.Column(db.Text, default='')
+    is_paid      = db.Column(db.Boolean, default=False)
+    admin_note   = db.Column(db.Text, default='')
 
 class Entry(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, nullable=False)
-    category = db.Column(db.String(50))
-    title = db.Column(db.String(100))
-    firma_adi = db.Column(db.String(100))
+    id          = db.Column(db.Integer, primary_key=True)
+    user_id     = db.Column(db.Integer, nullable=False)
+    category    = db.Column(db.String(50))
+    title       = db.Column(db.String(100))
+    firma_adi   = db.Column(db.String(100))
     expiry_date = db.Column(db.Date)
-    belge_url = db.Column(db.String(500))
+    belge_url   = db.Column(db.String(500))
     whatsapp_no = db.Column(db.String(20))
-    note = db.Column(db.Text)
-    is_active = db.Column(db.Boolean, default=True) # Güvenli silme için
+    note        = db.Column(db.Text)
+    is_active   = db.Column(db.Boolean, default=True)  # 🔥 ChatGPT Soft-Delete Sistemi
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# ============================================================
+# 🛡️ GÜVENLİK VE VERİTABANI KONTROLLERİ (BEFORE REQUEST)
+# ============================================================
 @app.before_request
 def setup_db():
     if not getattr(app, '_db_init', False):
         with app.app_context():
             db.create_all()
-            # Eksik sütunları PostgreSQL tarafında da mühürle
+            # PostgreSQL Sütun Senkronizasyonu (Zırhlı Sorgular)
             for sql in [
                 "ALTER TABLE entry ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE",
-                "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS company_name VARCHAR(100) DEFAULT ''",
-                "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS admin_note TEXT DEFAULT ''"
+                "ALTER TABLE entry ADD COLUMN IF NOT EXISTS whatsapp_no VARCHAR(20)",
+                "ALTER TABLE entry ADD COLUMN IF NOT EXISTS note TEXT",
+                "ALTER TABLE entry ADD COLUMN IF NOT EXISTS firma_adi VARCHAR(100)",
+                'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS is_paid BOOLEAN DEFAULT FALSE',
+                'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS company_name VARCHAR(100) DEFAULT \'\'',
+                'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS admin_note TEXT DEFAULT \'\''
             ]:
                 try:
                     db.session.execute(text(sql))
                     db.session.commit()
-                except:
+                except Exception:
                     db.session.rollback()
         app._db_init = True
 
+@app.before_request
+def check_payment():
+    """ 🔥 ChatGPT'nin İndent Hatasını Düzelttiğimiz Ödeme Kontrolü """
+    if current_user.is_authenticated:
+        allowed = ['logout', 'admin_panel', 'update_payment', 'static']
+        if not current_user.is_paid and request.endpoint not in allowed:
+            if request.endpoint not in ['dashboard', 'login', 'register']:
+                flash("Erişim için ödeme onayı gerekmektedir.", "warning")
+                return redirect(url_for('dashboard'))
+
 # ============================================================
-# AKILLI ALGORİTMALAR (BRANŞ VE TARİH)
+# 🧠 AKILLI BRANŞ TESPİT VE EXCEL ALGORİTMALARI
 # ============================================================
-def tespit_brans(row_values):
-    txt = " ".join([str(v) for v in row_values]).lower()
-    if any(x in txt for x in ['personel', 'src', 'ehliyet', 'operator', 'yilmaz']):
+def tespit_brans(satirlar):
+    txt = " ".join([str(v) for v in satirlar]).lower()
+    # Personel Grubu (Gelişmiş Keyword)
+    if any(x in txt for x in ['personel', 'src', 'ehliyet', 'operator', 'yilmaz', 'sofor', 'calisan']):
         return 'Personel'
-    if any(x in txt for x in ['plaka', 'arac', 'scania', 'tir', 'kamyon']):
+    # Araç Grubu
+    if any(x in txt for x in ['plaka', 'arac', 'araç', 'scania', 'tir', 'kamyon', 'ford', 'mercedes']):
         return 'Arac'
-    if any(x in txt for x in ['tesis', 'yangin', 'kapasite', 'bina', 'depo']):
+    # Tesis Grubu
+    if any(x in txt for x in ['tesis', 'yangin', 'yangın', 'kapasite', 'bina', 'depo', 'fabrika']):
         return 'Tesis'
-    if any(x in txt for x in ['iso', 'uretim', 'kalite', 'ce belgesi']):
+    # Üretim Grubu
+    if any(x in txt for x in ['iso', 'uretim', 'üretim', 'kalite', 'ce belgesi', 'haccp', 'tse']):
         return 'Uretim'
     return 'Genel'
 
 # ============================================================
-# ANA ROTALAR (ROUTES)
+# 🛣️ ANA ROTALAR (FULL STACK ROUTES)
 # ============================================================
+
 @app.route('/')
 def index():
-    return redirect(url_for('dashboard') if current_user.is_authenticated else url_for('login'))
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        u = User.query.filter_by(email=request.form.get('email', '').strip()).first()
-        if u and check_password_hash(u.password, request.form.get('password', '')):
-            login_user(u)
+        email = request.form.get('email', '').strip()
+        password = request.form.get('password', '')
+        user = User.query.filter_by(email=email).first()
+        if user and check_password_hash(user.password, password):
+            login_user(user)
             return redirect(url_for('dashboard'))
-        flash("Giriş başarısız!", "danger")
+        flash("E-posta veya şifre hatalı.", "danger")
     return render_template('login.html')
+
+# 🔥 ÇÖZÜM: base.html içindeki 'register' ismini eşitleyen zırhlı endpoint
+@app.route('/register', methods=['GET', 'POST'], endpoint='register')
+@app.route('/kayit', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip()
+        if User.query.filter_by(email=email).first():
+            flash("E-posta zaten kayıtlı.", "warning")
+            return redirect(url_for('register'))
+        new_u = User(
+            email=email,
+            password=generate_password_hash(request.form.get('password', '')),
+            is_confirmed=True,
+            is_paid=True
+        )
+        db.session.add(new_u)
+        db.session.commit()
+        flash("Kayıt başarılı! Giriş yapabilirsiniz.", "success")
+        return redirect(url_for('login'))
+    return render_template('kayit.html')
 
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    # 🔥 GLOBAL RADAR MANTIĞI: Admin her şeyi görür, kullanıcı kısıtlıdır
-    if current_user.email == 'erhanadea@gmail.com':
-        res = Entry.query.filter_by(is_active=True).order_by(Entry.expiry_date.asc()).all()
-    else:
-        res = Entry.query.filter_by(user_id=current_user.id, is_active=True).order_by(Entry.expiry_date.asc()).all()
-    return render_template('dashboard.html', sertifikalar=res, bugun=date.today(), timedelta=timedelta, current_cat=None)
+    # 🔥 GLOBAL RADAR: Admin tüm aktif kayıtları, kullanıcı kendininkini görür
+    query = Entry.query.filter_by(is_active=True)
+    if current_user.email != 'erhanadea@gmail.com':
+        query = query.filter_by(user_id=current_user.id)
+    res = query.order_by(Entry.expiry_date.asc()).all()
+    return render_template('dashboard.html', sertifikalar=res, bugun=date.today(), timedelta=timedelta)
 
 @app.route('/import_excel', methods=['POST'])
 @login_required
 def import_excel():
     f = request.files.get('excel_file')
     if f:
-        df = pd.read_excel(f)
-        df.columns = [str(c).strip().lower() for c in df.columns]
-        for _, r in df.iterrows():
-            cat = tespit_brans(list(r.values))
-            exp = date.today() + timedelta(days=365)
-            # Tarih sütunu yakalama
-            for c in df.columns:
-                if 'tarih' in c or 'vade' in c:
-                    try: exp = pd.to_datetime(r[c]).date()
-                    except: pass
-            db.session.add(Entry(
-                user_id=current_user.id, category=cat, 
-                title=str(r.iloc[0]), firma_adi=str(r.get('firma', 'ABC')), 
-                expiry_date=exp, is_active=True
-            ))
-        db.session.commit()
+        try:
+            df = pd.read_excel(f)
+            df.columns = [str(c).strip().lower() for c in df.columns]
+            for _, r in df.iterrows():
+                cat = tespit_brans(list(r.values))
+                db.session.add(Entry(
+                    user_id=current_user.id, category=cat, 
+                    title=str(r.iloc[0]), firma_adi="Analiz Edilen Firma", 
+                    expiry_date=date.today()+timedelta(days=365)
+                ))
+            db.session.commit()
+            flash("Excel verileri başarıyla sisteme aktarıldı.", "success")
+        except Exception as e:
+            flash(f"Excel hatası: {e}", "danger")
     return redirect(url_for('dashboard'))
 
 @app.route('/upload_belge/<int:entry_id>', methods=['POST'])
@@ -175,18 +219,9 @@ def upload_belge(entry_id):
             if e:
                 e.belge_url = res.get('secure_url')
                 db.session.commit()
+                flash("Dosya buluta yüklendi.", "success")
         except:
-            flash("Bulut bağlantı hatası!")
-    return redirect(request.referrer)
-
-@app.route('/delete_entry/<int:id>')
-@login_required
-def delete_entry(id):
-    e = Entry.query.get(id)
-    if e:
-        # Admin Global Radar kuralı: Silme yerine inaktif yap
-        e.is_active = False
-        db.session.commit()
+            flash("Bulut bağlantı hatası!", "danger")
     return redirect(request.referrer)
 
 @app.route('/admin_panel')
@@ -194,12 +229,40 @@ def delete_entry(id):
 def admin_panel():
     if current_user.email != 'erhanadea@gmail.com':
         return redirect(url_for('dashboard'))
-    return render_template('admin.html', users=User.query.all(), all_entries=Entry.query.all(), bugun=date.today(), timedelta=timedelta)
+    return render_template('admin.html', 
+        users=User.query.all(), 
+        all_entries=Entry.query.all(), 
+        bugun=date.today(), 
+        timedelta=timedelta)
+
+@app.route('/delete_entry/<int:id>')
+@login_required
+def delete_entry(id):
+    e = Entry.query.get(id)
+    if e:
+        # 🔥 SOFT DELETE MANTIĞI: Admin sildiğinde veri saklanır ama listeden düşer
+        e.is_active = False
+        db.session.commit()
+    return redirect(request.referrer)
+
+@app.route('/export_excel')
+@login_required
+def export_excel():
+    entries = Entry.query.filter_by(user_id=current_user.id, is_active=True).all()
+    df = pd.DataFrame([{'Belge': e.title, 'Firma': e.firma_adi, 'Vade': e.expiry_date} for e in entries])
+    out = BytesIO()
+    with pd.ExcelWriter(out, engine='openpyxl') as wr:
+        df.to_excel(wr, index=False)
+    out.seek(0)
+    return send_file(out, download_name="eg_optimal_rapor.xlsx", as_attachment=True)
 
 @app.route('/logout')
+@login_required
 def logout():
     logout_user()
     return redirect(url_for('login'))
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Render port binding için gerekli
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
