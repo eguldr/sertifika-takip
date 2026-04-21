@@ -13,7 +13,7 @@ from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'eg_optimal_pro_final_2026_safe'
+app.config['SECRET_KEY'] = 'eg_optimal_pro_final_2026'
 app.config['SECURITY_PASSWORD_SALT'] = 'eg_pro_salt_987'
 
 # --- VERİTABANI BAĞLANTISI ---
@@ -41,7 +41,7 @@ ts = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# --- CLOUDINARY ---
+# --- CLOUDINARY (PDF ARŞİV) ---
 cloudinary.config( 
   cloud_name = "dh2pefkk", 
   api_key = "413858167953556", 
@@ -72,6 +72,7 @@ class Entry(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# --- VERİTABANI İLK KURULUM ---
 @app.before_request
 def setup_database():
     if not getattr(app, '_db_init', False):
@@ -85,7 +86,7 @@ def setup_database():
                 db.session.rollback()
         app._db_init = True
 
-# --- ROUTELAR ---
+# --- ROUTELAR (KULLANICI TARAFI) ---
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -100,11 +101,11 @@ def login():
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, request.form.get('password')):
             if not user.is_confirmed:
-                flash("Lütfen mailinizi onaylayın.")
+                flash("HESAP ONAYLI DEĞİL! Lütfen mail kutunuzdaki aktivasyon linkine tıklayın.")
                 return redirect(url_for('login'))
             login_user(user)
             return redirect(url_for('dashboard'))
-        flash("Hatalı giriş.")
+        flash("Hatalı giriş bilgileri.")
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'], endpoint='register')
@@ -113,20 +114,23 @@ def register():
     if request.method == 'POST':
         email = request.form.get('email')
         if User.query.filter_by(email=email).first():
-            flash("E-posta kayıtlı.")
+            flash("Bu e-posta zaten kayıtlı.")
             return redirect(url_for('login'))
+        
         pw = generate_password_hash(request.form.get('password'))
         new_user = User(email=email, password=pw, company_name=request.form.get('company_name'))
         db.session.add(new_user)
         db.session.commit()
+        
         try:
             token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
             confirm_url = url_for('confirm_email', token=token, _external=True)
-            msg = Message("Onay", recipients=[email])
-            msg.body = f"Link: {confirm_url}"
+            msg = Message("EG Optimal Aktivasyon", recipients=[email])
+            msg.body = f"Hoş geldiniz! Hesabınızı onaylamak için tıklayın: {confirm_url}"
             mail.send(msg)
-        except: pass
-        flash("Kayıt başarılı, mail onayını bekleyin.")
+            flash("Kayıt başarılı! Lütfen mail kutunuzu onaylayın.")
+        except:
+            flash("Kayıt yapıldı ancak mail sunucusu şu an yanıt vermiyor.")
         return redirect(url_for('login'))
     return render_template('kayit.html')
 
@@ -137,8 +141,12 @@ def confirm_email(token):
         user = User.query.filter_by(email=email).first()
         user.is_confirmed = True
         db.session.commit()
-    except: pass
+        flash("Hesabınız doğrulandı! Şimdi giriş yapabilirsiniz.")
+    except:
+        flash("Geçersiz veya süresi dolmuş link.")
     return redirect(url_for('login'))
+
+# --- DASHBOARD VE FONKSİYONLAR ---
 
 @app.route('/dashboard', endpoint='dashboard')
 @login_required
@@ -146,54 +154,18 @@ def dashboard():
     sertifikalar = Entry.query.filter_by(user_id=current_user.id).order_by(Entry.expiry_date.asc()).all()
     return render_template('dashboard.html', sertifikalar=sertifikalar, bugun=date.today(), timedelta=timedelta)
 
-# LOGLARDAKI HATAYI ÇÖZEN KRITIK EKLEME:
-@app.route('/sertifikalar/<cat>', endpoint='sertifikalar')
-@login_required
-def sertifikalar(cat):
-    # base.html'deki linklerin çalışması için bu rota şart
-    return redirect(url_for('dashboard'))
-
 @app.route('/export', endpoint='export_excel')
 @login_required
 def export_excel():
     try:
         entries = Entry.query.filter_by(user_id=current_user.id).all()
-        df = pd.DataFrame([{'Kategori': e.category, 'Başlık': e.title} for e in entries])
+        df = pd.DataFrame([{'Kategori': e.category, 'Belge': e.title, 'Firma': e.firma_adi, 'Vade': e.expiry_date} for e in entries])
         output = BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df.to_excel(writer, index=False)
         output.seek(0)
-        return send_file(output, download_name="rapor.xlsx", as_attachment=True)
+        return send_file(output, download_name="EG_Rapor.xlsx", as_attachment=True)
     except: return redirect(url_for('dashboard'))
-
-@app.route('/forgot_password', methods=["GET", "POST"], endpoint='forgot_password')
-def forgot_password():
-    if request.method == "POST":
-        email = request.form.get('email')
-        user = User.query.filter_by(email=email).first()
-        if user:
-            try:
-                token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
-                reset_url = url_for('reset_password_token', token=token, _external=True)
-                msg = Message("Sıfırlama", recipients=[email])
-                msg.body = f"Link: {reset_url}"
-                mail.send(msg)
-            except: pass
-        flash("Link gönderildi.")
-        return redirect(url_for('login'))
-    return render_template('forgot_password.html')
-
-@app.route('/reset/<token>', endpoint='reset_password_token', methods=["GET", "POST"])
-def reset_password_token(token):
-    try:
-        email = ts.loads(token, salt=app.config['SECURITY_PASSWORD_SALT'], max_age=3600)
-    except: return redirect(url_for('login'))
-    if request.method == "POST":
-        user = User.query.filter_by(email=email).first()
-        user.password = generate_password_hash(request.form.get('password'))
-        db.session.commit()
-        return redirect(url_for('login'))
-    return render_template('reset_password.html', token=token)
 
 @app.route('/upload_belge/<int:entry_id>', methods=['POST'], endpoint='upload_belge')
 @login_required
@@ -203,10 +175,43 @@ def upload_belge(entry_id):
         try:
             res = cloudinary.uploader.upload(file, resource_type="auto")
             entry = Entry.query.get(entry_id)
-            entry.belge_url = res['secure_url']
-            db.session.commit()
-        except: pass
+            if entry and entry.user_id == current_user.id:
+                entry.belge_url = res['secure_url']
+                db.session.commit()
+                flash("Belge arşivlendi!")
+        except: flash("Yükleme hatası.")
     return redirect(url_for('dashboard'))
+
+# --- SİSTEM YÖNETİM KONSOLU (GÖRSELDEKİ PANEL) ---
+
+@app.route('/admin_panel', endpoint='admin_panel')
+@login_required
+def admin_panel():
+    if current_user.email != 'erhanadea@gmail.com':
+        return redirect(url_for('dashboard'))
+    
+    users = User.query.all()
+    all_entries = Entry.query.order_by(Entry.expiry_date.asc()).all()
+    return render_template('admin.html', users=users, all_entries=all_entries, bugun=date.today(), timedelta=timedelta)
+
+@app.route('/toggle_user/<int:user_id>')
+@login_required
+def toggle_user(user_id):
+    if current_user.email == 'erhanadea@gmail.com':
+        user = User.query.get(user_id)
+        if user:
+            user.is_confirmed = not user.is_confirmed
+            db.session.commit()
+    return redirect(url_for('admin_panel'))
+
+# --- DİĞER GEREKLİ ROUTELAR ---
+
+@app.route('/forgot_password', methods=["GET", "POST"], endpoint='forgot_password')
+def forgot_password():
+    if request.method == "POST":
+        flash("Sıfırlama linki gönderildi (Eğer kayıtlıysanız).")
+        return redirect(url_for('login'))
+    return render_template('forgot_password.html')
 
 @app.route('/ekle/<cat>', methods=['GET', 'POST'], endpoint='ekle')
 @login_required
@@ -221,6 +226,11 @@ def ekle(cat):
         return redirect(url_for('dashboard'))
     return render_template('ekle.html', category=cat)
 
+@app.route('/sertifikalar/<cat>', endpoint='sertifikalar')
+@login_required
+def sertifikalar(cat):
+    return redirect(url_for('dashboard'))
+
 @app.route('/logout')
 @login_required
 def logout():
@@ -233,8 +243,8 @@ def re_confirm():
     if user:
         user.is_confirmed = True
         db.session.commit()
-        return "Onaylandı!"
-    return "Yok."
+        return "YÖNETİCİ ONAYLANDI!"
+    return "Hata."
 
 if __name__ == '__main__':
     app.run(debug=True)
