@@ -13,10 +13,10 @@ from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'eg_optimal_pro_secret_2024'
+app.config['SECRET_KEY'] = 'eg_optimal_pro_secret_2026'
 app.config['SECURITY_PASSWORD_SALT'] = 'eg_pro_salt_987'
 
-# --- VERİTABANI BAĞLANTISI ---
+# --- VERİTABANI ---
 uri = os.environ.get('DATABASE_URL', 'sqlite:///test.db')
 if uri and uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
@@ -25,7 +25,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# --- MAIL AYARLARI ---
+# --- MAIL ---
 app.config.update(
     MAIL_SERVER='smtp.gmail.com',
     MAIL_PORT=587,
@@ -37,7 +37,7 @@ app.config.update(
 mail = Mail(app)
 ts = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
-# --- LOGIN MANAGER ---
+# --- LOGIN ---
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
@@ -79,6 +79,7 @@ def setup_database():
         with app.app_context():
             db.create_all()
             try:
+                # PostgreSQL için tablo isimlerini çift tırnakta tutuyoruz
                 db.session.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS is_confirmed BOOLEAN DEFAULT FALSE'))
                 db.session.execute(text('ALTER TABLE entry ADD COLUMN IF NOT EXISTS belge_url VARCHAR(500)'))
                 db.session.commit()
@@ -86,22 +87,22 @@ def setup_database():
                 db.session.rollback()
         app._db_init = True
 
-# --- ROUTELAR ---
+# --- ÖNEMLİ: HATA ALAN TÜM YÖNLENDİRMELER ---
 
 @app.route('/')
 def index(): 
     return render_template('login.html')
 
-# HTML'lerdeki farklı isimleri karşılamak için yedek route'lar
-@app.route('/forgot_password', methods=["GET", "POST"])
-@app.route('/reset', methods=["GET", "POST"])
+# HTML içinde hangi isimle çağrılırsa çağrılsın çalışacak:
+@app.route('/forgot_password', endpoint='forgot_password', methods=["GET", "POST"])
+@app.route('/reset', endpoint='reset', methods=["GET", "POST"])
 def reset():
     if request.method == "POST":
         email = request.form.get('email')
         user = User.query.filter_by(email=email).first()
         if user:
             token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
-            reset_url = url_for('reset_with_token', token=token, _external=True)
+            reset_url = url_for('reset_password_token', token=token, _external=True)
             msg = Message("Şifre Sıfırlama", recipients=[email])
             msg.body = f"Link: {reset_url}"
             mail.send(msg)
@@ -109,8 +110,8 @@ def reset():
         return redirect(url_for('login'))
     return render_template('forgot_password.html')
 
-@app.route('/reset/<token>', methods=["GET", "POST"])
-def reset_with_token(token):
+@app.route('/reset_password/<token>', endpoint='reset_password_token', methods=["GET", "POST"])
+def reset_password_token(token):
     try:
         email = ts.loads(token, salt=app.config['SECURITY_PASSWORD_SALT'], max_age=3600)
     except:
@@ -148,8 +149,8 @@ def upload_belge(entry_id):
             flash('Belge yüklendi!')
     return redirect(url_for('dashboard'))
 
-@app.route('/kayit', methods=['GET', 'POST'])
-@app.route('/register', methods=['GET', 'POST'])
+@app.route('/register', endpoint='register', methods=['GET', 'POST'])
+@app.route('/kayit', endpoint='kayit', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
         email = request.form.get('email')
@@ -166,7 +167,7 @@ def register():
         return redirect(url_for('login'))
     return render_template('kayit.html')
 
-@app.route('/login', methods=['GET', 'POST'])
+@app.route('/login', endpoint='login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         user = User.query.filter_by(email=request.form.get('email')).first()
@@ -179,13 +180,13 @@ def login():
         flash("Hatalı giriş.")
     return render_template('login.html')
 
-@app.route('/dashboard')
+@app.route('/dashboard', endpoint='dashboard')
 @login_required
 def dashboard():
     sertifikalar = Entry.query.filter_by(user_id=current_user.id).order_by(Entry.expiry_date.asc()).all()
     return render_template('dashboard.html', sertifikalar=sertifikalar, bugun=date.today(), timedelta=timedelta)
 
-@app.route('/export')
+@app.route('/export', endpoint='export_excel')
 @login_required
 def export_excel():
     entries = Entry.query.filter_by(user_id=current_user.id).all()
@@ -202,7 +203,7 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-@app.route('/ekle/<cat>', methods=['GET', 'POST'])
+@app.route('/ekle/<cat>', endpoint='ekle', methods=['GET', 'POST'])
 @login_required
 def ekle(cat):
     if request.method == 'POST':
@@ -215,7 +216,7 @@ def ekle(cat):
         return redirect(url_for('dashboard'))
     return render_template('ekle.html', category=cat)
 
-# Sertifikalar linki için yönlendirme
+# Eski sertifikalar linkini dashboard'a yönlendiriyoruz
 @app.route('/sertifikalar/<cat>')
 @login_required
 def sertifikalar(cat):
