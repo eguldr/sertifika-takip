@@ -51,7 +51,10 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="fw-bold" style="color: var(--navy-primary); margin-bottom: 0;">
-                EG Optimal Dashboard {% if current_user.email == 'erhanadea@gmail.com' %}(GLOBAL RADAR){% endif %}
+                EG Optimal Dashboard 
+                {% if current_user.email == 'erhanadea@gmail.com' %}
+                    <span class="badge bg-dark text-white ms-2" style="font-size: 0.4em; vertical-align: middle;">GLOBAL RADAR</span>
+                {% endif %}
             </h2>
             <p class="text-muted small">Dijital Risk Yönetimi ve Mevzuat Uyumluluk Paneli</p>
         </div>
@@ -142,8 +145,8 @@
                         </td>
                         <td class="align-middle text-center">
                             {% if s.belge_url %}
-                                <a href="{{ s.belge_url }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill">
-                                    <i class="fas fa-file-pdf"></i> Aç
+                                <a href="{{ s.belge_url }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                    <i class="fas fa-file-pdf me-1"></i> Aç
                                 </a>
                             {% else %}
                                 <form action="{{ url_for('upload_belge', entry_id=s.id) }}" method="POST" enctype="multipart/form-data" class="m-0">
