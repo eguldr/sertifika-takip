@@ -13,24 +13,21 @@ from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy import text
 
-# ==========================================
-# 1. UYGULAMA AYARLARI VE GÜVENLİK
-# ==========================================
 app = Flask(__name__)
 app.config.update(
-    SECRET_KEY='eg_optimal_pro_final_v96',
+    SECRET_KEY='eg_optimal_final_master_v101',
     SECURITY_PASSWORD_SALT='eg_salt_987'
 )
 
-# --- VERİTABANI BAĞLANTISI ---
+# --- 1. VERİTABANI VE MAİL YAPILANDIRMASI ---
 uri = os.environ.get('DATABASE_URL', 'sqlite:///test.db')
 if uri and uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
+
 app.config['SQLALCHEMY_DATABASE_URI'] = uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-# --- MAİL SERVİSİ ---
 app.config.update(
     MAIL_SERVER='smtp.gmail.com',
     MAIL_PORT=587,
@@ -41,23 +38,18 @@ app.config.update(
 )
 mail = Mail(app)
 ts = URLSafeTimedSerializer(app.config['SECRET_KEY'])
-
-# --- LOGİN YÖNETİMİ ---
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# ==========================================
-# 2. 🔥 CLOUDINARY DİJİTAL ARŞİV (GİZLİ KEY)
-# ==========================================
+# --- 2. 🔥 CLOUDINARY (RESİMDEKİ 0q2x... GİZLİ ANAHTARLA) ---
+# Belge yükleme hatasını bitiren bölümdür.
 cloudinary.config(
-    cloud_name="dh2pefkk",
-    api_key="414697559795627",
-    api_secret="0q2xexoiKr25EeuI6C0_Tf8y-5c"
+  cloud_name = "dh2pefkk",
+  api_key = "414697559795627",
+  api_secret = "0q2xexoiKr25EeuI6C0_Tf8y-5c"
 )
 
-# ==========================================
-# 3. VERİ MODELLERİ
-# ==========================================
+# --- 3. VERİ MODELLERİ ---
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(100), unique=True, nullable=False)
@@ -92,9 +84,7 @@ def setup_db():
                 db.session.rollback()
         app._db_init = True
 
-# ==========================================
-# 4. GİRİŞ / KAYIT / ŞİFRE SİSTEMİ
-# ==========================================
+# --- 4. GİRİŞ / ÇIKIŞ VE KAYIT (Hata Önleyici) ---
 @app.route('/')
 def index():
     return redirect(url_for('login'))
@@ -106,7 +96,7 @@ def login():
         if u and check_password_hash(u.password, request.form.get('password')):
             login_user(u)
             return redirect(url_for('dashboard'))
-        flash("Giriş başarısız.")
+        flash("Giriş bilgileri hatalı.")
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'], endpoint='register')
@@ -114,22 +104,21 @@ def login():
 def register():
     if request.method == 'POST':
         u = User(email=request.form.get('email'), password=generate_password_hash(request.form.get('password')), is_confirmed=True)
-        db.session.add(u); db.session.commit()
+        db.session.add(u)
+        db.session.commit()
         return redirect(url_for('login'))
     return render_template('kayit.html')
-
-@app.route('/forgot_password', endpoint='forgot_password')
-def forgot_password():
-    flash("Şifre sıfırlama şu an bakımda."); return redirect(url_for('login'))
 
 @app.route('/logout')
 def logout():
     logout_user()
     return redirect(url_for('login'))
 
-# ==========================================
-# 5. DASHBOARD VE BRANŞ YÖNETİMİ
-# ==========================================
+@app.route('/forgot_password', endpoint='forgot_password')
+def forgot_password():
+    flash("Sistem bakımda."); return redirect(url_for('login'))
+
+# --- 5. DASHBOARD VE BRANŞLAR ---
 @app.route('/dashboard', endpoint='dashboard')
 @app.route('/sertifikalar/<cat>', endpoint='sertifikalar')
 @login_required
@@ -140,41 +129,31 @@ def dashboard(cat=None):
     res = query.order_by(Entry.expiry_date.asc()).all()
     return render_template('dashboard.html', sertifikalar=res, bugun=date.today(), timedelta=timedelta, current_cat=cat)
 
-# ==========================================
-# 6. 🔥 AKILLI EXCEL SİSTEMİ (TEMİZLE VE DAĞIT)
-# ==========================================
+# --- 6. 🔥 AKILLI EXCEL SİSTEMİ (TEMİZLEME VE AHMET YILMAZ FIX) ---
 @app.route('/import_excel', methods=['POST'], endpoint='import_excel')
 @login_required
 def import_excel():
     f = request.files.get('excel_file')
     if f:
+        # Eski kayıtları temizler ki çift kayıt oluşmasın
         Entry.query.filter_by(user_id=current_user.id).delete()
-        df = pd.read_excel(f); df.columns = [str(c).lower() for c in df.columns]
+        df = pd.read_excel(f)
+        df.columns = [str(c).lower() for c in df.columns]
         for _, r in df.iterrows():
             txt = " ".join([str(v) for v in r.values]).lower()
-            # Ahmet Yılmaz ve Branş Tanıma
+            # Ahmet Yılmaz ve Branş Tanıma Zekası
             cat = "Genel"
             if any(x in txt for x in ['plaka','araç','34 eg','scania']): cat = "Arac"
-            elif any(x in txt for x in ['ahmet','yilmaz','src','personel']): cat = "Personel"
-            elif any(x in txt for x in ['tesis','yangın','kapasite']): cat = "Tesis"
-            elif any(x in txt for x in ['iso','üretim','ürün','ce']): cat = "Uretim"
+            elif any(x in txt for x in ['ahmet','yilmaz','src','psikoteknik','personel']): cat = "Personel"
+            elif any(x in txt for x in ['tesis','yangın','kapasite','itfaiye']): cat = "Tesis"
+            elif any(x in txt for x in ['iso','üretim','ce','ürün']): cat = "Uretim"
+            
             t = next((str(r[c]) for c in df.columns if any(x in c for x in ['belge','ad','plaka'])), str(r.iloc[0]))
             db.session.add(Entry(user_id=current_user.id, category=cat, title=t, expiry_date=date.today()+timedelta(days=365)))
         db.session.commit()
     return redirect(url_for('dashboard'))
 
-# ==========================================
-# 7. MANUEL KAYIT / SİLME / BULUT
-# ==========================================
-@app.route('/kayit_ekle/<cat>', methods=['GET', 'POST'], endpoint='kayit_ekle')
-@login_required
-def kayit_ekle(cat):
-    if request.method == 'POST':
-        new_e = Entry(user_id=current_user.id, category=cat, title=request.form.get('title'), expiry_date=datetime.strptime(request.form.get('expiry_date'), '%Y-%m-%d').date())
-        db.session.add(new_e); db.session.commit()
-        return redirect(url_for('sertifikalar', cat=cat))
-    return render_template('ekle.html', cat=cat)
-
+# --- 7. 🔥 BULUT YÜKLEME VE RAPORLAMA ---
 @app.route('/upload_belge/<int:entry_id>', methods=['POST'], endpoint='upload_belge')
 @login_required
 def upload_belge(entry_id):
@@ -182,19 +161,39 @@ def upload_belge(entry_id):
     if f:
         try:
             res = cloudinary.uploader.upload(f, resource_type="auto")
-            e = Entry.query.get(entry_id); e.belge_url = res['secure_url']; db.session.commit()
-        except: flash("Bulut hatası.")
+            e = Entry.query.get(entry_id)
+            if e:
+                e.belge_url = res['secure_url']
+                db.session.commit()
+        except:
+            flash("Bulut bağlantı hatası.")
     return redirect(request.referrer)
 
-@app.route('/delete_entry/<int:id>', endpoint='delete_entry')
+@app.route('/export_excel', endpoint='export_excel')
 @login_required
-def delete_entry(id):
-    e = Entry.query.get(id); db.session.delete(e); db.session.commit()
-    return redirect(request.referrer or url_for('dashboard'))
+def export_excel():
+    df = pd.DataFrame([{'Belge': e.title, 'Vade': e.expiry_date} for e in Entry.query.filter_by(user_id=current_user.id).all()])
+    out = BytesIO()
+    with pd.ExcelWriter(out, engine='openpyxl') as wr:
+        df.to_excel(wr, index=False)
+    out.seek(0); return send_file(out, download_name="rapor.xlsx", as_attachment=True)
 
-# ==========================================
-# 8. SİSTEM (CRON & ADMIN)
-# ==========================================
+# --- 8. MANUEL KAYIT EKLEME ---
+@app.route('/kayit_ekle/<cat>', methods=['GET', 'POST'], endpoint='kayit_ekle')
+@login_required
+def kayit_ekle(cat):
+    if request.method == 'POST':
+        exp_str = request.form.get('expiry_date')
+        new_e = Entry(
+            user_id=current_user.id, category=cat, 
+            title=request.form.get('title'), 
+            expiry_date=datetime.strptime(exp_str, '%Y-%m-%d').date() if exp_str else date.today()
+        )
+        db.session.add(new_e); db.session.commit()
+        return redirect(url_for('sertifikalar', cat=cat))
+    return render_template('ekle.html', cat=cat)
+
+# --- 9. CRON VE ADMIN ---
 @app.route('/cron/check_reminders')
 def check_reminders():
     return "OK", 200
@@ -202,8 +201,17 @@ def check_reminders():
 @app.route('/admin_panel', endpoint='admin_panel')
 @login_required
 def admin_panel():
-    if current_user.email != 'erhanadea@gmail.com': return redirect(url_for('dashboard'))
+    if current_user.email != 'erhanadea@gmail.com':
+        return redirect(url_for('dashboard'))
     return render_template('admin.html', users=User.query.all(), all_entries=Entry.query.all(), bugun=date.today(), timedelta=timedelta)
+
+@app.route('/delete_entry/<int:id>', endpoint='delete_entry')
+@login_required
+def delete_entry(id):
+    e = Entry.query.get(id)
+    if e:
+        db.session.delete(e); db.session.commit()
+    return redirect(request.referrer)
 
 if __name__ == '__main__':
     app.run(debug=True)
