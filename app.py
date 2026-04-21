@@ -13,7 +13,7 @@ from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'eg_optimal_pro_final_2026'
+app.config['SECRET_KEY'] = 'eg_optimal_pro_final_2026_safe'
 app.config['SECURITY_PASSWORD_SALT'] = 'eg_pro_salt_987'
 
 # --- VERİTABANI BAĞLANTISI ---
@@ -72,7 +72,6 @@ class Entry(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- VERİTABANI TAMİRİ ---
 @app.before_request
 def setup_database():
     if not getattr(app, '_db_init', False):
@@ -105,7 +104,7 @@ def login():
                 return redirect(url_for('login'))
             login_user(user)
             return redirect(url_for('dashboard'))
-        flash("Hatalı bilgiler.")
+        flash("Hatalı giriş.")
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'], endpoint='register')
@@ -114,7 +113,7 @@ def register():
     if request.method == 'POST':
         email = request.form.get('email')
         if User.query.filter_by(email=email).first():
-            flash("Kayıtlı e-posta.")
+            flash("E-posta kayıtlı.")
             return redirect(url_for('login'))
         pw = generate_password_hash(request.form.get('password'))
         new_user = User(email=email, password=pw, company_name=request.form.get('company_name'))
@@ -127,10 +126,11 @@ def register():
             msg.body = f"Link: {confirm_url}"
             mail.send(msg)
         except: pass
+        flash("Kayıt başarılı, mail onayını bekleyin.")
         return redirect(url_for('login'))
     return render_template('kayit.html')
 
-@app.route('/confirm/<token>')
+@app.route('/confirm/<token>', endpoint='confirm_email')
 def confirm_email(token):
     try:
         email = ts.loads(token, salt=app.config['SECURITY_PASSWORD_SALT'], max_age=86400)
@@ -146,9 +146,27 @@ def dashboard():
     sertifikalar = Entry.query.filter_by(user_id=current_user.id).order_by(Entry.expiry_date.asc()).all()
     return render_template('dashboard.html', sertifikalar=sertifikalar, bugun=date.today(), timedelta=timedelta)
 
-# --- ŞİFRE SIFIRLAMA (HATA VEREN KISIM DÜZELTİLDİ) ---
+# LOGLARDAKI HATAYI ÇÖZEN KRITIK EKLEME:
+@app.route('/sertifikalar/<cat>', endpoint='sertifikalar')
+@login_required
+def sertifikalar(cat):
+    # base.html'deki linklerin çalışması için bu rota şart
+    return redirect(url_for('dashboard'))
+
+@app.route('/export', endpoint='export_excel')
+@login_required
+def export_excel():
+    try:
+        entries = Entry.query.filter_by(user_id=current_user.id).all()
+        df = pd.DataFrame([{'Kategori': e.category, 'Başlık': e.title} for e in entries])
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False)
+        output.seek(0)
+        return send_file(output, download_name="rapor.xlsx", as_attachment=True)
+    except: return redirect(url_for('dashboard'))
+
 @app.route('/forgot_password', methods=["GET", "POST"], endpoint='forgot_password')
-@app.route('/reset', methods=["GET", "POST"], endpoint='reset')
 def forgot_password():
     if request.method == "POST":
         email = request.form.get('email')
@@ -177,20 +195,7 @@ def reset_password_token(token):
         return redirect(url_for('login'))
     return render_template('reset_password.html', token=token)
 
-@app.route('/export', endpoint='export_excel')
-@login_required
-def export_excel():
-    try:
-        entries = Entry.query.filter_by(user_id=current_user.id).all()
-        df = pd.DataFrame([{'Kategori': e.category, 'Başlık': e.title} for e in entries])
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False)
-        output.seek(0)
-        return send_file(output, download_name="rapor.xlsx", as_attachment=True)
-    except: return redirect(url_for('dashboard'))
-
-@app.route('/upload_belge/<int:entry_id>', methods=['POST'])
+@app.route('/upload_belge/<int:entry_id>', methods=['POST'], endpoint='upload_belge')
 @login_required
 def upload_belge(entry_id):
     file = request.files.get('file')
@@ -203,7 +208,7 @@ def upload_belge(entry_id):
         except: pass
     return redirect(url_for('dashboard'))
 
-@app.route('/ekle/<cat>', methods=['GET', 'POST'])
+@app.route('/ekle/<cat>', methods=['GET', 'POST'], endpoint='ekle')
 @login_required
 def ekle(cat):
     if request.method == 'POST':
@@ -222,7 +227,6 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-# --- MANUEL KURTARMA ---
 @app.route('/re-confirm')
 def re_confirm():
     user = User.query.filter_by(email='erhanadea@gmail.com').first()
