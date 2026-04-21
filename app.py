@@ -10,9 +10,9 @@ from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy import text
 
 app = Flask(__name__)
-app.config.update(SECRET_KEY='eg_optimal_pro_master_v45', SECURITY_PASSWORD_SALT='eg_salt_987')
+app.config.update(SECRET_KEY='eg_optimal_master_full_v55', SECURITY_PASSWORD_SALT='eg_salt_987')
 
-# --- DB & MAIL ---
+# --- DB & MAIL & CLOUD ---
 uri = os.environ.get('DATABASE_URL', 'sqlite:///test.db')
 if uri and uri.startswith("postgres://"): uri = uri.replace("postgres://", "postgresql://", 1)
 app.config['SQLALCHEMY_DATABASE_URI'] = uri
@@ -23,8 +23,6 @@ app.config.update(MAIL_SERVER='smtp.gmail.com', MAIL_PORT=587, MAIL_USE_TLS=True
     MAIL_USERNAME='erhanadea@gmail.com', MAIL_PASSWORD='bwdxhwamvoggqdko', MAIL_DEFAULT_SENDER='erhanadea@gmail.com')
 mail = Mail(app); ts = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 login_manager = LoginManager(app); login_manager.login_view = 'login'
-
-# --- CLOUDINARY ---
 cloudinary.config(cloud_name="dh2pefkk", api_key="413858167953556", api_secret="Pea5fUikVp6iMX1X62vYpWw_k-w")
 
 # --- MODELLER ---
@@ -57,7 +55,7 @@ def setup_db():
             except: pass
         app._db_init = True
 
-# --- AUTH ---
+# --- GİRİŞ / ÇIKIŞ / KAYIT ---
 @app.route('/')
 def index(): return redirect(url_for('login'))
 
@@ -66,33 +64,25 @@ def login():
     if request.method == 'POST':
         u = User.query.filter_by(email=request.form.get('email').strip()).first()
         if u and check_password_hash(u.password, request.form.get('password')):
-            if not u.is_confirmed: flash("Mail onayı gerekli."); return redirect(url_for('login'))
             login_user(u); return redirect(url_for('dashboard'))
-        flash("Hatalı giriş.")
+        flash("Hatalı Giriş.")
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'], endpoint='register')
 def register():
     if request.method == 'POST':
-        email = request.form.get('email')
-        new_u = User(email=email, password=generate_password_hash(request.form.get('password')), is_confirmed=False)
-        db.session.add(new_u); db.session.commit()
-        return redirect(url_for('login'))
+        u = User(email=request.form.get('email'), password=generate_password_hash(request.form.get('password')), is_confirmed=True)
+        db.session.add(u); db.session.commit(); return redirect(url_for('login'))
     return render_template('kayit.html')
 
-@app.route('/confirm/<token>', endpoint='confirm_email')
-def confirm_email(token):
-    try:
-        email = ts.loads(token, salt='eg_salt_987', max_age=86400)
-        u = User.query.filter_by(email=email).first(); u.is_confirmed = True; db.session.commit()
-        return redirect(url_for('login'))
-    except: return "Hata"
+@app.route('/logout')
+def logout(): logout_user(); return redirect(url_for('login'))
 
 @app.route('/forgot_password', endpoint='forgot_password')
 def forgot_password():
-    flash("Sistem bakımda."); return redirect(url_for('login'))
+    flash("Şifre sıfırlama şu an bakımda."); return redirect(url_for('login'))
 
-# --- DASHBOARD & BRANŞLAR ---
+# --- ANA PANEL VE BRANŞLAR ---
 @app.route('/dashboard', endpoint='dashboard')
 @app.route('/sertifikalar/<cat>', endpoint='sertifikalar')
 @login_required
@@ -107,12 +97,42 @@ def dashboard(cat=None):
 def kayit_ekle(cat):
     if request.method == 'POST':
         exp_str = request.form.get('expiry_date')
-        new_e = Entry(user_id=current_user.id, category=cat, title=request.form.get('title'), firma_adi=request.form.get('firma_adi'), expiry_date=datetime.strptime(exp_str, '%Y-%m-%d').date() if exp_str else date.today())
+        new_e = Entry(user_id=current_user.id, category=cat, title=request.form.get('title'), firma_adi=request.form.get('firma_adi'), whatsapp_no=request.form.get('whatsapp_no'), note=request.form.get('note'), expiry_date=datetime.strptime(exp_str, '%Y-%m-%d').date() if exp_str else date.today())
         db.session.add(new_e); db.session.commit()
         return redirect(url_for('sertifikalar', cat=cat))
     return render_template('ekle.html', cat=cat)
 
-# --- VERİ & DOSYA İŞLEMLERİ ---
+# --- 🔥 AKILLI EXCEL SİSTEMİ (TEMİZLE & BRANŞLARA DAĞIT) ---
+@app.route('/import_excel', methods=['POST'], endpoint='import_excel')
+@login_required
+def import_excel():
+    f = request.files.get('excel_file')
+    if f:
+        Entry.query.filter_by(user_id=current_user.id).delete() # Eski kayıtları temizle
+        df = pd.read_excel(f); df.columns = [str(c).lower() for c in df.columns]
+        for _, r in df.iterrows():
+            txt = " ".join([str(v) for v in r.values]).lower()
+            cat = "Genel"
+            if any(x in txt for x in ['plaka','araç','araç','muayene','kasko','scania']): cat = "Arac"
+            elif any(x in txt for x in ['src','personel','isg','ehliyet','psikoteknik']): cat = "Personel"
+            elif any(x in txt for x in ['kapasite','yangın','itfaiye','tesis','işletme','açma']): cat = "Tesis"
+            elif any(x in txt for x in ['iso','üretim','ce','ürün','helal','kalite']): cat = "Uretim"
+            
+            t = next((str(r[c]) for c in df.columns if any(x in c for x in ['belge','ad','plaka'])), str(r.iloc[0]))
+            db.session.add(Entry(user_id=current_user.id, category=cat, title=t, expiry_date=date.today()+timedelta(days=365)))
+        db.session.commit()
+        flash("Liste Güncellendi! Belgeler branşlara göre dağıtıldı.")
+    return redirect(url_for('dashboard'))
+
+@app.route('/export_excel', endpoint='export_excel')
+@login_required
+def export_excel():
+    df = pd.DataFrame([{'Kategori': e.category, 'Belge': e.title, 'Bitiş': e.expiry_date} for e in Entry.query.filter_by(user_id=current_user.id).all()])
+    out = BytesIO()
+    with pd.ExcelWriter(out, engine='openpyxl') as wr: df.to_excel(wr, index=False)
+    out.seek(0); return send_file(out, download_name="eg_optimal_rapor.xlsx", as_attachment=True)
+
+# --- VERİ VE DOSYA İŞLEMLERİ ---
 @app.route('/upload_belge/<int:entry_id>', methods=['POST'], endpoint='upload_belge')
 @login_required
 def upload_belge(entry_id):
@@ -121,40 +141,17 @@ def upload_belge(entry_id):
         try:
             res = cloudinary.uploader.upload(f, resource_type="auto")
             e = Entry.query.get(entry_id); e.belge_url = res['secure_url']; db.session.commit()
-            flash("Belge yüklendi.")
-        except: flash("Bulut bağlantı hatası.")
+            flash("Bulut arşivi güncellendi.")
+        except: flash("Cloudinary Bağlantı Hatası! Lütfen API anahtarlarınızı kontrol edin.")
     return redirect(request.referrer)
 
 @app.route('/delete_entry/<int:id>', endpoint='delete_entry')
 @login_required
 def delete_entry(id):
-    e = Entry.query.get(id)
-    if e: db.session.delete(e); db.session.commit()
+    e = Entry.query.get(id); db.session.delete(e); db.session.commit()
     return redirect(request.referrer or url_for('dashboard'))
 
-# --- AKILLI EXCEL SİSTEMİ ---
-@app.route('/import_excel', methods=['POST'], endpoint='import_excel')
-@login_required
-def import_excel():
-    f = request.files.get('excel_file')
-    if f:
-        df = pd.read_excel(f); df.columns = [str(c).lower() for c in df.columns]
-        for _, r in df.iterrows():
-            txt = str(r.values).lower()
-            cat = "Arac" if any(x in txt for x in ['plaka','araç']) else "Personel" if "src" in txt else "Uretim"
-            db.session.add(Entry(user_id=current_user.id, category=cat, title=str(r.iloc[0]), expiry_date=date.today()+timedelta(days=365)))
-        db.session.commit()
-    return redirect(url_for('dashboard'))
-
-@app.route('/export_excel', endpoint='export_excel')
-@login_required
-def export_excel():
-    df = pd.DataFrame([{'Belge': e.title, 'Vade': e.expiry_date} for e in Entry.query.filter_by(user_id=current_user.id).all()])
-    out = BytesIO()
-    with pd.ExcelWriter(out, engine='openpyxl') as wr: df.to_excel(wr, index=False)
-    out.seek(0); return send_file(out, download_name="eg_optimal_rapor.xlsx", as_attachment=True)
-
-# --- ADMIN ---
+# --- ADMIN PANELİ ---
 @app.route('/admin_panel', endpoint='admin_panel')
 @login_required
 def admin_panel():
@@ -172,8 +169,5 @@ def update_payment(uid):
 def delete_user(uid):
     u = User.query.get(uid); db.session.delete(u); db.session.commit()
     return redirect(url_for('admin_panel'))
-
-@app.route('/logout')
-def logout(): logout_user(); return redirect(url_for('login'))
 
 if __name__ == '__main__': app.run(debug=True)
