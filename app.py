@@ -41,7 +41,7 @@ ts = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# --- CLOUDINARY (BELGE ARŞİVİ) ---
+# --- CLOUDINARY ---
 cloudinary.config( 
   cloud_name = "dh2pefkk", 
   api_key = "413858167953556", 
@@ -92,25 +92,8 @@ def setup_database():
 def index(): 
     return render_template('login.html')
 
-# ESKİ LİNKLERİ KURTARMA (Hata Almamak İçin Kritik Eklemeler)
-@app.route('/sertifikalar/<cat>')
-@login_required
-def sertifikalar(cat):
-    # Eğer base.html hala bu linki çağırıyorsa dashboard'a yönlendiriyoruz
-    return redirect(url_for('dashboard'))
-
-@app.route('/confirm/<token>')
-def confirm_email(token):
-    try:
-        email = ts.loads(token, salt=app.config['SECURITY_PASSWORD_SALT'], max_age=86400)
-        user = User.query.filter_by(email=email).first_or_404()
-        user.is_confirmed = True
-        db.session.commit()
-        flash("E-posta onaylandı!")
-    except:
-        flash("Onay linki hatalı.")
-    return redirect(url_for('login'))
-
+# HTML'lerdeki farklı isimleri karşılamak için yedek route'lar
+@app.route('/forgot_password', methods=["GET", "POST"])
 @app.route('/reset', methods=["GET", "POST"])
 def reset():
     if request.method == "POST":
@@ -140,6 +123,18 @@ def reset_with_token(token):
         return redirect(url_for('login'))
     return render_template('reset_password.html', token=token)
 
+@app.route('/confirm/<token>')
+def confirm_email(token):
+    try:
+        email = ts.loads(token, salt=app.config['SECURITY_PASSWORD_SALT'], max_age=86400)
+        user = User.query.filter_by(email=email).first_or_404()
+        user.is_confirmed = True
+        db.session.commit()
+        flash("E-posta onaylandı!")
+    except:
+        flash("Onay linki hatalı.")
+    return redirect(url_for('login'))
+
 @app.route('/upload_belge/<int:entry_id>', methods=['POST'])
 @login_required
 def upload_belge(entry_id):
@@ -153,6 +148,7 @@ def upload_belge(entry_id):
             flash('Belge yüklendi!')
     return redirect(url_for('dashboard'))
 
+@app.route('/kayit', methods=['GET', 'POST'])
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -218,6 +214,12 @@ def ekle(cat):
         db.session.commit()
         return redirect(url_for('dashboard'))
     return render_template('ekle.html', category=cat)
+
+# Sertifikalar linki için yönlendirme
+@app.route('/sertifikalar/<cat>')
+@login_required
+def sertifikalar(cat):
+    return redirect(url_for('dashboard'))
 
 if __name__ == '__main__':
     app.run(debug=True)
