@@ -15,7 +15,7 @@ from sqlalchemy import text
 
 app = Flask(__name__)
 app.config.update(
-    SECRET_KEY='eg_optimal_final_master_ultra_v65',
+    SECRET_KEY='eg_optimal_final_master_ultra_v70',
     SECURITY_PASSWORD_SALT='eg_salt_987'
 )
 
@@ -41,7 +41,7 @@ ts = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# --- 🔥 CLOUDINARY GÜNCEL ANAHTARLAR (RESİMDEKİ MODERASYON KEY) ---
+# --- 🔥 CLOUDINARY GÜNCEL ANAHTARLAR (KESİN ÇÖZÜM) ---
 cloudinary.config(
   cloud_name = "dh2pefkk",
   api_key = "414697559795627",
@@ -110,13 +110,13 @@ def dashboard(cat=None):
     res = query.order_by(Entry.expiry_date.asc()).all()
     return render_template('dashboard.html', sertifikalar=res, bugun=date.today(), timedelta=timedelta, current_cat=cat)
 
-# --- 🔥 AKILLI EXCEL İÇE AKTAR (BRANŞ AYIRICI ZEKA) ---
+# --- 🔥 AKILLI EXCEL İÇE AKTAR (GELİŞMİŞ BRANŞ AYIRICI) ---
 @app.route('/import_excel', methods=['POST'], endpoint='import_excel')
 @login_required
 def import_excel():
     f = request.files.get('excel_file')
     if f:
-        # Eski kayıtları temizle (Çift kayıt olmasın)
+        # Mükerrer kaydı önlemek için eski verileri temizle
         Entry.query.filter_by(user_id=current_user.id).delete()
         
         df = pd.read_excel(f)
@@ -125,13 +125,13 @@ def import_excel():
         for _, r in df.iterrows():
             row_txt = " ".join([str(v) for v in r.values]).lower()
             
-            # Branş Tanıma Algoritması (Ahmet Yılmaz Dahil)
+            # Branş Tanıma Algoritması (Geliştirildi)
             category = "Genel"
-            if any(x in row_txt for x in ['plaka', 'araç', '34 eg', 'muayene', 'scania', 'mercedes']):
+            if any(x in row_txt for x in ['plaka', 'araç', '34 eg', 'muayene', 'kasko', 'scania', 'volvo']):
                 category = "Arac"
-            elif any(x in row_txt for x in ['ahmet', 'yilmaz', 'src', 'ehliyet', 'personel', 'tc no', 'psikoteknik']):
+            elif any(x in row_txt for x in ['ahmet', 'yilmaz', 'src', 'ehliyet', 'personel', 'tc no', 'psikoteknik', 'operatör']):
                 category = "Personel"
-            elif any(x in row_txt for x in ['tesis', 'işletme', 'cetvel', 'itfaiye', 'yangın', 'kapasite', 'mekan']):
+            elif any(x in row_txt for x in ['tesis', 'işletme', 'cetvel', 'itfaiye', 'yangın', 'kapasite', 'mekan', 'sicil']):
                 category = "Tesis"
             elif any(x in row_txt for x in ['iso', 'üretim', 'helal', 'ce', 'kalite', 'brc']):
                 category = "Uretim"
@@ -146,8 +146,18 @@ def import_excel():
                 expiry_date=date.today() + timedelta(days=365)
             ))
         db.session.commit()
-        flash("Excel başarıyla branşlara dağıtıldı.")
+        flash("Excel verileri branşlara göre ayrıştırılarak yüklendi!")
     return redirect(url_for('dashboard'))
+
+# --- RAPORLAMA (EXCEL DIŞA AKTAR) ---
+@app.route('/export_excel', endpoint='export_excel')
+@login_required
+def export_excel():
+    df = pd.DataFrame([{'Kategori': e.category, 'Belge': e.title, 'Vade': e.expiry_date} for e in Entry.query.filter_by(user_id=current_user.id).all()])
+    out = BytesIO()
+    with pd.ExcelWriter(out, engine='openpyxl') as wr: df.to_excel(wr, index=False)
+    out.seek(0)
+    return send_file(out, download_name="eg_optimal_rapor.xlsx", as_attachment=True)
 
 # --- DİJİTAL ARŞİV (CLOUDINARY) ---
 @app.route('/upload_belge/<int:entry_id>', methods=['POST'], endpoint='upload_belge')
@@ -161,12 +171,12 @@ def upload_belge(entry_id):
             if e:
                 e.belge_url = res['secure_url']
                 db.session.commit()
-                flash("Belge buluta kaydedildi.")
+                flash("Belge buluta yüklendi.")
         except:
-            flash("Bulut bağlantı hatası! API Secret anahtarınızı kontrol edin.")
+            flash("Bulut bağlantı hatası! API Secret anahtarını kontrol edin.")
     return redirect(request.referrer)
 
-# --- MANUEL KAYIT VE SİLME ---
+# --- MANUEL İŞLEMLER ---
 @app.route('/kayit_ekle/<cat>', methods=['GET', 'POST'], endpoint='kayit_ekle')
 @login_required
 def kayit_ekle(cat):
@@ -193,13 +203,17 @@ def delete_entry(id):
         db.session.commit()
     return redirect(request.referrer or url_for('dashboard'))
 
-# --- SİSTEM YÖNETİMİ ---
+# --- ADMİN VE SİSTEM ---
 @app.route('/admin_panel', endpoint='admin_panel')
 @login_required
 def admin_panel():
     if current_user.email != 'erhanadea@gmail.com':
         return redirect(url_for('dashboard'))
     return render_template('admin.html', users=User.query.all(), all_entries=Entry.query.all(), bugun=date.today(), timedelta=timedelta)
+
+@app.route('/forgot_password', endpoint='forgot_password')
+def forgot_password():
+    flash("Bakımda."); return redirect(url_for('login'))
 
 @app.route('/cron/check_reminders')
 def check_reminders():
