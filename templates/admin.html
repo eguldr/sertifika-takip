@@ -30,7 +30,8 @@
                                         <small class="text-muted">{{ u.email }}</small>
                                     </td>
                                     <td>
-                                        {% if u.payment_status == 'Odendi' %}
+                                        {# app.py içindeki is_paid değişkeniyle eşitledik #}
+                                        {% if u.is_paid %}
                                             <span class="badge bg-success">Aktif / Ödendi</span>
                                         {% else %}
                                             <span class="badge bg-danger">Bekliyor / Kısıtlı</span>
@@ -48,34 +49,32 @@
                                         <div class="modal-content text-dark shadow-lg border-0" style="border-radius: 15px;">
                                             <form action="{{ url_for('update_payment', uid=u.id) }}" method="POST">
                                                 <div class="modal-header bg-primary text-white" style="border-radius: 15px 15px 0 0;">
-                                                    <h5 class="modal-title"><i class="fas fa-edit"></i> Hesap Yönetimi: {{ u.email }}</h5>
+                                                    <h5 class="modal-title"><i class="fas fa-edit"></i> Hesap Yönetimi</h5>
                                                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                                 </div>
                                                 <div class="modal-body p-4">
                                                     <div class="mb-3">
                                                         <label class="form-label fw-bold">Kurum / Firma Adı</label>
-                                                        <input type="text" name="company_name" class="form-control border-primary" 
-                                                               value="{{ u.company_name if u.company_name else '' }}">
+                                                        <input type="text" name="company_name" class="form-control border-primary" value="{{ u.company_name }}">
                                                     </div>
                                                     <div class="mb-3">
                                                         <label class="form-label fw-bold">Üyelik Statüsü</label>
-                                                        <select name="status" class="form-select border-primary">
-                                                            <option value="Bekliyor" {% if u.payment_status == 'Bekliyor' %}selected{% endif %}>Ödeme Bekliyor / Askıya Al</option>
-                                                            <option value="Odendi" {% if u.payment_status == 'Odendi' %}selected{% endif %}>Ödendi / Erişimi Aç</option>
+                                                        <select name="is_paid" class="form-select border-primary">
+                                                            <option value="false" {% if not u.is_paid %}selected{% endif %}>Ödeme Bekliyor / Askıya Al</option>
+                                                            <option value="true" {% if u.is_paid %}selected{% endif %}>Ödendi / Erişimi Aç</option>
                                                         </select>
                                                     </div>
                                                     <div class="mb-3">
                                                         <label class="form-label fw-bold">Sistem Notları</label>
-                                                        <textarea name="notes" class="form-control" rows="3">{{ u.admin_notes }}</textarea>
+                                                        <textarea name="admin_note" class="form-control" rows="3">{{ u.admin_note }}</textarea>
                                                     </div>
-                                                    <button type="submit" class="btn btn-success w-100 fw-bold py-2 shadow-sm mb-3">Güncelle</button>
+                                                    <button type="submit" class="btn btn-success w-100 fw-bold py-2 shadow-sm mb-3">Bilgileri Güncelle</button>
                                                     <hr>
                                                     <div class="text-center">
-                                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="if(confirm('Silinsin mi?')) { document.getElementById('delete-form-{{ u.id }}').submit(); }">Sistemden Sil</button>
+                                                        <a href="{{ url_for('delete_user', uid=u.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bu kullanıcıyı ve tüm verilerini silmek istediğinize emin misiniz?')">Sistemden Tamamen Sil</a>
                                                     </div>
                                                 </div>
                                             </form>
-                                            <form id="delete-form-{{ u.id }}" action="{{ url_for('delete_user', uid=u.id) }}" method="POST" style="display: none;"></form>
                                         </div>
                                     </div>
                                 </div>
@@ -91,7 +90,7 @@
             <div class="card shadow border-0" style="border-radius: 15px;">
                 <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center" style="border-radius: 15px 15px 0 0;">
                     <h5 class="m-0 fw-bold"><i class="fas fa-broadcast-tower"></i> Global Radar</h5>
-                    <span class="badge bg-white text-danger fw-bold">{{ entries|length }} Kayıt</span>
+                    <span class="badge bg-white text-danger fw-bold">{{ all_entries|length }} Toplam Kayıt</span>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -101,30 +100,31 @@
                                     <th class="ps-3 py-3">Kurum / Firma</th>
                                     <th>Belge</th>
                                     <th>Vade</th>
-                                    <th class="text-center">Aksiyon</th>
+                                    <th class="text-center">İşlem</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for e in entries %}
+                                {% for e in all_entries %}
+                                {% if e.is_active %}
                                 <tr>
                                     <td class="ps-3 py-3">
-                                        <span class="badge bg-info text-dark mb-1" style="font-size: 0.7rem;">
-                                            {{ user_objects[e.user_id].company_name if user_objects[e.user_id].company_name else 'İsimsiz' }}
-                                        </span><br>
-                                        <strong>{{ e.firma_adi }}</strong>
+                                        <strong>{{ e.firma_adi }}</strong><br>
+                                        <small class="text-muted">{{ e.category }}</small>
                                     </td>
                                     <td>{{ e.title }}</td>
                                     <td>
                                         {% set kalan = (e.expiry_date - bugun).days %}
-                                        <span class="fw-bold {% if kalan <= 7 %}text-danger{% else %}text-warning{% endif %}">{{ kalan }} Gün</span>
+                                        <span class="fw-bold {% if kalan <= 7 %}text-danger{% elif kalan <= 30 %}text-warning{% else %}text-success{% endif %}">
+                                            {{ kalan }} Gün
+                                        </span>
                                     </td>
                                     <td class="text-center">
-                                        <div class="btn-group shadow-sm">
-                                            <a href="https://wa.me/{{ e.whatsapp_no }}?text=Hatirlatma" target="_blank" class="btn btn-sm btn-success">Müşteri</a>
-                                            <a href="https://wa.me/{{ e.danisman_no }}?text=Bilgi" target="_blank" class="btn btn-sm btn-info text-white">Sorumlu</a>
-                                        </div>
+                                        <a href="{{ url_for('delete_entry', id=e.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Belgeyi silmek istiyor musunuz?')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
                                     </td>
                                 </tr>
+                                {% endif %}
                                 {% endfor %}
                             </tbody>
                         </table>
