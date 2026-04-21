@@ -86,13 +86,10 @@
             </form>
 
             <div class="d-flex border rounded bg-white shadow-sm overflow-hidden">
-                {# YENİ EKLE - Branş bilgisini gönderen akıllı form #}
-                <form action="{{ url_for('add_entry') }}" method="POST" class="m-0 d-flex">
-                    <input type="hidden" name="category" value="{{ current_cat if current_cat else 'Genel' }}">
-                    <button type="submit" class="btn btn-primary border-0 rounded-0 px-4 fw-bold" style="background-color: var(--navy-primary);">
-                        <i class="fas fa-plus me-2"></i> Yeni Ekle
-                    </button>
-                </form>
+                {# YENİ EKLE - Seni detaylı kayıt sayfasına uçurur #}
+                <a href="{{ url_for('kayit_ekle', cat=current_cat if current_cat else 'Uretim') }}" class="btn btn-primary border-0 rounded-0 px-4 fw-bold" style="background-color: var(--navy-primary);">
+                    <i class="fas fa-plus me-2"></i> Yeni Ekle
+                </a>
                 <a href="{{ url_for('export_excel') }}" class="btn btn-light border-0 rounded-0 px-3 border-start">
                     <i class="fas fa-file-excel text-success fa-lg"></i>
                 </a>
@@ -149,7 +146,10 @@
                     <tr class="table-row" data-status="{{ status }}">
                         <td class="ps-4 align-middle">
                             <span class="fw-bold d-block mb-1 text-navy">{{ s.title }}</span>
-                            <small class="text-muted"><i class="fas fa-tag me-1"></i> {{ s.category or 'Genel' }}</small>
+                            <small class="text-muted">
+                                <i class="fas fa-tag me-1"></i> {{ s.category or 'Genel' }} | 
+                                <i class="fas fa-building me-1"></i> {{ s.firma_adi or 'Bilinmiyor' }}
+                            </small>
                         </td>
                         <td class="align-middle text-muted fw-bold">{{ s.expiry_date.strftime('%d.%m.%Y') }}</td>
                         <td class="align-middle">
@@ -158,10 +158,14 @@
                             </span>
                         </td>
                         <td class="align-middle text-center">
-                            <a href="https://wa.me/905320000000?text=Sertifika Hatırlatma: {{ s.title }}" 
+                            {% if s.whatsapp_no %}
+                            <a href="https://wa.me/{{ s.whatsapp_no }}?text=Sertifika Hatırlatması: {{ s.title }} belgeniz için son {{ kalan }} gün!" 
                                class="btn btn-sm btn-outline-success rounded-pill px-3" target="_blank">
                                <i class="fab fa-whatsapp"></i> Hatırlat
                             </a>
+                            {% else %}
+                            <span class="text-muted small">No Yok</span>
+                            {% endif %}
                         </td>
                         <td class="align-middle text-center">
                             {% if s.belge_url %}
