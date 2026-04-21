@@ -13,7 +13,7 @@ from itsdangerous import URLSafeTimedSerializer
 import requests
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'eg_optimal_final_v5_2026'
+app.config['SECRET_KEY'] = 'eg_optimal_vip_2026'
 app.config['SECURITY_PASSWORD_SALT'] = 'eg_pro_salt_987'
 
 # --- VERİTABANI BAĞLANTISI ---
@@ -61,9 +61,9 @@ def login():
     if request.method == 'POST':
         user = User.query.filter_by(email=request.form.get('email')).first()
         if user and check_password_hash(user.password, request.form.get('password')):
-            if not user.is_confirmed: flash("Mail onayınız eksik."); return redirect(url_for('login'))
+            if not user.is_confirmed: flash("Mail onayınız henüz yapılmamış."); return redirect(url_for('login'))
             login_user(user); return redirect(url_for('dashboard'))
-        flash("Hatalı bilgiler.")
+        flash("Hatalı giriş denemesi.")
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'], endpoint='register')
@@ -71,22 +71,23 @@ def login():
 def register():
     if request.method == 'POST':
         email = request.form.get('email')
-        new_user = User(email=email, password=generate_password_hash(request.form.get('password')), company_name=request.form.get('company_name'))
+        
+        # AYNI MAİLLE KAYIT HATASINI ÖNLEYEN KONTROL
+        if User.query.filter_by(email=email).first():
+            flash("Bu e-posta zaten kayıtlı, lütfen giriş yapın.")
+            return redirect(url_for('login'))
+            
+        # VIP GİRİŞ: YENİ KAYITLARI OTOMATİK ONAYLA (is_confirmed=True)
+        new_user = User(
+            email=email, 
+            password=generate_password_hash(request.form.get('password')), 
+            company_name=request.form.get('company_name'),
+            is_confirmed=True
+        )
         db.session.add(new_user); db.session.commit()
-        try:
-            url = url_for('confirm_email', token=ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT']), _external=True)
-            mail.send(Message("Aktivasyon", recipients=[email], body=f"Onay linki: {url}"))
-        except: pass
-        flash("Kayıt başarılı, mail onayını bekleyin."); return redirect(url_for('login'))
+        
+        flash("Kaydınız başarıyla oluşturuldu! Şimdi giriş yapabilirsiniz."); return redirect(url_for('login'))
     return render_template('kayit.html')
-
-@app.route('/confirm/<token>', endpoint='confirm_email')
-def confirm_email(token):
-    try:
-        email = ts.loads(token, salt=app.config['SECURITY_PASSWORD_SALT'], max_age=86400)
-        user = User.query.filter_by(email=email).first(); user.is_confirmed = True; db.session.commit()
-    except: pass
-    return redirect(url_for('login'))
 
 @app.route('/dashboard', endpoint='dashboard')
 @login_required
@@ -139,18 +140,19 @@ def export_excel():
 
 @app.route('/forgot_password', methods=["GET", "POST"], endpoint='forgot_password')
 def forgot_password():
-    if request.method == "POST": flash("Link gönderildi."); return redirect(url_for('login'))
+    if request.method == "POST": flash("Şifre sıfırlama linki iletildi."); return redirect(url_for('login'))
     return render_template('forgot_password.html')
+
+@app.route('/re-confirm')
+def re_confirm():
+    # BURADAKİ MAİLİ DEĞİŞTİREREK İSTEDİĞİN KİŞİYİ ONAYLAYABİLİRSİN
+    u = User.query.filter_by(email='erhan@adeadanismanlik.com').first()
+    if u: u.is_confirmed = True; db.session.commit(); return f"{u.email} AKTİF EDİLDİ."
+    return "Kullanıcı bulunamadı."
 
 @app.route('/sertifikalar/<cat>', endpoint='sertifikalar')
 @login_required
 def sertifikalar(cat): return redirect(url_for('dashboard'))
-
-@app.route('/re-confirm')
-def re_confirm():
-    u = User.query.filter_by(email='erhanadea@gmail.com').first()
-    if u: u.is_confirmed = True; db.session.commit(); return "ONAYLANDI."
-    return "HATA."
 
 @app.route('/logout')
 @login_required
