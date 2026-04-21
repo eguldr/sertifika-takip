@@ -331,7 +331,7 @@ def dashboard():
         res = Entry.query.filter_by(is_active=True)\
                    .order_by(Entry.expiry_date.asc()).all()
     else:
-        res = Entry.query.filter_by(user_id=current_user.id)\
+        res = Entry.query.filter_by(user_id=current_user.id, is_active=True)\
                    .order_by(Entry.expiry_date.asc()).all()
     return render_template('dashboard.html',
         sertifikalar=res,
