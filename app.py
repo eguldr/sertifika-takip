@@ -10,9 +10,9 @@ from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy import text
 
 app = Flask(__name__)
-app.config.update(SECRET_KEY='eg_optimal_final_master_v36', SECURITY_PASSWORD_SALT='eg_salt_987')
+app.config.update(SECRET_KEY='eg_optimal_final_master_v37', SECURITY_PASSWORD_SALT='eg_salt_987')
 
-# --- DB & MAIL & CLOUD ---
+# --- DB & MAIL ---
 uri = os.environ.get('DATABASE_URL', 'sqlite:///test.db')
 if uri and uri.startswith("postgres://"): uri = uri.replace("postgres://", "postgresql://", 1)
 app.config['SQLALCHEMY_DATABASE_URI'] = uri
@@ -23,7 +23,13 @@ app.config.update(MAIL_SERVER='smtp.gmail.com', MAIL_PORT=587, MAIL_USE_TLS=True
     MAIL_USERNAME='erhanadea@gmail.com', MAIL_PASSWORD='bwdxhwamvoggqdko', MAIL_DEFAULT_SENDER='erhanadea@gmail.com')
 mail = Mail(app); ts = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 login_manager = LoginManager(app); login_manager.login_view = 'login'
-cloudinary.config(cloud_name="dh2pefkk", api_key="413858167953556", api_secret="Pea5fUikVp6iMX1X62vYpWw_k-w")
+
+# --- CLOUDINARY AYARLARI (Dikkat: Boşluk Olmamalı) ---
+cloudinary.config(
+  cloud_name = "dh2pefkk",
+  api_key = "413858167953556",
+  api_secret = "Pea5fUikVp6iMX1X62vYpWw_k-w"
+)
 
 # --- MODELLER ---
 class User(UserMixin, db.Model):
@@ -51,13 +57,11 @@ def setup_db():
                 db.session.execute(text("ALTER TABLE entry ADD COLUMN IF NOT EXISTS note TEXT"))
                 db.session.commit()
             except: db.session.rollback()
-            try:
-                db.session.execute(text("UPDATE \"user\" SET is_confirmed = true"))
-                db.session.commit()
+            try: db.session.execute(text("UPDATE \"user\" SET is_confirmed = true")); db.session.commit()
             except: pass
         app._db_init = True
 
-# --- AUTH SİSTEMİ ---
+# --- ROUTELAR ---
 @app.route('/')
 def index(): return redirect(url_for('login'))
 
@@ -81,7 +85,6 @@ def register():
         token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
         try: mail.send(Message("Aktivasyon", recipients=[email], body=f"Onay: {url_for('confirm_email', token=token, _external=True)}"))
         except: pass
-        flash("Kayıt başarılı! Mailinizi kontrol edin.")
         return redirect(url_for('login'))
     return render_template('kayit.html')
 
@@ -91,14 +94,12 @@ def confirm_email(token):
         email = ts.loads(token, salt=app.config['SECURITY_PASSWORD_SALT'], max_age=86400)
         u = User.query.filter_by(email=email).first(); u.is_confirmed = True; db.session.commit()
         flash("Onaylandı!"); return redirect(url_for('login'))
-    except: return "Link geçersiz."
+    except: return "Geçersiz link."
 
-# KRİTİK: Login sayfasındaki BuildError'u çözen kısım
 @app.route('/forgot_password', endpoint='forgot_password')
 def forgot_password():
-    flash("Bu özellik şu an bakımda."); return redirect(url_for('login'))
+    flash("Bakımda."); return redirect(url_for('login'))
 
-# --- ANA PANEL ---
 @app.route('/dashboard', endpoint='dashboard')
 @app.route('/sertifikalar/<cat>', endpoint='sertifikalar')
 @login_required
@@ -120,7 +121,20 @@ def kayit_ekle(cat):
         return redirect(url_for('sertifikalar', cat=cat))
     return render_template('ekle.html', cat=cat)
 
-# --- VERİ İŞLEMLERİ ---
+@app.route('/upload_belge/<int:entry_id>', methods=['POST'], endpoint='upload_belge')
+@login_required
+def upload_belge(entry_id):
+    f = request.files.get('file')
+    if f:
+        try:
+            res = cloudinary.uploader.upload(f, resource_type="auto")
+            e = Entry.query.get(entry_id)
+            if e: e.belge_url = res['secure_url']; db.session.commit()
+            flash("Belge yüklendi.")
+        except Exception as e:
+            flash(f"Yükleme Hatası: {str(e)}")
+    return redirect(request.referrer or url_for('dashboard'))
+
 @app.route('/delete_entry/<int:id>', endpoint='delete_entry')
 @login_required
 def delete_entry(id):
@@ -145,25 +159,22 @@ def import_excel():
 @login_required
 def export_excel():
     df = pd.DataFrame([{'Baslik': e.title, 'Vade': e.expiry_date} for e in Entry.query.filter_by(user_id=current_user.id).all()])
-    out = BytesIO()
+    out = BytesIO(); 
     with pd.ExcelWriter(out, engine='openpyxl') as wr: df.to_excel(wr, index=False)
     out.seek(0); return send_file(out, download_name="rapor.xlsx", as_attachment=True)
 
-@app.route('/upload_belge/<int:entry_id>', methods=['POST'], endpoint='upload_belge')
-@login_required
-def upload_belge(entry_id):
-    f = request.files.get('file')
-    if f:
-        res = cloudinary.uploader.upload(f, resource_type="auto")
-        Entry.query.get(entry_id).belge_url = res['secure_url']; db.session.commit()
-    return redirect(request.referrer or url_for('dashboard'))
-
-# --- ADMIN ---
 @app.route('/admin_panel', endpoint='admin_panel')
 @login_required
 def admin_panel():
     if current_user.email != 'erhanadea@gmail.com': return redirect(url_for('dashboard'))
     return render_template('admin.html', users=User.query.all(), all_entries=Entry.query.all(), bugun=date.today(), timedelta=timedelta)
+
+@app.route('/update_payment/<int:uid>', methods=['POST'], endpoint='update_payment')
+@login_required
+def update_payment(uid):
+    if current_user.email != 'erhanadea@gmail.com': return redirect(url_for('dashboard'))
+    u = User.query.get(uid); u.is_confirmed = not u.is_confirmed; db.session.commit()
+    return redirect(url_for('admin_panel'))
 
 @app.route('/delete_user/<int:uid>', methods=['POST'], endpoint='delete_user')
 @login_required
@@ -171,13 +182,6 @@ def delete_user(uid):
     if current_user.email != 'erhanadea@gmail.com': return redirect(url_for('dashboard'))
     u = User.query.get(uid)
     if u: Entry.query.filter_by(user_id=u.id).delete(); db.session.delete(u); db.session.commit()
-    return redirect(url_for('admin_panel'))
-
-@app.route('/update_payment/<int:uid>', methods=['POST'], endpoint='update_payment')
-@login_required
-def update_payment(uid):
-    if current_user.email != 'erhanadea@gmail.com': return redirect(url_for('dashboard'))
-    u = User.query.get(uid); u.is_confirmed = not u.is_confirmed; db.session.commit()
     return redirect(url_for('admin_panel'))
 
 @app.route('/logout')
