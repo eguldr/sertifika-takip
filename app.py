@@ -10,7 +10,7 @@ from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy import text
 
 app = Flask(__name__)
-app.config.update(SECRET_KEY='eg_optimal_final_full_v30', SECURITY_PASSWORD_SALT='eg_salt_987')
+app.config.update(SECRET_KEY='eg_optimal_final_safe_v31', SECURITY_PASSWORD_SALT='eg_salt_987')
 
 # --- DB & MAIL & CLOUD ---
 uri = os.environ.get('DATABASE_URL', 'sqlite:///test.db')
@@ -33,10 +33,15 @@ class User(UserMixin, db.Model):
     is_confirmed = db.Column(db.Boolean, default=False)
 
 class Entry(db.Model):
-    id = db.Column(db.Integer, primary_key=True); user_id = db.Column(db.Integer, nullable=False)
-    category = db.Column(db.String(50)); title = db.Column(db.String(100))
-    firma_adi = db.Column(db.String(100)); expiry_date = db.Column(db.Date); belge_url = db.Column(db.String(500))
-    whatsapp_no = db.Column(db.String(20)); note = db.Column(db.Text)
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, nullable=False)
+    category = db.Column(db.String(50))
+    title = db.Column(db.String(100))
+    firma_adi = db.Column(db.String(100))
+    expiry_date = db.Column(db.Date)
+    belge_url = db.Column(db.String(500))
+    whatsapp_no = db.Column(db.String(20))
+    note = db.Column(db.Text)
 
 @login_manager.user_loader
 def load_user(user_id): return User.query.get(int(user_id))
@@ -46,13 +51,22 @@ def setup_db():
     if not getattr(app, '_db_init', False):
         with app.app_context():
             db.create_all()
+            # --- 500 HATASINI ÇÖZEN KRİTİK SQL MÜDAHALESİ ---
+            try:
+                # Eksik sütunları kontrol etmeden eklemeye çalışır, varsa hata vermez
+                db.session.execute(text("ALTER TABLE entry ADD COLUMN IF NOT EXISTS whatsapp_no VARCHAR(20)"))
+                db.session.execute(text("ALTER TABLE entry ADD COLUMN IF NOT EXISTS note TEXT"))
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+            
             try:
                 db.session.execute(text("UPDATE \"user\" SET is_confirmed = true"))
                 db.session.commit()
             except: pass
         app._db_init = True
 
-# --- AUTH & REGISTRATION & CONFIRMATION ---
+# --- AUTH & REGISTRATION ---
 @app.route('/')
 def index(): return redirect(url_for('login'))
 
@@ -103,7 +117,6 @@ def dashboard(cat=None):
     sertifikalar = query.order_by(Entry.expiry_date.asc()).all()
     return render_template('dashboard.html', sertifikalar=sertifikalar, bugun=date.today(), timedelta=timedelta, current_cat=cat)
 
-# --- VERİ İŞLEMLERİ (YENİ EKLE EKRANI DAHİL) ---
 @app.route('/kayit_ekle/<cat>')
 @login_required
 def kayit_ekle(cat):
@@ -125,7 +138,7 @@ def add_entry():
         note=request.form.get('note'), expiry_date=expiry_date
     )
     db.session.add(new_e); db.session.commit()
-    return redirect(url_for('sertifikalar', cat=cat) if cat else url_for('dashboard'))
+    return redirect(url_for('sertifikalar', cat=cat) if cat and cat != 'None' else url_for('dashboard'))
 
 @app.route('/delete_entry/<int:id>', endpoint='delete_entry')
 @login_required
@@ -133,7 +146,7 @@ def delete_entry(id):
     e = Entry.query.filter_by(id=id, user_id=current_user.id).first()
     cat = e.category if e else None
     if e: db.session.delete(e); db.session.commit()
-    return redirect(url_for('sertifikalar', cat=cat) if cat else url_for('dashboard'))
+    return redirect(url_for('sertifikalar', cat=cat) if cat and cat != 'None' else url_for('dashboard'))
 
 @app.route('/import_excel', methods=['POST'], endpoint='import_excel')
 @login_required
@@ -145,13 +158,13 @@ def import_excel():
             t = next((str(r[c]) for c in df.columns if any(x in c for x in ['belge','ad','plaka'])), "Excel Kaydı")
             db.session.add(Entry(user_id=current_user.id, category=cat, title=t, expiry_date=date.today()+timedelta(days=365)))
         db.session.commit()
-    return redirect(url_for('sertifikalar', cat=cat) if cat else url_for('dashboard'))
+    return redirect(url_for('sertifikalar', cat=cat) if cat and cat != 'None' else url_for('dashboard'))
 
 @app.route('/export_excel', endpoint='export_excel')
 @login_required
 def export_excel():
     df = pd.DataFrame([{'Baslik': e.title, 'Vade': e.expiry_date} for e in Entry.query.filter_by(user_id=current_user.id).all()])
-    out = BytesIO(); 
+    out = BytesIO()
     with pd.ExcelWriter(out, engine='openpyxl') as wr: df.to_excel(wr, index=False)
     out.seek(0); return send_file(out, download_name="rapor.xlsx", as_attachment=True)
 
@@ -164,22 +177,11 @@ def upload_belge(entry_id):
         Entry.query.get(entry_id).belge_url = res['secure_url']; db.session.commit()
     return redirect(request.referrer or url_for('dashboard'))
 
-# --- ADMIN PANEL ---
 @app.route('/admin_panel', endpoint='admin_panel')
 @login_required
 def admin_panel():
     if current_user.email != 'erhanadea@gmail.com': return redirect(url_for('dashboard'))
     return render_template('admin.html', users=User.query.all(), all_entries=Entry.query.all(), bugun=date.today(), timedelta=timedelta)
-
-@app.route('/delete_user/<int:uid>', methods=['POST'], endpoint='delete_user')
-@login_required
-def delete_user(uid):
-    if current_user.email != 'erhanadea@gmail.com': return redirect(url_for('dashboard'))
-    u = User.query.get(uid)
-    if u: 
-        Entry.query.filter_by(user_id=u.id).delete()
-        db.session.delete(u); db.session.commit()
-    return redirect(url_for('admin_panel'))
 
 @app.route('/logout')
 def logout(): logout_user(); return redirect(url_for('login'))
