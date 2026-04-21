@@ -86,8 +86,7 @@ def setup_database():
                 db.session.rollback()
         app._db_init = True
 
-# --- ROUTELAR (TÜM ÇAKIŞMALAR GİDERİLDİ) ---
-
+# --- ANA SAYFA VE LOGIN ---
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
@@ -104,23 +103,20 @@ def login():
                 return redirect(url_for('login'))
             login_user(user)
             return redirect(url_for('dashboard'))
-        flash("Hatalı giriş bilgileri.")
+        flash("E-posta veya şifre hatalı.")
     return render_template('login.html')
 
+# --- KAYIT (KAYIT VE REGISTER ÇAKIŞMASI ÇÖZÜLDÜ) ---
 @app.route('/register', methods=['GET', 'POST'])
 @app.route('/kayit', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
         email = request.form.get('email')
-        # BASİT CAPTCHA KONTROLÜ (5+5=10)
+        # CAPTCHA: 5+5=10
         if request.form.get('captcha') != "10":
             flash("Captcha hatalı!")
             return redirect(url_for('register'))
             
-        if User.query.filter_by(email=email).first():
-            flash("Bu e-posta zaten kayıtlı.")
-            return redirect(url_for('register'))
-
         pw = generate_password_hash(request.form.get('password'))
         new_user = User(email=email, password=pw, company_name=request.form.get('company_name'))
         db.session.add(new_user)
@@ -129,7 +125,7 @@ def register():
         token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
         confirm_url = url_for('confirm_email', token=token, _external=True)
         msg = Message("EG Optimal Aktivasyon", recipients=[email])
-        msg.body = f"Hesabınızı onaylamak için tıklayın: {confirm_url}"
+        msg.body = f"Hoş geldiniz! Hesabınızı onaylamak için tıklayın: {confirm_url}"
         mail.send(msg)
         
         flash("Kayıt başarılı! Lütfen mailinizi onaylayın.")
@@ -143,11 +139,12 @@ def confirm_email(token):
         user = User.query.filter_by(email=email).first_or_404()
         user.is_confirmed = True
         db.session.commit()
-        flash("E-posta onaylandı! Giriş yapabilirsiniz.")
+        flash("Onaylandı! Giriş yapabilirsiniz.")
     except:
-        flash("Onay linki geçersiz veya süresi dolmuş.")
+        flash("Link geçersiz.")
     return redirect(url_for('login'))
 
+# --- ŞİFRE SIFIRLAMA ---
 @app.route('/forgot_password', methods=["GET", "POST"])
 @app.route('/reset', methods=["GET", "POST"])
 def forgot_password():
@@ -158,9 +155,9 @@ def forgot_password():
             token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
             reset_url = url_for('reset_password_token', token=token, _external=True)
             msg = Message("Şifre Sıfırlama", recipients=[email])
-            msg.body = f"Şifre sıfırlama linki: {reset_url}"
+            msg.body = f"Link: {reset_url}"
             mail.send(msg)
-            flash("Sıfırlama linki e-postanıza gönderildi.")
+            flash("Sıfırlama maili gönderildi.")
         return redirect(url_for('login'))
     return render_template('forgot_password.html')
 
@@ -175,10 +172,11 @@ def reset_password_token(token):
         user = User.query.filter_by(email=email).first()
         user.password = generate_password_hash(request.form.get('password'))
         db.session.commit()
-        flash("Şifreniz başarıyla güncellendi.")
+        flash("Şifre güncellendi.")
         return redirect(url_for('login'))
     return render_template('reset_password.html', token=token)
 
+# --- DASHBOARD VE PDF ---
 @app.route('/dashboard')
 @login_required
 def dashboard():
@@ -195,9 +193,10 @@ def upload_belge(entry_id):
         if entry and entry.user_id == current_user.id:
             entry.belge_url = upload_result['secure_url']
             db.session.commit()
-            flash('Belge yüklendi ve arşivlendi!')
+            flash('Belge başarıyla arşivlendi!')
     return redirect(url_for('dashboard'))
 
+# --- DİĞER ---
 @app.route('/logout')
 @login_required
 def logout():
@@ -219,11 +218,10 @@ def ekle(cat):
         return redirect(url_for('dashboard'))
     return render_template('ekle.html', category=cat)
 
-# --- HTML DOSYALARINDAKİ HATALI LİNKLERİ KURTARAN BÖLÜM ---
+# --- ESKİ LİNKLERİ KURTARAN BÖLÜM ---
 @app.route('/sertifikalar/<cat>')
 @login_required
 def sertifikalar(cat):
-    # base.html'deki eski 'sertifikalar' linkini dashboard'a yönlendirerek 500 hatasını engeller
     return redirect(url_for('dashboard'))
 
 if __name__ == '__main__':
