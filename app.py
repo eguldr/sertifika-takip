@@ -10,7 +10,7 @@ from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy import text
 
 app = Flask(__name__)
-app.config.update(SECRET_KEY='eg_optimal_final_safe_v31', SECURITY_PASSWORD_SALT='eg_salt_987')
+app.config.update(SECRET_KEY='eg_optimal_full_final_v100', SECURITY_PASSWORD_SALT='eg_salt_987')
 
 # --- DB & MAIL & CLOUD ---
 uri = os.environ.get('DATABASE_URL', 'sqlite:///test.db')
@@ -33,15 +33,10 @@ class User(UserMixin, db.Model):
     is_confirmed = db.Column(db.Boolean, default=False)
 
 class Entry(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, nullable=False)
-    category = db.Column(db.String(50))
-    title = db.Column(db.String(100))
-    firma_adi = db.Column(db.String(100))
-    expiry_date = db.Column(db.Date)
-    belge_url = db.Column(db.String(500))
-    whatsapp_no = db.Column(db.String(20))
-    note = db.Column(db.Text)
+    id = db.Column(db.Integer, primary_key=True); user_id = db.Column(db.Integer, nullable=False)
+    category = db.Column(db.String(50)); title = db.Column(db.String(100))
+    firma_adi = db.Column(db.String(100)); expiry_date = db.Column(db.Date); belge_url = db.Column(db.String(500))
+    whatsapp_no = db.Column(db.String(20)); note = db.Column(db.Text)
 
 @login_manager.user_loader
 def load_user(user_id): return User.query.get(int(user_id))
@@ -51,15 +46,11 @@ def setup_db():
     if not getattr(app, '_db_init', False):
         with app.app_context():
             db.create_all()
-            # --- 500 HATASINI ÇÖZEN KRİTİK SQL MÜDAHALESİ ---
             try:
-                # Eksik sütunları kontrol etmeden eklemeye çalışır, varsa hata vermez
                 db.session.execute(text("ALTER TABLE entry ADD COLUMN IF NOT EXISTS whatsapp_no VARCHAR(20)"))
                 db.session.execute(text("ALTER TABLE entry ADD COLUMN IF NOT EXISTS note TEXT"))
                 db.session.commit()
-            except Exception as e:
-                db.session.rollback()
-            
+            except: db.session.rollback()
             try:
                 db.session.execute(text("UPDATE \"user\" SET is_confirmed = true"))
                 db.session.commit()
@@ -75,23 +66,23 @@ def login():
     if request.method == 'POST':
         u = User.query.filter_by(email=request.form.get('email').strip()).first()
         if u and check_password_hash(u.password, request.form.get('password')):
-            if not u.is_confirmed: flash("Mail aktivasyonu gerekli."); return redirect(url_for('login'))
+            if not u.is_confirmed: flash("Onay gerekli."); return redirect(url_for('login'))
             login_user(u); return redirect(url_for('dashboard'))
-        flash("Hatalı giriş bilgileri.")
+        flash("Hatalı giriş.")
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'], endpoint='register')
 def register():
     if request.method == 'POST':
         email = request.form.get('email')
-        if User.query.filter_by(email=email).first(): flash("E-posta kayıtlı."); return redirect(url_for('login'))
+        if User.query.filter_by(email=email).first(): return redirect(url_for('login'))
         new_u = User(email=email, password=generate_password_hash(request.form.get('password')), is_confirmed=False)
         db.session.add(new_u); db.session.commit()
         try:
             token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
             mail.send(Message("Aktivasyon", recipients=[email], body=f"Onay linkiniz: {url_for('confirm_email', token=token, _external=True)}"))
-            flash("Kayıt başarılı! Mailinizi kontrol edin.")
-        except: flash("Mail gönderimi başarısız.")
+            flash("Onay maili gönderildi.")
+        except: flash("Mail hatası.")
         return redirect(url_for('login'))
     return render_template('kayit.html')
 
@@ -100,12 +91,12 @@ def confirm_email(token):
     try:
         email = ts.loads(token, salt=app.config['SECURITY_PASSWORD_SALT'], max_age=86400)
         u = User.query.filter_by(email=email).first(); u.is_confirmed = True; db.session.commit()
-        flash("Aktivasyon tamamlandı!"); return redirect(url_for('login'))
-    except: return "Geçersiz veya süresi dolmuş link."
+        flash("Onaylandı!"); return redirect(url_for('login'))
+    except: return "Geçersiz link."
 
 @app.route('/forgot_password', endpoint='forgot_password')
 def forgot_password():
-    flash("Bakımdayız."); return redirect(url_for('login'))
+    flash("Bakımda."); return redirect(url_for('login'))
 
 # --- ANA PANEL VE BRANŞLAR ---
 @app.route('/dashboard', endpoint='dashboard')
@@ -114,13 +105,14 @@ def forgot_password():
 def dashboard(cat=None):
     query = Entry.query.filter_by(user_id=current_user.id)
     if cat: query = query.filter_by(category=cat)
-    sertifikalar = query.order_by(Entry.expiry_date.asc()).all()
-    return render_template('dashboard.html', sertifikalar=sertifikalar, bugun=date.today(), timedelta=timedelta, current_cat=cat)
+    res = query.order_by(Entry.expiry_date.asc()).all()
+    return render_template('dashboard.html', sertifikalar=res, bugun=date.today(), timedelta=timedelta, current_cat=cat)
 
-@app.route('/kayit_ekle/<cat>')
+# --- DİKKAT: SENDEKİ DOSYA ADI 'ekle.html' OLDUĞU İÇİN BURAYI DÜZELTTİM ---
+@app.route('/kayit_ekle/<cat>', endpoint='kayit_ekle')
 @login_required
 def kayit_ekle(cat):
-    return render_template('kayit_ekle.html', cat=cat)
+    return render_template('ekle.html', cat=cat)
 
 @app.route('/add_entry', methods=['POST'], endpoint='add_entry')
 @login_required
@@ -138,6 +130,7 @@ def add_entry():
         note=request.form.get('note'), expiry_date=expiry_date
     )
     db.session.add(new_e); db.session.commit()
+    flash("Kaydedildi.")
     return redirect(url_for('sertifikalar', cat=cat) if cat and cat != 'None' else url_for('dashboard'))
 
 @app.route('/delete_entry/<int:id>', endpoint='delete_entry')
@@ -145,7 +138,8 @@ def add_entry():
 def delete_entry(id):
     e = Entry.query.filter_by(id=id, user_id=current_user.id).first()
     cat = e.category if e else None
-    if e: db.session.delete(e); db.session.commit()
+    if e:
+        db.session.delete(e); db.session.commit()
     return redirect(url_for('sertifikalar', cat=cat) if cat and cat != 'None' else url_for('dashboard'))
 
 @app.route('/import_excel', methods=['POST'], endpoint='import_excel')
@@ -164,7 +158,7 @@ def import_excel():
 @login_required
 def export_excel():
     df = pd.DataFrame([{'Baslik': e.title, 'Vade': e.expiry_date} for e in Entry.query.filter_by(user_id=current_user.id).all()])
-    out = BytesIO()
+    out = BytesIO(); 
     with pd.ExcelWriter(out, engine='openpyxl') as wr: df.to_excel(wr, index=False)
     out.seek(0); return send_file(out, download_name="rapor.xlsx", as_attachment=True)
 
