@@ -393,7 +393,8 @@ def kayit_ekle(cat):
 def delete_entry(id):
     e = Entry.query.get(id)
     if e and (e.user_id == current_user.id or current_user.email == 'erhanadea@gmail.com'):
-        db.session.delete(e)
+        e.is_active = False
+        db.session.commit()
         db.session.commit()
     return redirect(request.referrer or url_for('dashboard'))
 
