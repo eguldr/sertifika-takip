@@ -10,13 +10,12 @@ from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy import text
 
 app = Flask(__name__)
-app.config.update(SECRET_KEY='eg_optimal_final_v10', SECURITY_PASSWORD_SALT='eg_salt_987')
+app.config.update(SECRET_KEY='eg_optimal_final_v11', SECURITY_PASSWORD_SALT='eg_salt_987')
 
-# --- VERİTABANI & MAİL & CLOUD ---
+# --- DB & MAIL ---
 uri = os.environ.get('DATABASE_URL', 'sqlite:///test.db')
 if uri and uri.startswith("postgres://"): uri = uri.replace("postgres://", "postgresql://", 1)
 app.config['SQLALCHEMY_DATABASE_URI'] = uri
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 app.config.update(MAIL_SERVER='smtp.gmail.com', MAIL_PORT=587, MAIL_USE_TLS=True,
@@ -25,12 +24,11 @@ mail = Mail(app); ts = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 login_manager = LoginManager(app); login_manager.login_view = 'login'
 cloudinary.config(cloud_name="dh2pefkk", api_key="413858167953556", api_secret="Pea5fUikVp6iMX1X62vYpWw_k-w")
 
-# --- MODELLER ---
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(256), nullable=False)
-    company_name = db.Column(db.String(100)); is_confirmed = db.Column(db.Boolean, default=False)
+    is_confirmed = db.Column(db.Boolean, default=False)
 
 class Entry(db.Model):
     id = db.Column(db.Integer, primary_key=True); user_id = db.Column(db.Integer, nullable=False)
@@ -45,9 +43,7 @@ def setup_db():
     if not getattr(app, '_db_init', False):
         with app.app_context():
             db.create_all()
-            try:
-                db.session.execute(text("UPDATE \"user\" SET is_confirmed = true"))
-                db.session.commit()
+            try: db.session.execute(text("UPDATE \"user\" SET is_confirmed = true")); db.session.commit()
             except: pass
         app._db_init = True
 
@@ -61,24 +57,31 @@ def login():
         user = User.query.filter_by(email=request.form.get('email').strip()).first()
         if user and check_password_hash(user.password, request.form.get('password')):
             if not user.is_confirmed: flash("Mail onayınız eksik."); return redirect(url_for('login'))
-            login_user(user)
-            return redirect(url_for('admin_panel' if user.email == 'erhanadea@gmail.com' else 'dashboard'))
+            login_user(user); return redirect(url_for('dashboard'))
         flash("Giriş başarısız.")
     return render_template('login.html')
+
+@app.route('/dashboard', endpoint='dashboard')
+@app.route('/sertifikalar/<cat>', endpoint='sertifikalar')
+@login_required
+def dashboard(cat=None):
+    query = Entry.query.filter_by(user_id=current_user.id)
+    if cat: query = query.filter_by(category=cat)
+    sertifikalar = query.order_by(Entry.expiry_date.asc()).all()
+    return render_template('dashboard.html', sertifikalar=sertifikalar, bugun=date.today(), timedelta=timedelta)
 
 @app.route('/register', methods=['GET', 'POST'], endpoint='register')
 def register():
     if request.method == 'POST':
         email = request.form.get('email')
         if User.query.filter_by(email=email).first(): return redirect(url_for('login'))
-        new_user = User(email=email, password=generate_password_hash(request.form.get('password')), company_name=request.form.get('company_name'), is_confirmed=False)
-        db.session.add(new_user); db.session.commit()
+        new_u = User(email=email, password=generate_password_hash(request.form.get('password')), is_confirmed=False)
+        db.session.add(new_u); db.session.commit()
         try:
             token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
-            url = url_for('confirm_email', token=token, _external=True)
-            mail.send(Message("EG Optimal Aktivasyon", recipients=[email], body=f"Onay linkiniz: {url}"))
-            flash("Kayıt başarılı! Lütfen mailinizi onaylayın.")
-        except: flash("Mail gönderilemedi.")
+            mail.send(Message("Aktivasyon", recipients=[email], body=f"Onay linki: {url_for('confirm_email', token=token, _external=True)}"))
+            flash("Onay maili gönderildi.")
+        except: flash("Mail hatası.")
         return redirect(url_for('login'))
     return render_template('kayit.html')
 
@@ -86,24 +89,33 @@ def register():
 def confirm_email(token):
     try:
         email = ts.loads(token, salt=app.config['SECURITY_PASSWORD_SALT'], max_age=86400)
-        user = User.query.filter_by(email=email).first(); user.is_confirmed = True; db.session.commit()
-        flash("Onaylandı! Giriş yapabilirsiniz.")
-    except: flash("Geçersiz link.")
+        u = User.query.filter_by(email=email).first(); u.is_confirmed = True; db.session.commit()
+        flash("Onaylandı!")
+    except: flash("Link geçersiz.")
     return redirect(url_for('login'))
 
-@app.route('/dashboard', endpoint='dashboard')
-@app.route('/sertifikalar/<cat>', endpoint='sertifikalar')
-@login_required
-def dashboard(cat=None):
-    sertifikalar = Entry.query.filter_by(user_id=current_user.id).order_by(Entry.expiry_date.asc()).all()
-    return render_template('dashboard.html', sertifikalar=sertifikalar, bugun=date.today(), timedelta=timedelta)
+@app.route('/forgot_password', endpoint='forgot_password') # HATAYI ÇÖZEN SATIR
+def forgot_password():
+    flash("Şifre sıfırlama servisi şu an bakımda. Lütfen admin ile iletişime geçin.")
+    return redirect(url_for('login'))
 
 @app.route('/delete_entry/<int:id>', endpoint='delete_entry')
 @login_required
 def delete_entry(id):
-    entry = Entry.query.filter_by(id=id, user_id=current_user.id).first()
-    if entry: db.session.delete(entry); db.session.commit(); flash("Belge silindi.")
+    e = Entry.query.filter_by(id=id, user_id=current_user.id).first()
+    if e: db.session.delete(e); db.session.commit(); flash("Silindi.")
     return redirect(url_for('dashboard'))
+
+@app.route('/admin_panel', endpoint='admin_panel')
+@login_required
+def admin_panel():
+    if current_user.email != 'erhanadea@gmail.com': return redirect(url_for('dashboard'))
+    return render_template('admin.html', users=User.query.all(), all_entries=Entry.query.all(), bugun=date.today(), timedelta=timedelta)
+
+@app.route('/update_payment/<int:uid>', methods=['POST'], endpoint='update_payment')
+@login_required
+def update_payment(uid):
+    u = User.query.get(uid); u.is_confirmed = not u.is_confirmed; db.session.commit(); return redirect(url_for('admin_panel'))
 
 @app.route('/import_excel', methods=['POST'], endpoint='import_excel')
 @login_required
@@ -125,18 +137,6 @@ def upload_belge(entry_id):
         res = cloudinary.uploader.upload(file, resource_type="auto")
         Entry.query.get(entry_id).belge_url = res['secure_url']; db.session.commit()
     return redirect(url_for('dashboard'))
-
-@app.route('/admin_panel', endpoint='admin_panel')
-@login_required
-def admin_panel():
-    if current_user.email != 'erhanadea@gmail.com': return redirect(url_for('dashboard'))
-    return render_template('admin.html', users=User.query.all(), all_entries=Entry.query.all(), bugun=date.today(), timedelta=timedelta)
-
-@app.route('/update_payment/<int:uid>', methods=['POST'], endpoint='update_payment')
-@login_required
-def update_payment(uid):
-    if current_user.email != 'erhanadea@gmail.com': return redirect(url_for('dashboard'))
-    u = User.query.get(uid); u.is_confirmed = not u.is_confirmed; db.session.commit(); return redirect(url_for('admin_panel'))
 
 @app.route('/export', endpoint='export_excel')
 @login_required
