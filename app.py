@@ -106,9 +106,9 @@ def login():
         flash("E-posta veya şifre hatalı.")
     return render_template('login.html')
 
-# --- KAYIT (KAYIT VE REGISTER ÇAKIŞMASI ÇÖZÜLDÜ) ---
-@app.route('/register', methods=['GET', 'POST'])
-@app.route('/kayit', methods=['GET', 'POST'])
+# --- KAYIT (HATA ALMAMAK İÇİN İKİ İSİM DE TANIMLANDI) ---
+@app.route('/register', methods=['GET', 'POST'], endpoint='register')
+@app.route('/kayit', methods=['GET', 'POST'], endpoint='kayit')
 def register():
     if request.method == 'POST':
         email = request.form.get('email')
@@ -196,7 +196,7 @@ def upload_belge(entry_id):
             flash('Belge başarıyla arşivlendi!')
     return redirect(url_for('dashboard'))
 
-# --- DİĞER ---
+# --- ÇIKIŞ VE EKLEME ---
 @app.route('/logout')
 @login_required
 def logout():
@@ -218,7 +218,7 @@ def ekle(cat):
         return redirect(url_for('dashboard'))
     return render_template('ekle.html', category=cat)
 
-# --- ESKİ LİNKLERİ KURTARAN BÖLÜM ---
+# --- ESKİ LİNKLERİ KURTARAN YÖNLENDİRME ---
 @app.route('/sertifikalar/<cat>')
 @login_required
 def sertifikalar(cat):
