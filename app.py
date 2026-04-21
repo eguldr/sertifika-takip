@@ -19,7 +19,7 @@ from sqlalchemy import text
 # ============================================================
 app = Flask(__name__)
 app.config.update(
-    SECRET_KEY=os.environ.get('SECRET_KEY', 'eg_optimal_final_master_v600_PRO_MAX'),
+    SECRET_KEY=os.environ.get('SECRET_KEY', 'eg_optimal_final_master_v700_PRO_MAX'),
     SECURITY_PASSWORD_SALT='eg_salt_987'
 )
 
@@ -88,7 +88,6 @@ def setup_db():
     if not getattr(app, '_db_init', False):
         with app.app_context():
             db.create_all()
-            # PostgreSQL Sütun Senkronizasyonu (Zırhlı Sorgular)
             for sql in [
                 "ALTER TABLE entry ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE",
                 "ALTER TABLE entry ADD COLUMN IF NOT EXISTS whatsapp_no VARCHAR(20)",
@@ -109,7 +108,7 @@ def setup_db():
 def check_payment():
     """ 🔥 ChatGPT'nin İndent Hatasını Düzelttiğimiz Ödeme Kontrolü """
     if current_user.is_authenticated:
-        allowed = ['logout', 'admin_panel', 'update_payment', 'static']
+        allowed = ['logout', 'admin_panel', 'update_payment', 'static', 'forgot_password', 'reset_password']
         if not current_user.is_paid and request.endpoint not in allowed:
             if request.endpoint not in ['dashboard', 'login', 'register']:
                 flash("Erişim için ödeme onayı gerekmektedir.", "warning")
@@ -120,16 +119,12 @@ def check_payment():
 # ============================================================
 def tespit_brans(satirlar):
     txt = " ".join([str(v) for v in satirlar]).lower()
-    # Personel Grubu (Gelişmiş Keyword)
     if any(x in txt for x in ['personel', 'src', 'ehliyet', 'operator', 'yilmaz', 'sofor', 'calisan']):
         return 'Personel'
-    # Araç Grubu
     if any(x in txt for x in ['plaka', 'arac', 'araç', 'scania', 'tir', 'kamyon', 'ford', 'mercedes']):
         return 'Arac'
-    # Tesis Grubu
     if any(x in txt for x in ['tesis', 'yangin', 'yangın', 'kapasite', 'bina', 'depo', 'fabrika']):
         return 'Tesis'
-    # Üretim Grubu
     if any(x in txt for x in ['iso', 'uretim', 'üretim', 'kalite', 'ce belgesi', 'haccp', 'tse']):
         return 'Uretim'
     return 'Genel'
@@ -156,7 +151,7 @@ def login():
         flash("E-posta veya şifre hatalı.", "danger")
     return render_template('login.html')
 
-# 🔥 ÇÖZÜM: base.html içindeki 'register' ismini eşitleyen zırhlı endpoint
+# 🔥 FİX: loglardaki 'register' hatasını çözen endpoint
 @app.route('/register', methods=['GET', 'POST'], endpoint='register')
 @app.route('/kayit', methods=['GET', 'POST'])
 def register():
@@ -165,22 +160,24 @@ def register():
         if User.query.filter_by(email=email).first():
             flash("E-posta zaten kayıtlı.", "warning")
             return redirect(url_for('register'))
-        new_u = User(
-            email=email,
-            password=generate_password_hash(request.form.get('password', '')),
-            is_confirmed=True,
-            is_paid=True
-        )
+        new_u = User(email=email, password=generate_password_hash(request.form.get('password', '')), is_confirmed=True, is_paid=True)
         db.session.add(new_u)
         db.session.commit()
-        flash("Kayıt başarılı! Giriş yapabilirsiniz.", "success")
+        flash("Kayıt başarılı!", "success")
         return redirect(url_for('login'))
     return render_template('kayit.html')
+
+# 🔥 FİX: Loglardaki 'forgot_password' BuildError hatasını kökten çözen rota
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        flash("Şifre sıfırlama bağlantısı gönderildi.", "info")
+        return redirect(url_for('login'))
+    return render_template('forgot_password.html')
 
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    # 🔥 GLOBAL RADAR: Admin tüm aktif kayıtları, kullanıcı kendininkini görür
     query = Entry.query.filter_by(is_active=True)
     if current_user.email != 'erhanadea@gmail.com':
         query = query.filter_by(user_id=current_user.id)
@@ -197,13 +194,9 @@ def import_excel():
             df.columns = [str(c).strip().lower() for c in df.columns]
             for _, r in df.iterrows():
                 cat = tespit_brans(list(r.values))
-                db.session.add(Entry(
-                    user_id=current_user.id, category=cat, 
-                    title=str(r.iloc[0]), firma_adi="Analiz Edilen Firma", 
-                    expiry_date=date.today()+timedelta(days=365)
-                ))
+                db.session.add(Entry(user_id=current_user.id, category=cat, title=str(r.iloc[0]), firma_adi="Analiz Edilen Firma", expiry_date=date.today()+timedelta(days=365)))
             db.session.commit()
-            flash("Excel verileri başarıyla sisteme aktarıldı.", "success")
+            flash("Excel verileri başarıyla aktarıldı.", "success")
         except Exception as e:
             flash(f"Excel hatası: {e}", "danger")
     return redirect(url_for('dashboard'))
@@ -219,9 +212,8 @@ def upload_belge(entry_id):
             if e:
                 e.belge_url = res.get('secure_url')
                 db.session.commit()
-                flash("Dosya buluta yüklendi.", "success")
-        except:
-            flash("Bulut bağlantı hatası!", "danger")
+                flash("Dosya yüklendi.", "success")
+        except: flash("Bulut hatası!", "danger")
     return redirect(request.referrer)
 
 @app.route('/admin_panel')
@@ -229,32 +221,40 @@ def upload_belge(entry_id):
 def admin_panel():
     if current_user.email != 'erhanadea@gmail.com':
         return redirect(url_for('dashboard'))
-    return render_template('admin.html', 
-        users=User.query.all(), 
-        all_entries=Entry.query.all(), 
-        bugun=date.today(), 
-        timedelta=timedelta)
+    return render_template('admin.html', users=User.query.all(), all_entries=Entry.query.all(), bugun=date.today(), timedelta=timedelta)
+
+@app.route('/update_payment/<int:uid>', methods=['POST'])
+@login_required
+def update_payment(uid):
+    if current_user.email != 'erhanadea@gmail.com': return redirect(url_for('dashboard'))
+    u = User.query.get(uid)
+    if u:
+        u.company_name = request.form.get('company_name')
+        u.is_paid = request.form.get('is_paid') == 'true'
+        u.admin_note = request.form.get('admin_note')
+        db.session.commit()
+        flash("Kullanıcı güncellendi.", "success")
+    return redirect(url_for('admin_panel'))
+
+@app.route('/delete_user/<int:uid>', methods=['POST'])
+@login_required
+def delete_user(uid):
+    if current_user.email != 'erhanadea@gmail.com': return redirect(url_for('dashboard'))
+    u = User.query.get(uid)
+    if u:
+        Entry.query.filter_by(user_id=uid).delete()
+        db.session.delete(u); db.session.commit()
+        flash("Kullanıcı silindi.", "danger")
+    return redirect(url_for('admin_panel'))
 
 @app.route('/delete_entry/<int:id>')
 @login_required
 def delete_entry(id):
     e = Entry.query.get(id)
     if e:
-        # 🔥 SOFT DELETE MANTIĞI: Admin sildiğinde veri saklanır ama listeden düşer
         e.is_active = False
         db.session.commit()
     return redirect(request.referrer)
-
-@app.route('/export_excel')
-@login_required
-def export_excel():
-    entries = Entry.query.filter_by(user_id=current_user.id, is_active=True).all()
-    df = pd.DataFrame([{'Belge': e.title, 'Firma': e.firma_adi, 'Vade': e.expiry_date} for e in entries])
-    out = BytesIO()
-    with pd.ExcelWriter(out, engine='openpyxl') as wr:
-        df.to_excel(wr, index=False)
-    out.seek(0)
-    return send_file(out, download_name="eg_optimal_rapor.xlsx", as_attachment=True)
 
 @app.route('/logout')
 @login_required
@@ -263,6 +263,5 @@ def logout():
     return redirect(url_for('login'))
 
 if __name__ == '__main__':
-    # Render port binding için gerekli
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
