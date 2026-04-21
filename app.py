@@ -412,7 +412,7 @@ def upload_belge(entry_id):
             res = cloudinary.uploader.upload(f, resource_type="auto")
             e   = Entry.query.get(entry_id)
             if e and (e.user_id == current_user.id or current_user.email == 'erhanadea@gmail.com'):
-                e.belge_url = res['secure_url']
+                e.belge_url = res.get('secure_url')
                 db.session.commit()
         except Exception as ex:
             flash(f"Bulut yukleme hatasi: {ex}", "danger")
