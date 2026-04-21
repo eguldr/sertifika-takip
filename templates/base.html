@@ -6,7 +6,6 @@
     <title>EG Optimal | Sertifika Takip Sistemi</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -15,8 +14,8 @@
             --p-dark: #1a1c4b;
             --accent: #c5a059;
             --sidebar-w: 250px;
-            --customer-wa: #25D366; /* Müşteri WhatsApp Yeşili */
-            --advisor-blue: #34b7f1; /* Danışman Mavisi */
+            --customer-wa: #25D366;
+            --advisor-blue: #34b7f1;
         }
 
         body {
@@ -27,12 +26,7 @@
             color: #1e293b;
         }
 
-        /* --- ANA TASARIM --- */
-        .wrapper {
-            display: flex;
-            width: 100%;
-            align-items: stretch;
-        }
+        .wrapper { display: flex; width: 100%; align-items: stretch; }
 
         #sidebar {
             min-width: var(--sidebar-w);
@@ -59,9 +53,7 @@
             font-size: 1.4rem;
         }
 
-        #sidebar ul.components {
-            padding: 20px 0;
-        }
+        #sidebar ul.components { padding: 20px 0; }
 
         #sidebar ul li a {
             padding: 15px 25px;
@@ -86,83 +78,18 @@
             border-left: 4px solid var(--accent);
         }
 
-        #content {
-            width: 100%;
-            padding: 40px;
-            min-height: 100vh;
-            transition: all 0.3s;
-        }
+        #content { width: 100%; padding: 40px; min-height: 100vh; transition: all 0.3s; }
 
-        /* --- ÖZEL BUTON STİLLERİ (OSGB KURGUSU İÇİN) --- */
-        .btn-wa-customer { 
-            background-color: var(--customer-wa); 
-            color: white !important; 
-            font-weight: 600;
-            border: none;
-        }
-        .btn-wa-customer:hover { background-color: #1eb956; transform: translateY(-1px); }
-
-        .btn-wa-advisor { 
-            background-color: var(--advisor-blue); 
-            color: white !important; 
-            font-weight: 600;
-            border: none;
-        }
-        .btn-wa-advisor:hover { background-color: #2da7dd; transform: translateY(-1px); }
-
-        /* --- MOBİL HATA DÜZELTMESİ --- */
         @media (max-width: 768px) {
-            .wrapper {
-                flex-direction: column !important;
-            }
-
-            #sidebar {
-                min-width: 100% !important;
-                max-width: 100% !important;
-                min-height: auto !important;
-                position: relative;
-            }
-
-            #sidebar .sidebar-header {
-                padding: 15px;
-            }
-
-            #sidebar ul.components {
-                display: flex;
-                flex-wrap: wrap;
-                padding: 10px;
-                justify-content: center;
-            }
-
-            #sidebar ul li a {
-                padding: 10px 12px;
-                font-size: 0.8rem;
-                border-left: none !important;
-                border-bottom: 3px solid transparent;
-            }
-
-            #sidebar ul li a:hover, #sidebar ul li.active > a {
-                border-bottom: 3px solid var(--accent);
-                background: transparent;
-            }
-
-            #content {
-                padding: 20px 15px;
-                width: 100% !important;
-            }
+            .wrapper { flex-direction: column !important; }
+            #sidebar { min-width: 100% !important; max-width: 100% !important; min-height: auto !important; }
+            #sidebar ul.components { display: flex; flex-wrap: wrap; padding: 10px; justify-content: center; }
+            #sidebar ul li a { padding: 10px 12px; font-size: 0.8rem; border-left: none !important; border-bottom: 3px solid transparent; }
+            #sidebar ul li a:hover, #sidebar ul li.active > a { border-bottom: 3px solid var(--accent); background: transparent; }
+            #content { padding: 20px 15px; width: 100% !important; }
         }
 
-        .card {
-            border: none;
-            border-radius: 16px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        }
-
-        .alert {
-            border-radius: 12px;
-            border: none;
-            font-weight: 500;
-        }
+        .alert { border-radius: 12px; border: none; font-weight: 500; }
     </style>
 </head>
 <body>
@@ -177,28 +104,25 @@
                 <li class="{{ 'active' if request.endpoint == 'dashboard' }}">
                     <a href="{{ url_for('dashboard') }}"><i class="fas fa-table-columns"></i> Dashboard</a>
                 </li>
-                <li>
-                    {# App.py'daki 'sertifikalar' route'una yönlendiriyoruz #}
-                    <a href="{{ url_for('sertifikalar', cat='Urun') }}"><i class="fas fa-box-archive"></i> Üretim & Ürün</a>
-                </li>
-                <li>
-                    <a href="{{ url_for('sertifikalar', cat='Arac') }}"><i class="fas fa-truck-fast"></i> Araç & Filo</a>
-                </li>
-                <li>
-                    <a href="{{ url_for('sertifikalar', cat='Personel') }}"><i class="fas fa-user-gear"></i> Personel & SRC</a>
-                </li>
-                <li>
-                    <a href="{{ url_for('sertifikalar', cat='Tesis') }}"><i class="fas fa-building-shield"></i> Tesis & Mekan</a>
-                </li>
+                <li><a href="{{ url_for('sertifikalar', cat='Urun') }}"><i class="fas fa-box-archive"></i> Üretim & Ürün</a></li>
+                <li><a href="{{ url_for('sertifikalar', cat='Arac') }}"><i class="fas fa-truck-fast"></i> Araç & Filo</a></li>
+                <li><a href="{{ url_for('sertifikalar', cat='Personel') }}"><i class="fas fa-user-gear"></i> Personel & SRC</a></li>
+                <li><a href="{{ url_for('sertifikalar', cat='Tesis') }}"><i class="fas fa-building-shield"></i> Tesis & Mekan</a></li>
 
                 {% if current_user.is_authenticated %}
                 <hr style="opacity: 0.1; margin: 15px 25px; border-color: #fff;">
+                
+                {# ADMİN PANELİ BUTONU #}
+                {% if current_user.email == 'erhanadea@gmail.com' %}
                 <li>
-                    <a href="{{ url_for('forgot_password') }}"><i class="fas fa-key"></i> Şifre Değiştir</a>
+                    <a href="{{ url_for('admin_panel') }}" style="color: #fbbf24;">
+                        <i class="fas fa-user-shield"></i> Admin Paneli
+                    </a>
                 </li>
-                <li>
-                    <a href="{{ url_for('logout') }}" style="color: #fda4af;"><i class="fas fa-power-off"></i> Güvenli Çıkış</a>
-                </li>
+                {% endif %}
+
+                <li><a href="{{ url_for('forgot_password') }}"><i class="fas fa-key"></i> Şifre Değiştir</a></li>
+                <li><a href="{{ url_for('logout') }}" style="color: #fda4af;"><i class="fas fa-power-off"></i> Güvenli Çıkış</a></li>
                 {% endif %}
             </ul>
         </nav>
