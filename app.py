@@ -70,6 +70,7 @@ class Entry(db.Model):
     danisman_no = db.Column(db.String(20))
     expiry_date = db.Column(db.Date)
     risk_value = db.Column(db.String(100))
+    belge_url = db.Column(db.String(500), nullable=True)
 
 @login_manager.user_loader
 def load_user(user_id):
