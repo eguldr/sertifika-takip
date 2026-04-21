@@ -73,6 +73,7 @@ class Entry(db.Model):
     belge_url   = db.Column(db.String(500))
     whatsapp_no = db.Column(db.String(20))
     note        = db.Column(db.Text)
+    is_active = db.Column(db.Boolean, default=True)
 
 
 @login_manager.user_loader
