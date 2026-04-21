@@ -13,7 +13,7 @@ from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'eg_optimal_pro_secret_2026'
+app.config['SECRET_KEY'] = 'eg_optimal_final_key_2026'
 app.config['SECURITY_PASSWORD_SALT'] = 'eg_pro_salt_987'
 
 # --- VERİTABANI ---
@@ -79,7 +79,6 @@ def setup_database():
         with app.app_context():
             db.create_all()
             try:
-                # PostgreSQL için tablo isimlerini çift tırnakta tutuyoruz
                 db.session.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS is_confirmed BOOLEAN DEFAULT FALSE'))
                 db.session.execute(text('ALTER TABLE entry ADD COLUMN IF NOT EXISTS belge_url VARCHAR(500)'))
                 db.session.commit()
@@ -87,16 +86,62 @@ def setup_database():
                 db.session.rollback()
         app._db_init = True
 
-# --- ÖNEMLİ: HATA ALAN TÜM YÖNLENDİRMELER ---
+# --- ROUTELAR (405 HATASI İÇİN DÜZENLENDİ) ---
 
-@app.route('/')
-def index(): 
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    # Eğer birisi direkt ana sayfadan login olmaya çalışırsa login fonksiyonuna yönlendir
+    if request.method == 'POST':
+        return login()
     return render_template('login.html')
 
-# HTML içinde hangi isimle çağrılırsa çağrılsın çalışacak:
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        user = User.query.filter_by(email=request.form.get('email')).first()
+        if user and check_password_hash(user.password, request.form.get('password')):
+            if not user.is_confirmed:
+                flash("Lütfen önce mailinizi onaylayın.")
+                return redirect(url_for('login'))
+            login_user(user)
+            return redirect(url_for('dashboard'))
+        flash("Hatalı e-posta veya şifre.")
+    return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+@app.route('/kayit', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        pw = generate_password_hash(request.form.get('password'))
+        new_user = User(email=email, password=pw, company_name=request.form.get('company_name'))
+        db.session.add(new_user)
+        db.session.commit()
+        
+        token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
+        confirm_url = url_for('confirm_email', token=token, _external=True)
+        msg = Message("Aktivasyon Maili", recipients=[email])
+        msg.body = f"Onay linki: {confirm_url}"
+        mail.send(msg)
+        
+        flash("Kayıt başarılı, mail onayını bekliyoruz.")
+        return redirect(url_for('login'))
+    return render_template('kayit.html')
+
+@app.route('/confirm/<token>')
+def confirm_email(token):
+    try:
+        email = ts.loads(token, salt=app.config['SECURITY_PASSWORD_SALT'], max_age=86400)
+        user = User.query.filter_by(email=email).first_or_404()
+        user.is_confirmed = True
+        db.session.commit()
+        flash("Onaylandı! Giriş yapabilirsiniz.")
+    except:
+        flash("Hatalı link.")
+    return redirect(url_for('login'))
+
 @app.route('/forgot_password', endpoint='forgot_password', methods=["GET", "POST"])
-@app.route('/reset', endpoint='reset', methods=["GET", "POST"])
-def reset():
+def forgot_password():
     if request.method == "POST":
         email = request.form.get('email')
         user = User.query.filter_by(email=email).first()
@@ -106,16 +151,16 @@ def reset():
             msg = Message("Şifre Sıfırlama", recipients=[email])
             msg.body = f"Link: {reset_url}"
             mail.send(msg)
-            flash("Sıfırlama maili gönderildi.")
+            flash("Mail gönderildi.")
         return redirect(url_for('login'))
     return render_template('forgot_password.html')
 
-@app.route('/reset_password/<token>', endpoint='reset_password_token', methods=["GET", "POST"])
+@app.route('/reset/<token>', endpoint='reset_password_token', methods=["GET", "POST"])
 def reset_password_token(token):
     try:
         email = ts.loads(token, salt=app.config['SECURITY_PASSWORD_SALT'], max_age=3600)
     except:
-        flash("Süre doldu.")
+        flash("Link süresi dolmuş.")
         return redirect(url_for('login'))
     if request.method == "POST":
         user = User.query.filter_by(email=email).first()
@@ -124,17 +169,11 @@ def reset_password_token(token):
         return redirect(url_for('login'))
     return render_template('reset_password.html', token=token)
 
-@app.route('/confirm/<token>')
-def confirm_email(token):
-    try:
-        email = ts.loads(token, salt=app.config['SECURITY_PASSWORD_SALT'], max_age=86400)
-        user = User.query.filter_by(email=email).first_or_404()
-        user.is_confirmed = True
-        db.session.commit()
-        flash("E-posta onaylandı!")
-    except:
-        flash("Onay linki hatalı.")
-    return redirect(url_for('login'))
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    sertifikalar = Entry.query.filter_by(user_id=current_user.id).order_by(Entry.expiry_date.asc()).all()
+    return render_template('dashboard.html', sertifikalar=sertifikalar, bugun=date.today(), timedelta=timedelta)
 
 @app.route('/upload_belge/<int:entry_id>', methods=['POST'])
 @login_required
@@ -146,56 +185,8 @@ def upload_belge(entry_id):
         if entry and entry.user_id == current_user.id:
             entry.belge_url = upload_result['secure_url']
             db.session.commit()
-            flash('Belge yüklendi!')
+            flash('Yüklendi!')
     return redirect(url_for('dashboard'))
-
-@app.route('/register', endpoint='register', methods=['GET', 'POST'])
-@app.route('/kayit', endpoint='kayit', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        email = request.form.get('email')
-        pw = generate_password_hash(request.form.get('password'))
-        new_user = User(email=email, password=pw, company_name=request.form.get('company_name'))
-        db.session.add(new_user)
-        db.session.commit()
-        token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
-        confirm_url = url_for('confirm_email', token=token, _external=True)
-        msg = Message("Onay Maili", recipients=[email])
-        msg.body = f"Onay linki: {confirm_url}"
-        mail.send(msg)
-        flash("Kayıt başarılı, mailinizi onaylayın.")
-        return redirect(url_for('login'))
-    return render_template('kayit.html')
-
-@app.route('/login', endpoint='login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        user = User.query.filter_by(email=request.form.get('email')).first()
-        if user and check_password_hash(user.password, request.form.get('password')):
-            if not user.is_confirmed:
-                flash("Lütfen mail onayı yapın.")
-                return redirect(url_for('login'))
-            login_user(user)
-            return redirect(url_for('dashboard'))
-        flash("Hatalı giriş.")
-    return render_template('login.html')
-
-@app.route('/dashboard', endpoint='dashboard')
-@login_required
-def dashboard():
-    sertifikalar = Entry.query.filter_by(user_id=current_user.id).order_by(Entry.expiry_date.asc()).all()
-    return render_template('dashboard.html', sertifikalar=sertifikalar, bugun=date.today(), timedelta=timedelta)
-
-@app.route('/export', endpoint='export_excel')
-@login_required
-def export_excel():
-    entries = Entry.query.filter_by(user_id=current_user.id).all()
-    df = pd.DataFrame([{ 'Belge': e.title, 'Firma': e.firma_adi, 'Bitiş': e.expiry_date } for e in entries])
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False)
-    output.seek(0)
-    return send_file(output, download_name="eg_optimal_data.xlsx", as_attachment=True)
 
 @app.route('/logout')
 @login_required
@@ -203,7 +194,7 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
-@app.route('/ekle/<cat>', endpoint='ekle', methods=['GET', 'POST'])
+@app.route('/ekle/<cat>', methods=['GET', 'POST'])
 @login_required
 def ekle(cat):
     if request.method == 'POST':
@@ -215,12 +206,6 @@ def ekle(cat):
         db.session.commit()
         return redirect(url_for('dashboard'))
     return render_template('ekle.html', category=cat)
-
-# Eski sertifikalar linkini dashboard'a yönlendiriyoruz
-@app.route('/sertifikalar/<cat>')
-@login_required
-def sertifikalar(cat):
-    return redirect(url_for('dashboard'))
 
 if __name__ == '__main__':
     app.run(debug=True)
