@@ -10,6 +10,14 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
+import cloudinary
+import cloudinary.uploader
+
+cloudinary.config( 
+  cloud_name = "dh2pefkk", 
+  api_key = "413858167953556", 
+  api_secret = "Pea5fUikVp6iMX1X62vYpWw_k-w" # Görselden aldığım secret
+)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'erhan-strateji-global-anahtar-2026'
