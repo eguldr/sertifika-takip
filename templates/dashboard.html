@@ -169,7 +169,9 @@
                         </td>
                         <td class="align-middle text-center">
                             {% if s.belge_url %}
-                                <a href="{{ s.belge_url }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                {% if s.belge_url and 'http' in s.belge_url %}
+                                    <a href="{{ s.belge_url }}" target="_blank">Belge Aç</a>
+                                {% endif %}
                                     <i class="fas fa-file-pdf"></i> Aç
                                 </a>
                             {% else %}
