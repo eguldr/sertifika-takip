@@ -46,6 +46,7 @@ def setup_db():
     if not getattr(app, '_db_init', False):
         with app.app_context():
             db.create_all()
+            # 500 hatasını önlemek için sütunları zorla ekliyoruz
             try:
                 db.session.execute(text("ALTER TABLE entry ADD COLUMN IF NOT EXISTS whatsapp_no VARCHAR(20)"))
                 db.session.execute(text("ALTER TABLE entry ADD COLUMN IF NOT EXISTS note TEXT"))
@@ -57,7 +58,7 @@ def setup_db():
             except: pass
         app._db_init = True
 
-# --- AUTH & REGISTRATION ---
+# --- AUTH SİSTEMİ ---
 @app.route('/')
 def index(): return redirect(url_for('login'))
 
@@ -66,7 +67,7 @@ def login():
     if request.method == 'POST':
         u = User.query.filter_by(email=request.form.get('email').strip()).first()
         if u and check_password_hash(u.password, request.form.get('password')):
-            if not u.is_confirmed: flash("Onay gerekli."); return redirect(url_for('login'))
+            if not u.is_confirmed: flash("Mail onayı gerekli."); return redirect(url_for('login'))
             login_user(u); return redirect(url_for('dashboard'))
         flash("Hatalı giriş.")
     return render_template('login.html')
@@ -98,7 +99,7 @@ def confirm_email(token):
 def forgot_password():
     flash("Bakımda."); return redirect(url_for('login'))
 
-# --- ANA PANEL VE BRANŞLAR ---
+# --- PANEL VE BRANŞLAR ---
 @app.route('/dashboard', endpoint='dashboard')
 @app.route('/sertifikalar/<cat>', endpoint='sertifikalar')
 @login_required
@@ -108,7 +109,6 @@ def dashboard(cat=None):
     res = query.order_by(Entry.expiry_date.asc()).all()
     return render_template('dashboard.html', sertifikalar=res, bugun=date.today(), timedelta=timedelta, current_cat=cat)
 
-# --- DİKKAT: SENDEKİ DOSYA ADI 'ekle.html' OLDUĞU İÇİN BURAYI DÜZELTTİM ---
 @app.route('/kayit_ekle/<cat>', endpoint='kayit_ekle')
 @login_required
 def kayit_ekle(cat):
@@ -130,7 +130,6 @@ def add_entry():
         note=request.form.get('note'), expiry_date=expiry_date
     )
     db.session.add(new_e); db.session.commit()
-    flash("Kaydedildi.")
     return redirect(url_for('sertifikalar', cat=cat) if cat and cat != 'None' else url_for('dashboard'))
 
 @app.route('/delete_entry/<int:id>', endpoint='delete_entry')
@@ -142,40 +141,22 @@ def delete_entry(id):
         db.session.delete(e); db.session.commit()
     return redirect(url_for('sertifikalar', cat=cat) if cat and cat != 'None' else url_for('dashboard'))
 
-@app.route('/import_excel', methods=['POST'], endpoint='import_excel')
-@login_required
-def import_excel():
-    f = request.files.get('excel_file'); cat = request.args.get('cat')
-    if f:
-        df = pd.read_excel(f); df.columns = [str(c).strip().lower() for c in df.columns]
-        for _, r in df.iterrows():
-            t = next((str(r[c]) for c in df.columns if any(x in c for x in ['belge','ad','plaka'])), "Excel Kaydı")
-            db.session.add(Entry(user_id=current_user.id, category=cat, title=t, expiry_date=date.today()+timedelta(days=365)))
-        db.session.commit()
-    return redirect(url_for('sertifikalar', cat=cat) if cat and cat != 'None' else url_for('dashboard'))
-
-@app.route('/export_excel', endpoint='export_excel')
-@login_required
-def export_excel():
-    df = pd.DataFrame([{'Baslik': e.title, 'Vade': e.expiry_date} for e in Entry.query.filter_by(user_id=current_user.id).all()])
-    out = BytesIO(); 
-    with pd.ExcelWriter(out, engine='openpyxl') as wr: df.to_excel(wr, index=False)
-    out.seek(0); return send_file(out, download_name="rapor.xlsx", as_attachment=True)
-
-@app.route('/upload_belge/<int:entry_id>', methods=['POST'], endpoint='upload_belge')
-@login_required
-def upload_belge(entry_id):
-    f = request.files.get('file')
-    if f:
-        res = cloudinary.uploader.upload(f, resource_type="auto")
-        Entry.query.get(entry_id).belge_url = res['secure_url']; db.session.commit()
-    return redirect(request.referrer or url_for('dashboard'))
-
+# --- ADMİN PANELİ ---
 @app.route('/admin_panel', endpoint='admin_panel')
 @login_required
 def admin_panel():
     if current_user.email != 'erhanadea@gmail.com': return redirect(url_for('dashboard'))
     return render_template('admin.html', users=User.query.all(), all_entries=Entry.query.all(), bugun=date.today(), timedelta=timedelta)
+
+@app.route('/update_payment/<int:uid>', methods=['POST'], endpoint='update_payment')
+@login_required
+def update_payment(uid):
+    if current_user.email != 'erhanadea@gmail.com': return redirect(url_for('dashboard'))
+    u = User.query.get(uid)
+    if u:
+        u.is_confirmed = not u.is_confirmed
+        db.session.commit()
+    return redirect(url_for('admin_panel'))
 
 @app.route('/logout')
 def logout(): logout_user(); return redirect(url_for('login'))
