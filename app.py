@@ -112,10 +112,7 @@ def login():
 def register():
     if request.method == 'POST':
         email = request.form.get('email')
-        # CAPTCHA: 5+5=10
-        if request.form.get('captcha') != "10":
-            flash("Captcha hatalı!")
-            return redirect(url_for('register'))
+        
             
         pw = generate_password_hash(request.form.get('password'))
         new_user = User(email=email, password=pw, company_name=request.form.get('company_name'))
