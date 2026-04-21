@@ -10,7 +10,7 @@ from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy import text
 
 app = Flask(__name__)
-app.config.update(SECRET_KEY='eg_optimal_final_master_v37', SECURITY_PASSWORD_SALT='eg_salt_987')
+app.config.update(SECRET_KEY='eg_optimal_final_master_v40', SECURITY_PASSWORD_SALT='eg_salt_987')
 
 # --- DB & MAIL ---
 uri = os.environ.get('DATABASE_URL', 'sqlite:///test.db')
@@ -24,12 +24,8 @@ app.config.update(MAIL_SERVER='smtp.gmail.com', MAIL_PORT=587, MAIL_USE_TLS=True
 mail = Mail(app); ts = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 login_manager = LoginManager(app); login_manager.login_view = 'login'
 
-# --- CLOUDINARY AYARLARI (Dikkat: Boşluk Olmamalı) ---
-cloudinary.config(
-  cloud_name = "dh2pefkk",
-  api_key = "413858167953556",
-  api_secret = "Pea5fUikVp6iMX1X62vYpWw_k-w"
-)
+# --- CLOUDINARY (Boşluksuz Sabit Ayarlar) ---
+cloudinary.config(cloud_name="dh2pefkk", api_key="413858167953556", api_secret="Pea5fUikVp6iMX1X62vYpWw_k-w")
 
 # --- MODELLER ---
 class User(UserMixin, db.Model):
@@ -61,7 +57,7 @@ def setup_db():
             except: pass
         app._db_init = True
 
-# --- ROUTELAR ---
+# --- AUTH ---
 @app.route('/')
 def index(): return redirect(url_for('login'))
 
@@ -72,7 +68,7 @@ def login():
         if u and check_password_hash(u.password, request.form.get('password')):
             if not u.is_confirmed: flash("Onay gerekli."); return redirect(url_for('login'))
             login_user(u); return redirect(url_for('dashboard'))
-        flash("Hatalı giriş.")
+        flash("Giriş başarısız.")
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'], endpoint='register')
@@ -83,7 +79,7 @@ def register():
         new_u = User(email=email, password=generate_password_hash(request.form.get('password')), is_confirmed=False)
         db.session.add(new_u); db.session.commit()
         token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
-        try: mail.send(Message("Aktivasyon", recipients=[email], body=f"Onay: {url_for('confirm_email', token=token, _external=True)}"))
+        try: mail.send(Message("Onay", recipients=[email], body=f"Link: {url_for('confirm_email', token=token, _external=True)}"))
         except: pass
         return redirect(url_for('login'))
     return render_template('kayit.html')
@@ -94,12 +90,9 @@ def confirm_email(token):
         email = ts.loads(token, salt=app.config['SECURITY_PASSWORD_SALT'], max_age=86400)
         u = User.query.filter_by(email=email).first(); u.is_confirmed = True; db.session.commit()
         flash("Onaylandı!"); return redirect(url_for('login'))
-    except: return "Geçersiz link."
+    except: return "Hata."
 
-@app.route('/forgot_password', endpoint='forgot_password')
-def forgot_password():
-    flash("Bakımda."); return redirect(url_for('login'))
-
+# --- PANEL ---
 @app.route('/dashboard', endpoint='dashboard')
 @app.route('/sertifikalar/<cat>', endpoint='sertifikalar')
 @login_required
@@ -121,6 +114,28 @@ def kayit_ekle(cat):
         return redirect(url_for('sertifikalar', cat=cat))
     return render_template('ekle.html', cat=cat)
 
+# --- AKILLI EXCEL İÇE AKTAR (BRANŞ AYIRT EDER) ---
+@app.route('/import_excel', methods=['POST'], endpoint='import_excel')
+@login_required
+def import_excel():
+    f = request.files.get('excel_file')
+    if f:
+        df = pd.read_excel(f)
+        df.columns = [str(c).strip().lower() for c in df.columns]
+        for _, r in df.iterrows():
+            row_text = " ".join([str(v).lower() for v in r.values])
+            cat = "Genel"
+            if any(x in row_text for x in ['plaka', 'araç', 'muayene', 'trafik']): cat = "Arac"
+            elif any(x in row_text for x in ['src', 'psikoteknik', 'personel', 'yabancı']): cat = "Personel"
+            elif any(x in row_text for x in ['tesis', 'işletme', 'itfaiye', 'mekan']): cat = "Tesis"
+            elif any(x in row_text for x in ['iso', 'üretim', 'helal', 'ce']): cat = "Uretim"
+            
+            t = next((str(r[c]) for c in df.columns if 'belge' in c or 'ad' in c), str(r.iloc[0]))
+            db.session.add(Entry(user_id=current_user.id, category=cat, title=t, expiry_date=date.today()+timedelta(days=365)))
+        db.session.commit()
+        flash("Excel branşlara göre ayrıştırıldı.")
+    return redirect(url_for('dashboard'))
+
 @app.route('/upload_belge/<int:entry_id>', methods=['POST'], endpoint='upload_belge')
 @login_required
 def upload_belge(entry_id):
@@ -131,8 +146,8 @@ def upload_belge(entry_id):
             e = Entry.query.get(entry_id)
             if e: e.belge_url = res['secure_url']; db.session.commit()
             flash("Belge yüklendi.")
-        except Exception as e:
-            flash(f"Yükleme Hatası: {str(e)}")
+        except Exception as err:
+            flash(f"Yükleme Hatası: {str(err)}")
     return redirect(request.referrer or url_for('dashboard'))
 
 @app.route('/delete_entry/<int:id>', endpoint='delete_entry')
@@ -143,26 +158,6 @@ def delete_entry(id):
     if e: db.session.delete(e); db.session.commit()
     return redirect(url_for('sertifikalar', cat=cat) if cat else url_for('dashboard'))
 
-@app.route('/import_excel', methods=['POST'], endpoint='import_excel')
-@login_required
-def import_excel():
-    f = request.files.get('excel_file'); cat = request.args.get('cat')
-    if f:
-        df = pd.read_excel(f); df.columns = [str(c).strip().lower() for c in df.columns]
-        for _, r in df.iterrows():
-            t = next((str(r[c]) for c in df.columns if any(x in c for x in ['belge','ad','plaka'])), "Excel")
-            db.session.add(Entry(user_id=current_user.id, category=cat, title=t, expiry_date=date.today()+timedelta(days=365)))
-        db.session.commit()
-    return redirect(url_for('sertifikalar', cat=cat) if cat else url_for('dashboard'))
-
-@app.route('/export_excel', endpoint='export_excel')
-@login_required
-def export_excel():
-    df = pd.DataFrame([{'Baslik': e.title, 'Vade': e.expiry_date} for e in Entry.query.filter_by(user_id=current_user.id).all()])
-    out = BytesIO(); 
-    with pd.ExcelWriter(out, engine='openpyxl') as wr: df.to_excel(wr, index=False)
-    out.seek(0); return send_file(out, download_name="rapor.xlsx", as_attachment=True)
-
 @app.route('/admin_panel', endpoint='admin_panel')
 @login_required
 def admin_panel():
@@ -172,14 +167,12 @@ def admin_panel():
 @app.route('/update_payment/<int:uid>', methods=['POST'], endpoint='update_payment')
 @login_required
 def update_payment(uid):
-    if current_user.email != 'erhanadea@gmail.com': return redirect(url_for('dashboard'))
     u = User.query.get(uid); u.is_confirmed = not u.is_confirmed; db.session.commit()
     return redirect(url_for('admin_panel'))
 
 @app.route('/delete_user/<int:uid>', methods=['POST'], endpoint='delete_user')
 @login_required
 def delete_user(uid):
-    if current_user.email != 'erhanadea@gmail.com': return redirect(url_for('dashboard'))
     u = User.query.get(uid)
     if u: Entry.query.filter_by(user_id=u.id).delete(); db.session.delete(u); db.session.commit()
     return redirect(url_for('admin_panel'))
