@@ -101,6 +101,15 @@ def setup_db():
                 except Exception:
                     db.session.rollback()
         app._db_init = True
+@app.before_request
+def check_payment():
+    if current_user.is_authenticated:
+        allowed = ['logout', 'admin_panel', 'update_payment', 'static']
+
+        if not current_user.is_paid and request.endpoint not in allowed:
+            if request.endpoint not in ['dashboard']:
+                flash("Odeme yapilmadi", "warning")
+                return redirect(url_for('dashboard'))
 
 
 # ============================================================
