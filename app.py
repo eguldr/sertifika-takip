@@ -430,7 +430,7 @@ def import_excel():
         flash("Dosya secilmedi.", "warning")
         return redirect(url_for('dashboard'))
 
-    Entry.query.filter_by(user_id=current_user.id).delete()
+    
     db.session.commit()
 
     df = pd.read_excel(f)
