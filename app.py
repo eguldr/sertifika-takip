@@ -79,25 +79,25 @@ def setup_database():
         with app.app_context():
             db.create_all()
             try:
-                db.session.execute(text('ALTER TABLE user ADD COLUMN IF NOT EXISTS is_confirmed BOOLEAN DEFAULT FALSE'))
+                db.session.execute(text('ALTER TABLE "user" ADD COLUMN IF NOT EXISTS is_confirmed BOOLEAN DEFAULT FALSE'))
                 db.session.execute(text('ALTER TABLE entry ADD COLUMN IF NOT EXISTS belge_url VARCHAR(500)'))
                 db.session.commit()
             except Exception:
                 db.session.rollback()
         app._db_init = True
 
-# --- YARDIMCI FONKSİYONLAR ---
-def send_mail(subject, recipients, body):
-    msg = Message(subject, recipients=recipients)
-    msg.body = body
-    mail.send(msg)
-
-# --- ROUTELAR (SENİN DOSYA İSİMLERİNE GÖRE GÜNCELLENDİ) ---
+# --- ROUTELAR ---
 
 @app.route('/')
 def index(): 
-    # Listede index.html olmadığı için direkt login.html'i açıyoruz
     return render_template('login.html')
+
+# ESKİ LİNKLERİ KURTARMA (Hata Almamak İçin Kritik Eklemeler)
+@app.route('/sertifikalar/<cat>')
+@login_required
+def sertifikalar(cat):
+    # Eğer base.html hala bu linki çağırıyorsa dashboard'a yönlendiriyoruz
+    return redirect(url_for('dashboard'))
 
 @app.route('/confirm/<token>')
 def confirm_email(token):
@@ -119,10 +119,11 @@ def reset():
         if user:
             token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
             reset_url = url_for('reset_with_token', token=token, _external=True)
-            send_mail("Şifre Sıfırlama", [email], f"Link: {reset_url}")
+            msg = Message("Şifre Sıfırlama", recipients=[email])
+            msg.body = f"Link: {reset_url}"
+            mail.send(msg)
             flash("Sıfırlama maili gönderildi.")
         return redirect(url_for('login'))
-    # Sendeki dosya ismi: forgot_password.html
     return render_template('forgot_password.html')
 
 @app.route('/reset/<token>', methods=["GET", "POST"])
@@ -137,7 +138,6 @@ def reset_with_token(token):
         user.password = generate_password_hash(request.form.get('password'))
         db.session.commit()
         return redirect(url_for('login'))
-    # Bu dosyanın adının GitHub'da reset_password.html olduğundan emin ol
     return render_template('reset_password.html', token=token)
 
 @app.route('/upload_belge/<int:entry_id>', methods=['POST'])
@@ -163,10 +163,11 @@ def register():
         db.session.commit()
         token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
         confirm_url = url_for('confirm_email', token=token, _external=True)
-        send_mail("Onay Maili", [email], f"Onay linki: {confirm_url}")
+        msg = Message("Onay Maili", recipients=[email])
+        msg.body = f"Onay linki: {confirm_url}"
+        mail.send(msg)
         flash("Kayıt başarılı, mailinizi onaylayın.")
         return redirect(url_for('login'))
-    # Sendeki dosya ismi: kayit.html
     return render_template('kayit.html')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -203,7 +204,7 @@ def export_excel():
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for('index'))
+    return redirect(url_for('login'))
 
 @app.route('/ekle/<cat>', methods=['GET', 'POST'])
 @login_required
