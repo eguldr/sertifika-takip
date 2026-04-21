@@ -10,12 +10,13 @@ from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy import text
 
 app = Flask(__name__)
-app.config.update(SECRET_KEY='eg_optimal_final_v6', SECURITY_PASSWORD_SALT='eg_salt_2026')
+app.config.update(SECRET_KEY='eg_optimal_final_2026_v7', SECURITY_PASSWORD_SALT='eg_salt_987')
 
 # --- VERİTABANI & MAİL & CLOUD ---
 uri = os.environ.get('DATABASE_URL', 'sqlite:///test.db')
 if uri and uri.startswith("postgres://"): uri = uri.replace("postgres://", "postgresql://", 1)
 app.config['SQLALCHEMY_DATABASE_URI'] = uri
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 app.config.update(MAIL_SERVER='smtp.gmail.com', MAIL_PORT=587, MAIL_USE_TLS=True,
@@ -44,11 +45,14 @@ def setup_db():
     if not getattr(app, '_db_init', False):
         with app.app_context():
             db.create_all()
-            try: db.session.execute(text("UPDATE \"user\" SET is_confirmed = true")); db.session.commit()
+            # ESKİLER İÇİN TOPLU ONAY (Sadece mevcutları True yapar)
+            try:
+                db.session.execute(text("UPDATE \"user\" SET is_confirmed = true"))
+                db.session.commit()
             except: pass
         app._db_init = True
 
-# --- GÜVENLİK YARDIMCILARI ---
+# --- GÜVENLİK YARDIMCISI ---
 def verify_captcha(response):
     r = requests.post('https://www.google.com/recaptcha/api/siteverify', data={'secret': '6Lct67gpAAAAADX-G2T_C_K8pS1oR-Y8M0qB7p9-', 'response': response})
     return r.json().get('success')
@@ -62,9 +66,10 @@ def login():
     if request.method == 'POST':
         user = User.query.filter_by(email=request.form.get('email').strip()).first()
         if user and check_password_hash(user.password, request.form.get('password')):
-            if not user.is_confirmed: flash("Mail onayınız eksik."); return redirect(url_for('login'))
-            login_user(user); return redirect(url_for('admin_panel' if user.email == 'erhanadea@gmail.com' else 'dashboard'))
-        flash("Hatalı giriş.")
+            if not user.is_confirmed: flash("Mail onayınız henüz yapılmamış."); return redirect(url_for('login'))
+            login_user(user)
+            return redirect(url_for('admin_panel' if user.email == 'erhanadea@gmail.com' else 'dashboard'))
+        flash("E-posta veya şifre hatalı.")
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'], endpoint='register')
@@ -73,9 +78,29 @@ def register():
         if not verify_captcha(request.form.get('g-recaptcha-response')): flash("Robot doğrulaması başarısız."); return redirect(url_for('register'))
         email = request.form.get('email')
         if User.query.filter_by(email=email).first(): flash("Bu mail zaten kayıtlı."); return redirect(url_for('login'))
-        new_user = User(email=email, password=generate_password_hash(request.form.get('password')), company_name=request.form.get('company_name'), is_confirmed=True)
-        db.session.add(new_user); db.session.commit(); flash("Kayıt başarılı! Giriş yapabilirsiniz."); return redirect(url_for('login'))
+        
+        # YENİLER ONAYSIZ (False) KAYDEDİLİR
+        new_user = User(email=email, password=generate_password_hash(request.form.get('password')), company_name=request.form.get('company_name'), is_confirmed=False)
+        db.session.add(new_user); db.session.commit()
+        
+        # ONAY MAİLİ GÖNDERİMİ
+        try:
+            token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
+            url = url_for('confirm_email', token=token, _external=True)
+            mail.send(Message("EG Optimal Aktivasyon", recipients=[email], body=f"Sisteme giriş için onay linkiniz: {url}"))
+            flash("Kayıt başarılı! Lütfen e-postanızı onaylayın.")
+        except: flash("Kayıt yapıldı ancak onay maili iletilemedi.")
+        return redirect(url_for('login'))
     return render_template('kayit.html')
+
+@app.route('/confirm/<token>', endpoint='confirm_email')
+def confirm_email(token):
+    try:
+        email = ts.loads(token, salt=app.config['SECURITY_PASSWORD_SALT'], max_age=86400)
+        user = User.query.filter_by(email=email).first(); user.is_confirmed = True; db.session.commit()
+        flash("Hesabınız onaylandı! Giriş yapabilirsiniz.")
+    except: flash("Geçersiz veya süresi dolmuş onay linki.")
+    return redirect(url_for('login'))
 
 @app.route('/dashboard')
 @login_required
@@ -95,7 +120,6 @@ def import_excel():
         db.session.commit()
     return redirect(url_for('dashboard'))
 
-# --- YENİ: BELGE SİLME FONKSİYONU ---
 @app.route('/delete_entry/<int:id>')
 @login_required
 def delete_entry(id):
@@ -115,9 +139,26 @@ def update_payment(uid):
     if current_user.email != 'erhanadea@gmail.com': return redirect(url_for('dashboard'))
     u = User.query.get(uid); u.is_confirmed = not u.is_confirmed; db.session.commit(); return redirect(url_for('admin_panel'))
 
+@app.route('/upload_belge/<int:entry_id>', methods=['POST'])
+@login_required
+def upload_belge(entry_id):
+    file = request.files.get('file')
+    if file:
+        res = cloudinary.uploader.upload(file, resource_type="auto")
+        Entry.query.get(entry_id).belge_url = res['secure_url']; db.session.commit()
+    return redirect(url_for('dashboard'))
+
+@app.route('/export')
+@login_required
+def export_excel():
+    df = pd.DataFrame([{'Baslik': e.title, 'Vade': e.expiry_date} for e in Entry.query.filter_by(user_id=current_user.id).all()])
+    output = BytesIO(); 
+    with pd.ExcelWriter(output, engine='openpyxl') as writer: df.to_excel(writer, index=False)
+    output.seek(0); return send_file(output, download_name="rapor.xlsx", as_attachment=True)
+
 @app.route('/forgot_password', methods=["GET", "POST"])
 def forgot_password():
-    if request.method == "POST": flash("Sıfırlama linki mail adresinize gönderildi."); return redirect(url_for('login'))
+    if request.method == "POST": flash("Sıfırlama linki gönderildi."); return redirect(url_for('login'))
     return render_template('forgot_password.html')
 
 @app.route('/re-confirm')
@@ -126,10 +167,6 @@ def re_confirm():
     u = User.query.filter_by(email=target).first()
     if u: u.is_confirmed = True; db.session.commit(); return f"{u.email} AKTİF."
     return "Bulunamadı."
-
-@app.route('/sertifikalar/<cat>')
-@login_required
-def sertifikalar(cat): return redirect(url_for('dashboard'))
 
 @app.route('/logout')
 def logout(): logout_user(); return redirect(url_for('login'))
