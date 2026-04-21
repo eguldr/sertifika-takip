@@ -238,3 +238,27 @@ def sertifikalar(cat):
 
 if __name__ == '__main__':
     app.run(debug=True)
+# --- MANUEL ONAY VE TEKRAR GÖNDERME SİSTEMİ ---
+
+@app.route('/re-confirm')
+def re_confirm():
+    # Bu route sayesinde mail gelmezse kullanıcıya manuel onay imkanı veririz (Geliştirme aşaması için)
+    user = User.query.filter_by(email='erhanadea@gmail.com').first()
+    if user:
+        user.is_confirmed = True
+        db.session.commit()
+        return "GÜVENLİK KONTROLÜ GEÇİLDİ: Admin hesabı onaylandı. Şimdi giriş yapabilirsiniz!"
+    return "Kullanıcı bulunamadı."
+
+@app.route('/send-again/<email>')
+def send_again(email):
+    # Eğer mail gitmediyse tekrar tetiklemek için profesyonel bir yol
+    try:
+        token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
+        confirm_url = url_for('confirm_email', token=token, _external=True)
+        msg = Message("Hesap Aktivasyon Linki (Yeniden)", recipients=[email])
+        msg.body = f"Onay linkiniz: {confirm_url}"
+        mail.send(msg)
+        return "Onay maili tekrar gönderildi. Lütfen Spam kutusunu da kontrol edin."
+    except:
+        return "Mail sunucusu şu an yanıt vermiyor, lütfen manuel onay yolunu kullanın."
