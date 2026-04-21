@@ -10,7 +10,7 @@ from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy import text
 
 app = Flask(__name__)
-app.config.update(SECRET_KEY='eg_optimal_full_master_v35', SECURITY_PASSWORD_SALT='eg_salt_987')
+app.config.update(SECRET_KEY='eg_optimal_final_master_v36', SECURITY_PASSWORD_SALT='eg_salt_987')
 
 # --- DB & MAIL & CLOUD ---
 uri = os.environ.get('DATABASE_URL', 'sqlite:///test.db')
@@ -66,9 +66,9 @@ def login():
     if request.method == 'POST':
         u = User.query.filter_by(email=request.form.get('email').strip()).first()
         if u and check_password_hash(u.password, request.form.get('password')):
-            if not u.is_confirmed: flash("Mail aktivasyonu gerekli."); return redirect(url_for('login'))
+            if not u.is_confirmed: flash("Onay gerekli."); return redirect(url_for('login'))
             login_user(u); return redirect(url_for('dashboard'))
-        flash("Hatalı giriş bilgileri.")
+        flash("Hatalı giriş.")
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'], endpoint='register')
@@ -78,11 +78,10 @@ def register():
         if User.query.filter_by(email=email).first(): return redirect(url_for('login'))
         new_u = User(email=email, password=generate_password_hash(request.form.get('password')), is_confirmed=False)
         db.session.add(new_u); db.session.commit()
-        try:
-            token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
-            mail.send(Message("Aktivasyon", recipients=[email], body=f"Onay linkiniz: {url_for('confirm_email', token=token, _external=True)}"))
-            flash("Kayıt başarılı! Mailinizi kontrol edin.")
+        token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
+        try: mail.send(Message("Aktivasyon", recipients=[email], body=f"Onay: {url_for('confirm_email', token=token, _external=True)}"))
         except: pass
+        flash("Kayıt başarılı! Mailinizi kontrol edin.")
         return redirect(url_for('login'))
     return render_template('kayit.html')
 
@@ -91,10 +90,15 @@ def confirm_email(token):
     try:
         email = ts.loads(token, salt=app.config['SECURITY_PASSWORD_SALT'], max_age=86400)
         u = User.query.filter_by(email=email).first(); u.is_confirmed = True; db.session.commit()
-        flash("Hesap onaylandı!"); return redirect(url_for('login'))
-    except: return "Geçersiz link."
+        flash("Onaylandı!"); return redirect(url_for('login'))
+    except: return "Link geçersiz."
 
-# --- PANEL & BRANŞLAR ---
+# KRİTİK: Login sayfasındaki BuildError'u çözen kısım
+@app.route('/forgot_password', endpoint='forgot_password')
+def forgot_password():
+    flash("Bu özellik şu an bakımda."); return redirect(url_for('login'))
+
+# --- ANA PANEL ---
 @app.route('/dashboard', endpoint='dashboard')
 @app.route('/sertifikalar/<cat>', endpoint='sertifikalar')
 @login_required
@@ -111,17 +115,12 @@ def kayit_ekle(cat):
         title = request.form.get('title')
         if title == "LİSTEDE YOK / MANUEL YAZ": title = request.form.get('manual_title')
         exp_str = request.form.get('expiry_date')
-        new_e = Entry(
-            user_id=current_user.id, category=cat, title=title,
-            firma_adi=request.form.get('firma_adi'), whatsapp_no=request.form.get('whatsapp_no'),
-            note=request.form.get('note'),
-            expiry_date=datetime.strptime(exp_str, '%Y-%m-%d').date() if exp_str else date.today()
-        )
+        new_e = Entry(user_id=current_user.id, category=cat, title=title, firma_adi=request.form.get('firma_adi'), whatsapp_no=request.form.get('whatsapp_no'), note=request.form.get('note'), expiry_date=datetime.strptime(exp_str, '%Y-%m-%d').date() if exp_str else date.today())
         db.session.add(new_e); db.session.commit()
         return redirect(url_for('sertifikalar', cat=cat))
     return render_template('ekle.html', cat=cat)
 
-# --- VERİ İŞLEMLERİ (SİLME & BELGE YÜKLEME) ---
+# --- VERİ İŞLEMLERİ ---
 @app.route('/delete_entry/<int:id>', endpoint='delete_entry')
 @login_required
 def delete_entry(id):
@@ -130,17 +129,6 @@ def delete_entry(id):
     if e: db.session.delete(e); db.session.commit()
     return redirect(url_for('sertifikalar', cat=cat) if cat else url_for('dashboard'))
 
-@app.route('/upload_belge/<int:entry_id>', methods=['POST'], endpoint='upload_belge')
-@login_required
-def upload_belge(entry_id):
-    f = request.files.get('file')
-    if f:
-        res = cloudinary.uploader.upload(f, resource_type="auto")
-        e = Entry.query.get(entry_id)
-        if e: e.belge_url = res['secure_url']; db.session.commit()
-    return redirect(request.referrer or url_for('dashboard'))
-
-# --- EXCEL SİSTEMİ (İÇE & DIŞA AKTAR) ---
 @app.route('/import_excel', methods=['POST'], endpoint='import_excel')
 @login_required
 def import_excel():
@@ -148,7 +136,7 @@ def import_excel():
     if f:
         df = pd.read_excel(f); df.columns = [str(c).strip().lower() for c in df.columns]
         for _, r in df.iterrows():
-            t = next((str(r[c]) for c in df.columns if any(x in c for x in ['belge','ad','plaka'])), "Excel Kaydı")
+            t = next((str(r[c]) for c in df.columns if any(x in c for x in ['belge','ad','plaka'])), "Excel")
             db.session.add(Entry(user_id=current_user.id, category=cat, title=t, expiry_date=date.today()+timedelta(days=365)))
         db.session.commit()
     return redirect(url_for('sertifikalar', cat=cat) if cat else url_for('dashboard'))
@@ -159,21 +147,23 @@ def export_excel():
     df = pd.DataFrame([{'Baslik': e.title, 'Vade': e.expiry_date} for e in Entry.query.filter_by(user_id=current_user.id).all()])
     out = BytesIO()
     with pd.ExcelWriter(out, engine='openpyxl') as wr: df.to_excel(wr, index=False)
-    out.seek(0); return send_file(out, download_name="eg_optimal_rapor.xlsx", as_attachment=True)
+    out.seek(0); return send_file(out, download_name="rapor.xlsx", as_attachment=True)
 
-# --- ADMİN PANELİ ---
+@app.route('/upload_belge/<int:entry_id>', methods=['POST'], endpoint='upload_belge')
+@login_required
+def upload_belge(entry_id):
+    f = request.files.get('file')
+    if f:
+        res = cloudinary.uploader.upload(f, resource_type="auto")
+        Entry.query.get(entry_id).belge_url = res['secure_url']; db.session.commit()
+    return redirect(request.referrer or url_for('dashboard'))
+
+# --- ADMIN ---
 @app.route('/admin_panel', endpoint='admin_panel')
 @login_required
 def admin_panel():
     if current_user.email != 'erhanadea@gmail.com': return redirect(url_for('dashboard'))
     return render_template('admin.html', users=User.query.all(), all_entries=Entry.query.all(), bugun=date.today(), timedelta=timedelta)
-
-@app.route('/update_payment/<int:uid>', methods=['POST'], endpoint='update_payment')
-@login_required
-def update_payment(uid):
-    if current_user.email != 'erhanadea@gmail.com': return redirect(url_for('dashboard'))
-    u = User.query.get(uid); u.is_confirmed = not u.is_confirmed; db.session.commit()
-    return redirect(url_for('admin_panel'))
 
 @app.route('/delete_user/<int:uid>', methods=['POST'], endpoint='delete_user')
 @login_required
@@ -181,6 +171,13 @@ def delete_user(uid):
     if current_user.email != 'erhanadea@gmail.com': return redirect(url_for('dashboard'))
     u = User.query.get(uid)
     if u: Entry.query.filter_by(user_id=u.id).delete(); db.session.delete(u); db.session.commit()
+    return redirect(url_for('admin_panel'))
+
+@app.route('/update_payment/<int:uid>', methods=['POST'], endpoint='update_payment')
+@login_required
+def update_payment(uid):
+    if current_user.email != 'erhanadea@gmail.com': return redirect(url_for('dashboard'))
+    u = User.query.get(uid); u.is_confirmed = not u.is_confirmed; db.session.commit()
     return redirect(url_for('admin_panel'))
 
 @app.route('/logout')
