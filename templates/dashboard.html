@@ -7,8 +7,7 @@
         --silver-light: #f8fafc;
         --danger-red: #c62828;
     }
-    /* Fontu base.html'den Inter olarak alıyoruz, burada uyum sağlıyoruz */
-    body { background-color: var(--silver-light); }
+    body { background-color: var(--silver-light); font-family: 'Inter', sans-serif; }
     
     .card { border: none; border-radius: 12px; transition: 0.3s; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
     .card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
@@ -52,16 +51,17 @@
         100% { box-shadow: 0 0 0 0 rgba(198, 40, 40, 0); }
     }
 
-    /* ESNEK AKSİYON GRUBU */
-    .btn-action-group {
-        display: flex;
-        gap: 8px;
-        justify-content: center;
-    }
+    .btn-action-group { display: flex; gap: 8px; justify-content: center; }
+
+    /* PDF BUTON STİLLERİ */
+    .btn-archive { border-radius: 20px; font-weight: 600; font-size: 0.85rem; transition: 0.3s; }
+    .upload-label { cursor: pointer; transition: 0.3s; padding: 5px 10px; border-radius: 5px; }
+    .upload-label:hover { background-color: #f0f0f0; color: var(--navy-primary); }
 </style>
 
 <div class="container-fluid py-4">
 
+    {# KRİTİK UYARI BARI #}
     {% set bu_hafta = sertifikalar|selectattr('expiry_date', 'le', bugun + timedelta(days=7))|list %}
     {% if bu_hafta|length > 0 %}
     <div class="emergency-box animate-pulse">
@@ -90,12 +90,13 @@
         </div>
     </div>
 
+    {# İSTATİSTİK KARTLARI #}
     <div class="row mb-4">
         <div class="col-md-4 mb-3" onclick="filterTable('danger')">
             <div class="card h-100 py-2 bg-white" style="border-left: 5px solid #c62828;">
                 <div class="card-body">
                     <div class="text-xs font-weight-bold text-danger text-uppercase mb-1 small">KRİTİK (SON 30 GÜN)</div>
-                    <div class="h3 mb-0 font-weight-bold text-dark">{{ sertifikalar|selectattr('expiry_date', 'le', bugun + timedelta(days=30))|list|length }} <small class="text-muted" style="font-size: 0.6em;">Adet</small></div>
+                    <div class="h3 mb-0 font-weight-bold text-dark">{{ sertifikalar|selectattr('expiry_date', 'le', bugun + timedelta(days=30))|list|length }}</div>
                 </div>
             </div>
         </div>
@@ -103,7 +104,7 @@
             <div class="card h-100 py-2 bg-white" style="border-left: 5px solid #f9a825;">
                 <div class="card-body">
                     <div class="text-xs font-weight-bold text-warning text-uppercase mb-1 small">YAKLAŞAN (1-3 AY)</div>
-                    <div class="h3 mb-0 font-weight-bold text-dark">{{ sertifikalar|selectattr('expiry_date', 'gt', bugun + timedelta(days=30))|selectattr('expiry_date', 'le', bugun + timedelta(days=90))|list|length }} <small class="text-muted" style="font-size: 0.6em;">Adet</small></div>
+                    <div class="h3 mb-0 font-weight-bold text-dark">{{ sertifikalar|selectattr('expiry_date', 'gt', bugun + timedelta(days=30))|selectattr('expiry_date', 'le', bugun + timedelta(days=90))|list|length }}</div>
                 </div>
             </div>
         </div>
@@ -111,12 +112,13 @@
             <div class="card h-100 py-2 bg-white" style="border-left: 5px solid var(--navy-primary);">
                 <div class="card-body">
                     <div class="text-xs font-weight-bold text-primary text-uppercase mb-1 small">TÜM BELGELER</div>
-                    <div class="h3 mb-0 font-weight-bold text-dark">{{ sertifikalar|length }} <small class="text-muted" style="font-size: 0.6em;">Adet</small></div>
+                    <div class="h3 mb-0 font-weight-bold text-dark">{{ sertifikalar|length }}</div>
                 </div>
             </div>
         </div>
     </div>
 
+    {# ANA TABLO #}
     <div class="table-container" id="tabloBolumu">
         <div class="table-responsive">
             <table class="table table-hover mb-0" id="sertifikaTable">
@@ -126,6 +128,7 @@
                         <th class="py-3">Bitiş Tarihi</th>
                         <th class="py-3">Kalan Gün</th>
                         <th class="text-center py-3">Hızlı Aksiyon</th>
+                        <th class="text-center py-3">Dijital Arşiv</th>
                     </tr>
                 </thead>
                 <tbody style="background-color: white;">
@@ -134,8 +137,8 @@
                     {% set status = 'danger' if kalan <= 30 else 'warning' if kalan <= 90 else 'success' %}
                     <tr class="table-row" data-status="{{ status }}">
                         <td class="ps-4 align-middle">
-                            <span class="fw-bold d-block mb-1" style="color: var(--navy-dark); font-size: 0.95rem;">{{ s.title }}</span>
-                            <small class="text-muted fw-500"><i class="fas fa-building me-1"></i> {{ s.firma_adi }}</small>
+                            <span class="fw-bold d-block mb-1" style="color: var(--navy-dark);">{{ s.title }}</span>
+                            <small class="text-muted"><i class="fas fa-building me-1"></i> {{ s.firma_adi }}</small>
                         </td>
                         <td class="align-middle text-muted fw-600">{{ s.expiry_date.strftime('%d.%m.%Y') }}</td>
                         <td class="align-middle">
@@ -145,18 +148,32 @@
                         </td>
                         <td class="align-middle text-center">
                             <div class="btn-action-group">
-                                <a href="https://wa.me/{{ s.whatsapp_no }}?text=Sayın%20{{ s.firma_adi }}%20yetkilisi,%20{{ current_user.company_name }}%20olarak%20hatırlatırız:%20'{{ s.title }}'%20belgenizin%20bitmesine%20{{ kalan }}%20gün%20kalmıştır.%20Bilgilerinize%20sunarız." 
-                                   class="btn btn-sm btn-wa-customer px-3" target="_blank" title="Müşteriye Bildir">
-                                    <i class="fab fa-whatsapp me-1"></i> Müşteri
+                                <a href="https://wa.me/{{ s.whatsapp_no }}?text=Hatırlatma: {{ s.title }} belgenizin dolmasına {{ kalan }} gün kalmıştır." 
+                                   class="btn btn-sm btn-outline-success px-2" target="_blank">
+                                   <i class="fab fa-whatsapp"></i> Müşteri
                                 </a>
-
                                 {% if s.danisman_no %}
-                                <a href="https://wa.me/{{ s.danisman_no }}?text=BİLGİ:%20{{ s.firma_adi }}%20firmasının%20'{{ s.title }}'%20belgesi%20{{ kalan }}%20gün%20sonra%20doluyor.%20Sorumlu%20olarak%20süreci%20takip%20etmenizi%20rica%20ederiz." 
-                                   class="btn btn-sm btn-wa-advisor px-3" target="_blank" title="Sorumlu Kişiye Bildir">
-                                    <i class="fas fa-user-tie me-1"></i> Danışman
+                                <a href="https://wa.me/{{ s.danisman_no }}?text=Bilgi: {{ s.firma_adi }} firmasının {{ s.title }} belgesi {{ kalan }} gün sonra doluyor." 
+                                   class="btn btn-sm btn-outline-info px-2" target="_blank">
+                                   <i class="fas fa-user-tie"></i> Danışman
                                 </a>
                                 {% endif %}
                             </div>
+                        </td>
+                        {# ARŞİV SÜTUNU (SERHAT BEY İÇİN) #}
+                        <td class="align-middle text-center">
+                            {% if s.belge_url %}
+                                <a href="{{ s.belge_url }}" target="_blank" class="btn btn-sm btn-archive btn-outline-primary px-3">
+                                    <i class="fas fa-file-pdf me-1"></i> Aç
+                                </a>
+                            {% else %}
+                                <form action="{{ url_for('upload_belge', entry_id=s.id) }}" method="POST" enctype="multipart/form-data" class="m-0">
+                                    <label class="upload-label mb-0">
+                                        <i class="fas fa-cloud-upload-alt fa-lg text-secondary"></i>
+                                        <input type="file" name="file" onchange="this.form.submit()" style="display: none;">
+                                    </label>
+                                </form>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -170,18 +187,13 @@
 function filterTable(status) {
     const rows = document.querySelectorAll('.table-row');
     rows.forEach(row => {
-        if (status === 'all') {
-            row.style.display = '';
-        } else {
+        if (status === 'all') { row.style.display = ''; }
+        else {
             const rowStatus = row.getAttribute('data-status');
             row.style.display = (rowStatus === status) ? '' : 'none';
         }
     });
-
-    const target = document.getElementById("tabloBolumu");
-    if (target) {
-        target.scrollIntoView({ behavior: 'smooth' });
-    }
+    document.getElementById("tabloBolumu").scrollIntoView({ behavior: 'smooth' });
 }
 </script>
 {% endblock %}
