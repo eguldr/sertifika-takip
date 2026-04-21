@@ -1,4 +1,5 @@
 import os
+import re
 import cloudinary
 import cloudinary.uploader
 import requests
@@ -22,7 +23,6 @@ app.config.update(
     SECURITY_PASSWORD_SALT='eg_salt_987'
 )
 
-# Veritabani
 uri = os.environ.get('DATABASE_URL', 'sqlite:///test.db')
 if uri and uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
@@ -30,7 +30,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-# Mail
 app.config.update(
     MAIL_SERVER='smtp.gmail.com',
     MAIL_PORT=587,
@@ -44,11 +43,10 @@ ts = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# Cloudinary
 cloudinary.config(
-    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', 'dh2pefkk'),
+    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', 'dh2pefkko'),
     api_key=os.environ.get('CLOUDINARY_API_KEY', '414697559795627'),
-    api_secret=os.environ.get('CLOUDINARY_API_SECRET', '0q2xexoiKr25EeuI6C0_Tf8y-5c')
+    api_secret=os.environ.get('CLOUDINARY_API_SECRET', '')
 )
 
 
@@ -59,8 +57,10 @@ class User(UserMixin, db.Model):
     id           = db.Column(db.Integer, primary_key=True)
     email        = db.Column(db.String(100), unique=True, nullable=False)
     password     = db.Column(db.String(256), nullable=False)
+    company_name = db.Column(db.String(100), default='')
     is_confirmed = db.Column(db.Boolean, default=False)
     is_paid      = db.Column(db.Boolean, default=False)
+    admin_note   = db.Column(db.Text, default='')
 
 
 class Entry(db.Model):
@@ -90,7 +90,9 @@ def setup_db():
                 "ALTER TABLE entry ADD COLUMN IF NOT EXISTS note TEXT",
                 "ALTER TABLE entry ADD COLUMN IF NOT EXISTS belge_url VARCHAR(500)",
                 "ALTER TABLE entry ADD COLUMN IF NOT EXISTS firma_adi VARCHAR(100)",
-                "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS is_paid BOOLEAN DEFAULT FALSE",
+                'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS is_paid BOOLEAN DEFAULT FALSE',
+                'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS company_name VARCHAR(100) DEFAULT \'\'',
+                'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS admin_note TEXT DEFAULT \'\'',
             ]:
                 try:
                     db.session.execute(text(sql))
@@ -141,6 +143,56 @@ def send_belge_email(user_email, cert_name, expiry_date):
         mail.send(msg)
     except Exception as e:
         print(f"Belge maili hatasi: {e}")
+
+
+def tespit_brans(satirlar):
+    """
+    Excel satırındaki tüm değerleri birleştirip branş tespiti yapar.
+    Önce Personel (isim kalıpları dahil), sonra Araç, Tesis, Üretim kontrol edilir.
+    """
+    txt = " ".join([str(v) for v in satirlar]).lower()
+
+    # --- PERSONEL: İsim kalıpları + meslek unvanları ---
+    personel_keywords = [
+        'personel', 'src', 'ehliyet', 'calisan', 'operator', 'operatör',
+        'sofor', 'sürücü', 'forklift', 'muhendis', 'teknisyen', 'usta',
+        'isci', 'stajyer', 'mudur', 'müdür', 'uzman', 'tekniker',
+        'hemşire', 'doktor', 'güvenlik', 'bekci', 'temizlik'
+    ]
+    # İsim tespiti: büyük harfle başlayan 2+ kelime yan yana (Ad Soyad kalıbı)
+    isim_pattern = bool(re.search(r'[a-züğşıöçA-ZÜĞŞİÖÇ][a-züğşıöçA-ZÜĞŞİÖÇ]+\s+[a-züğşıöçA-ZÜĞŞİÖÇ][a-züğşıöçA-ZÜĞŞİÖÇ]+', ' '.join([str(v) for v in satirlar])))
+
+    if any(x in txt for x in personel_keywords) or isim_pattern:
+        return 'Personel'
+
+    # --- ARAÇ ---
+    arac_keywords = [
+        'plaka', 'arac', 'araç', 'scania', 'tir', 'kamyon', 'truck',
+        'ford', 'mercedes', 'volvo', 'daf', 'man ', 'fiat', 'renault',
+        'iveco', 'isuzu', 'otobüs', 'minibus', 'forklift makinesi',
+        'iş makinesi', 'vinc', 'vinç', 'ekskavatör'
+    ]
+    if any(x in txt for x in arac_keywords):
+        return 'Arac'
+
+    # --- TESİS ---
+    tesis_keywords = [
+        'tesis', 'yangin', 'yangın', 'kapasite', 'bina', 'depo',
+        'fabrika', 'imalathane', 'atölye', 'elektrik', 'asansor',
+        'kazan', 'tank', 'kompresör', 'basınçlı'
+    ]
+    if any(x in txt for x in tesis_keywords):
+        return 'Tesis'
+
+    # --- ÜRETİM ---
+    uretim_keywords = [
+        'iso', 'uretim', 'üretim', 'kalite', 'ce belgesi', 'haccp',
+        'gıda', 'gida', 'helal', 'organik', 'akreditasyon', 'tsе', 'tse'
+    ]
+    if any(x in txt for x in uretim_keywords):
+        return 'Uretim'
+
+    return 'Genel'
 
 
 # ============================================================
@@ -237,8 +289,8 @@ def forgot_password():
             try:
                 msg = Message("Sifre Sifirlama - EG Optimal", recipients=[email])
                 msg.body = (
-                    f"Sifrenizi sifirlamak icin asagidaki baglantiya tiklayin:\n\n"
-                    f"{recover_url}\n\nBu baglanti 30 dakika gecerlidir."
+                    f"Sifrenizi sifirlamak icin:\n\n{recover_url}\n\n"
+                    f"Bu baglanti 30 dakika gecerlidir."
                 )
                 mail.send(msg)
             except Exception as e:
@@ -268,13 +320,17 @@ def reset_password(token):
 
 
 # ============================================================
-# DASHBOARD VE SERTİFİKALAR
+# DASHBOARD
 # ============================================================
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    res = Entry.query.filter_by(user_id=current_user.id)\
-               .order_by(Entry.expiry_date.asc()).all()
+    # Admin ise tüm kayıtları görsün
+    if current_user.email == 'erhanadea@gmail.com':
+        res = Entry.query.order_by(Entry.expiry_date.asc()).all()
+    else:
+        res = Entry.query.filter_by(user_id=current_user.id)\
+                   .order_by(Entry.expiry_date.asc()).all()
     return render_template('dashboard.html',
         sertifikalar=res,
         bugun=date.today(),
@@ -286,8 +342,12 @@ def dashboard():
 @app.route('/sertifikalar/<cat>')
 @login_required
 def sertifikalar(cat):
-    res = Entry.query.filter_by(user_id=current_user.id, category=cat)\
-               .order_by(Entry.expiry_date.asc()).all()
+    if current_user.email == 'erhanadea@gmail.com':
+        res = Entry.query.filter_by(category=cat)\
+                   .order_by(Entry.expiry_date.asc()).all()
+    else:
+        res = Entry.query.filter_by(user_id=current_user.id, category=cat)\
+                   .order_by(Entry.expiry_date.asc()).all()
     return render_template('dashboard.html',
         sertifikalar=res,
         bugun=date.today(),
@@ -331,7 +391,7 @@ def kayit_ekle(cat):
 @login_required
 def delete_entry(id):
     e = Entry.query.get(id)
-    if e and e.user_id == current_user.id:
+    if e and (e.user_id == current_user.id or current_user.email == 'erhanadea@gmail.com'):
         db.session.delete(e)
         db.session.commit()
     return redirect(request.referrer or url_for('dashboard'))
@@ -348,7 +408,7 @@ def upload_belge(entry_id):
         try:
             res = cloudinary.uploader.upload(f, resource_type="auto")
             e   = Entry.query.get(entry_id)
-            if e and e.user_id == current_user.id:
+            if e and (e.user_id == current_user.id or current_user.email == 'erhanadea@gmail.com'):
                 e.belge_url = res['secure_url']
                 db.session.commit()
         except Exception as ex:
@@ -357,7 +417,7 @@ def upload_belge(entry_id):
 
 
 # ============================================================
-# EXCEL İÇE AKTAR (Akilli - Firma + Tarih + Brans)
+# EXCEL İÇE AKTAR — Akıllı Branş + Firma + Gerçek Tarih
 # ============================================================
 @app.route('/import_excel', methods=['POST'])
 @login_required
@@ -367,51 +427,42 @@ def import_excel():
         flash("Dosya secilmedi.", "warning")
         return redirect(url_for('dashboard'))
 
-    # Mevcut kayitlari sil (mukerrer onleme)
     Entry.query.filter_by(user_id=current_user.id).delete()
     db.session.commit()
 
     df = pd.read_excel(f)
-    # Sutun isimlerini normalize et
-    df.columns = [str(c).strip().lower() for c in df.columns]
+    df.columns = [str(c).strip() for c in df.columns]
 
-    # Sutun eslestirme yardimcisi
+    # Sütun bul
     def find_col(keywords):
         for col in df.columns:
-            if any(k in col for k in keywords):
+            col_lower = col.lower()
+            if any(k in col_lower for k in keywords):
                 return col
         return None
 
-    title_col   = find_col(['belge', 'ad', 'plaka', 'isim', 'title'])
-    firma_col   = find_col(['firma', 'kurum', 'sirket', 'company'])
-    tarih_col   = find_col(['bitis', 'tarih', 'expiry', 'son', 'gecerlilik'])
+    title_col = find_col(['belge', 'plaka', 'isim', 'ad', 'tanim', 'title'])
+    firma_col = find_col(['firma', 'kurum', 'sirket', 'company', 'müşteri', 'musteri'])
+    tarih_col = find_col(['bitis', 'tarih', 'expiry', 'son', 'gecerlilik', 'vade'])
 
     eklenen = 0
     for _, r in df.iterrows():
-        txt = " ".join([str(v) for v in r.values]).lower()
+        satirlar = list(r.values)
 
-        # Brans tespiti
-        cat = "Genel"
-        if any(x in txt for x in ['plaka', 'arac', 'scania', 'tir', 'kamyon']):
-            cat = "Arac"
-        elif any(x in txt for x in ['personel', 'src', 'ehliyet', 'calisan']):
-            cat = "Personel"
-        elif any(x in txt for x in ['tesis', 'yangin', 'kapasite', 'bina']):
-            cat = "Tesis"
-        elif any(x in txt for x in ['iso', 'uretim', 'ce', 'kalite']):
-            cat = "Uretim"
+        # Branş tespiti
+        cat = tespit_brans(satirlar)
 
-        # Baslik
-        title = str(r[title_col]) if title_col and pd.notna(r.get(title_col)) else str(r.iloc[0])
+        # Başlık
+        title = str(r[title_col]).strip() if title_col and pd.notna(r.get(title_col)) else str(r.iloc[0])
 
-        # Firma adi
-        firma = str(r[firma_col]) if firma_col and pd.notna(r.get(firma_col)) else ''
+        # Firma adı
+        firma = str(r[firma_col]).strip() if firma_col and pd.notna(r.get(firma_col)) else ''
 
-        # Bitis tarihi
+        # Bitiş tarihi — Excel'den oku, yoksa 365 gün sonrası
         expiry = date.today() + timedelta(days=365)
         if tarih_col and pd.notna(r.get(tarih_col)):
             try:
-                expiry = pd.to_datetime(r[tarih_col]).date()
+                expiry = pd.to_datetime(r[tarih_col], dayfirst=True).date()
             except Exception:
                 pass
 
@@ -425,7 +476,7 @@ def import_excel():
         eklenen += 1
 
     db.session.commit()
-    flash(f"Excel basariyla iceri aktarildi. {eklenen} kayit eklendi.", "success")
+    flash(f"Excel basariyla yuklendi. {eklenen} kayit eklendi.", "success")
     return redirect(url_for('dashboard'))
 
 
@@ -435,7 +486,11 @@ def import_excel():
 @app.route('/export_excel')
 @login_required
 def export_excel():
-    entries = Entry.query.filter_by(user_id=current_user.id).all()
+    if current_user.email == 'erhanadea@gmail.com':
+        entries = Entry.query.all()
+    else:
+        entries = Entry.query.filter_by(user_id=current_user.id).all()
+
     data = [
         {
             "Kategori":     e.category,
@@ -469,24 +524,42 @@ def export_excel():
 def admin_panel():
     if current_user.email != 'erhanadea@gmail.com':
         return redirect(url_for('dashboard'))
+
+    tum_kullanicilar  = User.query.all()
+    odeme_yapmayanlar = User.query.filter_by(is_paid=False).all()
+    tum_belgeler      = Entry.query.order_by(Entry.expiry_date.asc()).all()
+    bugun             = date.today()
+
+    # Her kullanıcının belge sayısı
+    kullanici_belge = {}
+    for u in tum_kullanicilar:
+        kullanici_belge[u.id] = Entry.query.filter_by(user_id=u.id).count()
+
     return render_template('admin.html',
-        users       = User.query.all(),
-        all_entries = Entry.query.all(),
-        bugun       = date.today(),
-        timedelta   = timedelta
+        users             = tum_kullanicilar,
+        odeme_yapmayanlar = odeme_yapmayanlar,
+        all_entries       = tum_belgeler,
+        kullanici_belge   = kullanici_belge,
+        bugun             = bugun,
+        timedelta         = timedelta
     )
 
 
-@app.route('/update_payment/<int:uid>')
+@app.route('/update_payment/<int:uid>', methods=['GET', 'POST'])
 @login_required
 def update_payment(uid):
     if current_user.email != 'erhanadea@gmail.com':
         return redirect(url_for('dashboard'))
     user = User.query.get(uid)
     if user:
-        user.is_paid = not user.is_paid
+        if request.method == 'POST':
+            user.company_name = request.form.get('company_name', '')
+            user.is_paid      = request.form.get('is_paid') == 'true'
+            user.admin_note   = request.form.get('admin_note', '')
+        else:
+            user.is_paid = not user.is_paid
         db.session.commit()
-        flash(f"{user.email} odeme durumu guncellendi.", "success")
+        flash(f"{user.email} guncellendi.", "success")
     return redirect(url_for('admin_panel'))
 
 
@@ -500,12 +573,12 @@ def delete_user(uid):
         Entry.query.filter_by(user_id=uid).delete()
         db.session.delete(user)
         db.session.commit()
-        flash(f"Kullanici silindi.", "success")
+        flash("Kullanici silindi.", "success")
     return redirect(url_for('admin_panel'))
 
 
 # ============================================================
-# OTOMATİK HATIRLATMA (cron-job.org)
+# OTOMATİK HATIRLATMA
 # ============================================================
 @app.route('/cron/check_reminders')
 def check_reminders():
