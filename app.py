@@ -10,7 +10,7 @@ from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy import text
 
 app = Flask(__name__)
-app.config.update(SECRET_KEY='eg_optimal_final_zırhlı_v42', SECURITY_PASSWORD_SALT='eg_salt_987')
+app.config.update(SECRET_KEY='eg_optimal_pro_master_v45', SECURITY_PASSWORD_SALT='eg_salt_987')
 
 # --- DB & MAIL ---
 uri = os.environ.get('DATABASE_URL', 'sqlite:///test.db')
@@ -24,9 +24,10 @@ app.config.update(MAIL_SERVER='smtp.gmail.com', MAIL_PORT=587, MAIL_USE_TLS=True
 mail = Mail(app); ts = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 login_manager = LoginManager(app); login_manager.login_view = 'login'
 
-# --- CLOUDINARY GÜVENLİ BAĞLANTI ---
+# --- CLOUDINARY ---
 cloudinary.config(cloud_name="dh2pefkk", api_key="413858167953556", api_secret="Pea5fUikVp6iMX1X62vYpWw_k-w")
 
+# --- MODELLER ---
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(100), unique=True, nullable=False)
@@ -56,7 +57,7 @@ def setup_db():
             except: pass
         app._db_init = True
 
-# --- ROUTELAR ---
+# --- AUTH ---
 @app.route('/')
 def index(): return redirect(url_for('login'))
 
@@ -65,9 +66,9 @@ def login():
     if request.method == 'POST':
         u = User.query.filter_by(email=request.form.get('email').strip()).first()
         if u and check_password_hash(u.password, request.form.get('password')):
-            if not u.is_confirmed: flash("Onay gerekli."); return redirect(url_for('login'))
+            if not u.is_confirmed: flash("Mail onayı gerekli."); return redirect(url_for('login'))
             login_user(u); return redirect(url_for('dashboard'))
-        flash("Giriş bilgileri hatalı.")
+        flash("Hatalı giriş.")
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'], endpoint='register')
@@ -91,6 +92,7 @@ def confirm_email(token):
 def forgot_password():
     flash("Sistem bakımda."); return redirect(url_for('login'))
 
+# --- DASHBOARD & BRANŞLAR ---
 @app.route('/dashboard', endpoint='dashboard')
 @app.route('/sertifikalar/<cat>', endpoint='sertifikalar')
 @login_required
@@ -110,6 +112,7 @@ def kayit_ekle(cat):
         return redirect(url_for('sertifikalar', cat=cat))
     return render_template('ekle.html', cat=cat)
 
+# --- VERİ & DOSYA İŞLEMLERİ ---
 @app.route('/upload_belge/<int:entry_id>', methods=['POST'], endpoint='upload_belge')
 @login_required
 def upload_belge(entry_id):
@@ -119,29 +122,8 @@ def upload_belge(entry_id):
             res = cloudinary.uploader.upload(f, resource_type="auto")
             e = Entry.query.get(entry_id); e.belge_url = res['secure_url']; db.session.commit()
             flash("Belge yüklendi.")
-        except Exception as e:
-            flash(f"Cloudinary Bağlantı Hatası! Lütfen API anahtarlarını kontrol edin.")
-    return redirect(request.referrer or url_for('dashboard'))
-
-@app.route('/import_excel', methods=['POST'], endpoint='import_excel')
-@login_required
-def import_excel():
-    f = request.files.get('excel_file')
-    if f:
-        df = pd.read_excel(f); df.columns = [str(c).lower() for c in df.columns]
-        for _, r in df.iterrows():
-            txt = str(r.values).lower()
-            # GELİŞMİŞ BRANŞ AYIRICI (Artık Araçlar Boş Kalmayacak!)
-            cat = "Genel"
-            if any(x in txt for x in ['plaka', 'araç', 'muayene', 'trafik', 'scania', 'volvo']): cat = "Arac"
-            elif any(x in txt for x in ['src', 'personel', 'yabancı', 'isg', 'psikoteknik']): cat = "Personel"
-            elif any(x in txt for x in ['itfaiye', 'cetvel', 'tesis', 'mekan', 'itfaiye']): cat = "Tesis"
-            elif any(x in txt for x in ['iso', 'üretim', 'ce', 'helal']): cat = "Uretim"
-            
-            db.session.add(Entry(user_id=current_user.id, category=cat, title=str(r.iloc[0]), expiry_date=date.today()+timedelta(days=365)))
-        db.session.commit()
-        flash("Excel branşlara göre dağıtıldı!")
-    return redirect(url_for('dashboard'))
+        except: flash("Bulut bağlantı hatası.")
+    return redirect(request.referrer)
 
 @app.route('/delete_entry/<int:id>', endpoint='delete_entry')
 @login_required
@@ -150,6 +132,29 @@ def delete_entry(id):
     if e: db.session.delete(e); db.session.commit()
     return redirect(request.referrer or url_for('dashboard'))
 
+# --- AKILLI EXCEL SİSTEMİ ---
+@app.route('/import_excel', methods=['POST'], endpoint='import_excel')
+@login_required
+def import_excel():
+    f = request.files.get('excel_file')
+    if f:
+        df = pd.read_excel(f); df.columns = [str(c).lower() for c in df.columns]
+        for _, r in df.iterrows():
+            txt = str(r.values).lower()
+            cat = "Arac" if any(x in txt for x in ['plaka','araç']) else "Personel" if "src" in txt else "Uretim"
+            db.session.add(Entry(user_id=current_user.id, category=cat, title=str(r.iloc[0]), expiry_date=date.today()+timedelta(days=365)))
+        db.session.commit()
+    return redirect(url_for('dashboard'))
+
+@app.route('/export_excel', endpoint='export_excel')
+@login_required
+def export_excel():
+    df = pd.DataFrame([{'Belge': e.title, 'Vade': e.expiry_date} for e in Entry.query.filter_by(user_id=current_user.id).all()])
+    out = BytesIO()
+    with pd.ExcelWriter(out, engine='openpyxl') as wr: df.to_excel(wr, index=False)
+    out.seek(0); return send_file(out, download_name="eg_optimal_rapor.xlsx", as_attachment=True)
+
+# --- ADMIN ---
 @app.route('/admin_panel', endpoint='admin_panel')
 @login_required
 def admin_panel():
