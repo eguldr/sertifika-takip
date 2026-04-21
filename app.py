@@ -41,7 +41,7 @@ ts = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# --- CLOUDINARY (DİJİTAL ARŞİV) ---
+# --- CLOUDINARY ---
 cloudinary.config( 
   cloud_name = "dh2pefkk", 
   api_key = "413858167953556", 
@@ -101,11 +101,11 @@ def login():
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, request.form.get('password')):
             if not user.is_confirmed:
-                flash("HESAP AKTİF DEĞİL! Lütfen mail kutunuzdaki onay linkine tıklayın.")
+                flash("Lütfen mailinizi onaylayın.")
                 return redirect(url_for('login'))
             login_user(user)
             return redirect(url_for('dashboard'))
-        flash("E-posta veya şifre hatalı.")
+        flash("Hatalı bilgiler.")
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'], endpoint='register')
@@ -114,45 +114,30 @@ def register():
     if request.method == 'POST':
         email = request.form.get('email')
         if User.query.filter_by(email=email).first():
-            flash("Bu e-posta zaten kayıtlı.")
+            flash("Kayıtlı e-posta.")
             return redirect(url_for('login'))
-
         pw = generate_password_hash(request.form.get('password'))
-        new_user = User(email=email, password=pw, company_name=request.form.get('company_name'), is_confirmed=False)
-        
+        new_user = User(email=email, password=pw, company_name=request.form.get('company_name'))
+        db.session.add(new_user)
+        db.session.commit()
         try:
-            db.session.add(new_user)
-            db.session.commit()
-            
-            # Aktivasyon Maili Gönderme
-            try:
-                token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
-                confirm_url = url_for('confirm_email', token=token, _external=True)
-                msg = Message("EG Optimal Aktivasyon", recipients=[email])
-                msg.body = f"Hesabınızı doğrulamak için şu linke tıklayın: {confirm_url}"
-                mail.send(msg)
-                flash("Kayıt başarılı! Lütfen aktivasyon mailini onaylayın.")
-            except:
-                flash("Kayıt yapıldı ancak mail sunucusu şu an meşgul. Lütfen biraz sonra tekrar deneyin.")
-            
-            return redirect(url_for('login'))
-        except:
-            db.session.rollback()
-            flash("Kayıt sırasında bir hata oluştu.")
-            return redirect(url_for('register'))
-            
+            token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
+            confirm_url = url_for('confirm_email', token=token, _external=True)
+            msg = Message("Onay", recipients=[email])
+            msg.body = f"Link: {confirm_url}"
+            mail.send(msg)
+        except: pass
+        return redirect(url_for('login'))
     return render_template('kayit.html')
 
 @app.route('/confirm/<token>')
 def confirm_email(token):
     try:
         email = ts.loads(token, salt=app.config['SECURITY_PASSWORD_SALT'], max_age=86400)
-        user = User.query.filter_by(email=email).first_or_404()
+        user = User.query.filter_by(email=email).first()
         user.is_confirmed = True
         db.session.commit()
-        flash("Hesabınız doğrulandı! Giriş yapabilirsiniz.")
-    except:
-        flash("Geçersiz veya süresi dolmuş onay linki.")
+    except: pass
     return redirect(url_for('login'))
 
 @app.route('/dashboard', endpoint='dashboard')
@@ -161,29 +146,49 @@ def dashboard():
     sertifikalar = Entry.query.filter_by(user_id=current_user.id).order_by(Entry.expiry_date.asc()).all()
     return render_template('dashboard.html', sertifikalar=sertifikalar, bugun=date.today(), timedelta=timedelta)
 
+# --- ŞİFRE SIFIRLAMA (HATA VEREN KISIM DÜZELTİLDİ) ---
+@app.route('/forgot_password', methods=["GET", "POST"], endpoint='forgot_password')
+@app.route('/reset', methods=["GET", "POST"], endpoint='reset')
+def forgot_password():
+    if request.method == "POST":
+        email = request.form.get('email')
+        user = User.query.filter_by(email=email).first()
+        if user:
+            try:
+                token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
+                reset_url = url_for('reset_password_token', token=token, _external=True)
+                msg = Message("Sıfırlama", recipients=[email])
+                msg.body = f"Link: {reset_url}"
+                mail.send(msg)
+            except: pass
+        flash("Link gönderildi.")
+        return redirect(url_for('login'))
+    return render_template('forgot_password.html')
+
+@app.route('/reset/<token>', endpoint='reset_password_token', methods=["GET", "POST"])
+def reset_password_token(token):
+    try:
+        email = ts.loads(token, salt=app.config['SECURITY_PASSWORD_SALT'], max_age=3600)
+    except: return redirect(url_for('login'))
+    if request.method == "POST":
+        user = User.query.filter_by(email=email).first()
+        user.password = generate_password_hash(request.form.get('password'))
+        db.session.commit()
+        return redirect(url_for('login'))
+    return render_template('reset_password.html', token=token)
+
 @app.route('/export', endpoint='export_excel')
 @login_required
 def export_excel():
     try:
         entries = Entry.query.filter_by(user_id=current_user.id).all()
-        data = [{
-            'Kategori': e.category,
-            'Sertifika Adı': e.title,
-            'Firma Adı': e.firma_adi,
-            'Bitiş Tarihi': e.expiry_date.strftime('%d.%m.%Y') if e.expiry_date else "",
-            'Risk Değeri': e.risk_value
-        } for e in entries]
-        
-        df = pd.DataFrame(data)
+        df = pd.DataFrame([{'Kategori': e.category, 'Başlık': e.title} for e in entries])
         output = BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Sertifika_Raporu')
+            df.to_excel(writer, index=False)
         output.seek(0)
-        
-        return send_file(output, download_name="Sertifika_Takip_Raporu.xlsx", as_attachment=True)
-    except:
-        flash("Excel raporu oluşturulamadı.")
-        return redirect(url_for('dashboard'))
+        return send_file(output, download_name="rapor.xlsx", as_attachment=True)
+    except: return redirect(url_for('dashboard'))
 
 @app.route('/upload_belge/<int:entry_id>', methods=['POST'])
 @login_required
@@ -191,21 +196,12 @@ def upload_belge(entry_id):
     file = request.files.get('file')
     if file:
         try:
-            upload_result = cloudinary.uploader.upload(file, resource_type="auto")
+            res = cloudinary.uploader.upload(file, resource_type="auto")
             entry = Entry.query.get(entry_id)
-            if entry and entry.user_id == current_user.id:
-                entry.belge_url = upload_result['secure_url']
-                db.session.commit()
-                flash('Belge başarıyla arşivlendi.')
-        except:
-            flash('Dosya yüklenirken bir hata oluştu.')
+            entry.belge_url = res['secure_url']
+            db.session.commit()
+        except: pass
     return redirect(url_for('dashboard'))
-
-@app.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    return redirect(url_for('login'))
 
 @app.route('/ekle/<cat>', methods=['GET', 'POST'])
 @login_required
@@ -220,20 +216,21 @@ def ekle(cat):
         return redirect(url_for('dashboard'))
     return render_template('ekle.html', category=cat)
 
-# --- MANUEL KURTARMA YOLLARI ---
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
+
+# --- MANUEL KURTARMA ---
 @app.route('/re-confirm')
 def re_confirm():
     user = User.query.filter_by(email='erhanadea@gmail.com').first()
     if user:
         user.is_confirmed = True
         db.session.commit()
-        return "GÜVENLİK GEÇİLDİ: Admin hesabı onaylandı!"
-    return "Kullanıcı bulunamadı."
-
-@app.route('/sertifikalar/<cat>')
-@login_required
-def sertifikalar(cat):
-    return redirect(url_for('dashboard'))
+        return "Onaylandı!"
+    return "Yok."
 
 if __name__ == '__main__':
     app.run(debug=True)
