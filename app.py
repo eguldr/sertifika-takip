@@ -54,7 +54,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(256), nullable=False)
     company_name = db.Column(db.String(100))
-    is_confirmed = db.Column(db.Boolean, default=False) # Email Onay Durumu
+    is_confirmed = db.Column(db.Boolean, default=False)
 
 class Entry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -66,20 +66,19 @@ class Entry(db.Model):
     danisman_no = db.Column(db.String(20))
     expiry_date = db.Column(db.Date)
     risk_value = db.Column(db.String(100))
-    belge_url = db.Column(db.String(500), nullable=True) # PDF Linki
+    belge_url = db.Column(db.String(500), nullable=True)
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- VERİTABANI TAMİRİ VE GÜVENLİK ---
+# --- VERİTABANI TAMİRİ ---
 @app.before_request
 def setup_database():
     if not getattr(app, '_db_init', False):
         with app.app_context():
             db.create_all()
             try:
-                # Eksik sütunları PostgreSQL'e zorla ekler (500 hatasını engeller)
                 db.session.execute(text('ALTER TABLE user ADD COLUMN IF NOT EXISTS is_confirmed BOOLEAN DEFAULT FALSE'))
                 db.session.execute(text('ALTER TABLE entry ADD COLUMN IF NOT EXISTS belge_url VARCHAR(500)'))
                 db.session.commit()
@@ -87,11 +86,18 @@ def setup_database():
                 db.session.rollback()
         app._db_init = True
 
-# --- EMAIL ONAY & ŞİFRE SIFIRLAMA SİSTEMİ ---
+# --- YARDIMCI FONKSİYONLAR ---
 def send_mail(subject, recipients, body):
     msg = Message(subject, recipients=recipients)
     msg.body = body
     mail.send(msg)
+
+# --- ROUTELAR (SENİN DOSYA İSİMLERİNE GÖRE GÜNCELLENDİ) ---
+
+@app.route('/')
+def index(): 
+    # Listede index.html olmadığı için direkt login.html'i açıyoruz
+    return render_template('login.html')
 
 @app.route('/confirm/<token>')
 def confirm_email(token):
@@ -100,9 +106,9 @@ def confirm_email(token):
         user = User.query.filter_by(email=email).first_or_404()
         user.is_confirmed = True
         db.session.commit()
-        flash("E-posta adresiniz onaylandı! Şimdi giriş yapabilirsiniz.")
+        flash("E-posta onaylandı!")
     except:
-        flash("Onay linki geçersiz veya süresi dolmuş.")
+        flash("Onay linki hatalı.")
     return redirect(url_for('login'))
 
 @app.route('/reset', methods=["GET", "POST"])
@@ -113,27 +119,27 @@ def reset():
         if user:
             token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
             reset_url = url_for('reset_with_token', token=token, _external=True)
-            send_mail("Şifre Sıfırlama İsteği", [email], f"Şifrenizi sıfırlamak için tıklayın: {reset_url}")
-            flash("Sıfırlama linki e-postanıza gönderildi.")
+            send_mail("Şifre Sıfırlama", [email], f"Link: {reset_url}")
+            flash("Sıfırlama maili gönderildi.")
         return redirect(url_for('login'))
-    return render_template('reset.html')
+    # Sendeki dosya ismi: forgot_password.html
+    return render_template('forgot_password.html')
 
 @app.route('/reset/<token>', methods=["GET", "POST"])
 def reset_with_token(token):
     try:
         email = ts.loads(token, salt=app.config['SECURITY_PASSWORD_SALT'], max_age=3600)
     except:
-        flash("Link süresi dolmuş.")
+        flash("Süre doldu.")
         return redirect(url_for('login'))
     if request.method == "POST":
         user = User.query.filter_by(email=email).first()
         user.password = generate_password_hash(request.form.get('password'))
         db.session.commit()
-        flash("Şifreniz başarıyla güncellendi.")
         return redirect(url_for('login'))
-    return render_template('reset_with_token.html', token=token)
+    # Bu dosyanın adının GitHub'da reset_password.html olduğundan emin ol
+    return render_template('reset_password.html', token=token)
 
-# --- BELGE YÜKLEME (CLOUDINARY) ---
 @app.route('/upload_belge/<int:entry_id>', methods=['POST'])
 @login_required
 def upload_belge(entry_id):
@@ -144,10 +150,9 @@ def upload_belge(entry_id):
         if entry and entry.user_id == current_user.id:
             entry.belge_url = upload_result['secure_url']
             db.session.commit()
-            flash('Belge dijital arşive eklendi!')
+            flash('Belge yüklendi!')
     return redirect(url_for('dashboard'))
 
-# --- AUTH & DASHBOARD ---
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -156,13 +161,13 @@ def register():
         new_user = User(email=email, password=pw, company_name=request.form.get('company_name'))
         db.session.add(new_user)
         db.session.commit()
-        # Kayıt olunca onay maili at
         token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
         confirm_url = url_for('confirm_email', token=token, _external=True)
-        send_mail("Hesabınızı Onaylayın", [email], f"Hoş geldiniz! Onay için tıklayın: {confirm_url}")
-        flash("Kayıt başarılı. Lütfen e-postanızı onaylayın.")
+        send_mail("Onay Maili", [email], f"Onay linki: {confirm_url}")
+        flash("Kayıt başarılı, mailinizi onaylayın.")
         return redirect(url_for('login'))
-    return render_template('register.html')
+    # Sendeki dosya ismi: kayit.html
+    return render_template('kayit.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -170,11 +175,11 @@ def login():
         user = User.query.filter_by(email=request.form.get('email')).first()
         if user and check_password_hash(user.password, request.form.get('password')):
             if not user.is_confirmed:
-                flash("Lütfen önce e-postanızı onaylayın.")
+                flash("Lütfen mail onayı yapın.")
                 return redirect(url_for('login'))
             login_user(user)
             return redirect(url_for('dashboard'))
-        flash("Hatalı e-posta veya şifre.")
+        flash("Hatalı giriş.")
     return render_template('login.html')
 
 @app.route('/dashboard')
@@ -212,9 +217,6 @@ def ekle(cat):
         db.session.commit()
         return redirect(url_for('dashboard'))
     return render_template('ekle.html', category=cat)
-
-@app.route('/')
-def index(): return render_template('index.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
