@@ -13,10 +13,10 @@ from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'eg_optimal_extreme_security_2026'
+app.config['SECRET_KEY'] = 'eg_optimal_pro_final_2026'
 app.config['SECURITY_PASSWORD_SALT'] = 'eg_pro_salt_987'
 
-# --- VERİTABANI ---
+# --- VERİTABANI BAĞLANTISI ---
 uri = os.environ.get('DATABASE_URL', 'sqlite:///test.db')
 if uri and uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
@@ -25,7 +25,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# --- MAIL MOTORU ---
+# --- MAIL AYARLARI ---
 app.config.update(
     MAIL_SERVER='smtp.gmail.com',
     MAIL_PORT=587,
@@ -37,11 +37,11 @@ app.config.update(
 mail = Mail(app)
 ts = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
-# --- LOGIN SİSTEMİ ---
+# --- LOGIN MANAGER ---
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# --- CLOUDINARY ---
+# --- CLOUDINARY (DİJİTAL ARŞİV) ---
 cloudinary.config( 
   cloud_name = "dh2pefkk", 
   api_key = "413858167953556", 
@@ -54,7 +54,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(256), nullable=False)
     company_name = db.Column(db.String(100))
-    is_confirmed = db.Column(db.Boolean, default=False) # GÜVENLİK: Varsayılan kapalı!
+    is_confirmed = db.Column(db.Boolean, default=False)
 
 class Entry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -72,6 +72,7 @@ class Entry(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# --- VERİTABANI TAMİRİ ---
 @app.before_request
 def setup_database():
     if not getattr(app, '_db_init', False):
@@ -100,7 +101,7 @@ def login():
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password, request.form.get('password')):
             if not user.is_confirmed:
-                flash("HESAP ONAYLANMAMIŞ! Atakları önlemek için mail kutunuzdaki linke tıklamanız zorunludur.")
+                flash("HESAP AKTİF DEĞİL! Lütfen mail kutunuzdaki onay linkine tıklayın.")
                 return redirect(url_for('login'))
             login_user(user)
             return redirect(url_for('dashboard'))
@@ -112,7 +113,6 @@ def login():
 def register():
     if request.method == 'POST':
         email = request.form.get('email')
-        
         if User.query.filter_by(email=email).first():
             flash("Bu e-posta zaten kayıtlı.")
             return redirect(url_for('login'))
@@ -121,25 +121,24 @@ def register():
         new_user = User(email=email, password=pw, company_name=request.form.get('company_name'), is_confirmed=False)
         
         try:
-            # Önce kullanıcıyı kaydediyoruz
             db.session.add(new_user)
             db.session.commit()
             
-            # Sonra maili göndermeyi deniyoruz (GÜVENLİK BURADA)
+            # Aktivasyon Maili Gönderme
             try:
                 token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
                 confirm_url = url_for('confirm_email', token=token, _external=True)
-                msg = Message("EG Optimal Aktivasyon (GÜVENLİ)", recipients=[email])
-                msg.body = f"Sisteme giriş yetkisi almak için onaylayın: {confirm_url}"
+                msg = Message("EG Optimal Aktivasyon", recipients=[email])
+                msg.body = f"Hesabınızı doğrulamak için şu linke tıklayın: {confirm_url}"
                 mail.send(msg)
-                flash("Kayıt yapıldı! Lütfen e-postanızı onaylayın.")
-            except Exception:
-                flash("Kayıt yapıldı ancak mail sunucusu şu an meşgul. Lütfen daha sonra 'Şifremi Unuttum' kısmından onay maili isteyin.")
+                flash("Kayıt başarılı! Lütfen aktivasyon mailini onaylayın.")
+            except:
+                flash("Kayıt yapıldı ancak mail sunucusu şu an meşgul. Lütfen biraz sonra tekrar deneyin.")
             
             return redirect(url_for('login'))
-        except Exception:
+        except:
             db.session.rollback()
-            flash("Veritabanı hatası oluştu.")
+            flash("Kayıt sırasında bir hata oluştu.")
             return redirect(url_for('register'))
             
     return render_template('kayit.html')
@@ -151,50 +150,40 @@ def confirm_email(token):
         user = User.query.filter_by(email=email).first_or_404()
         user.is_confirmed = True
         db.session.commit()
-        flash("Hesabınız doğrulandı! Artık güvenle giriş yapabilirsiniz.")
+        flash("Hesabınız doğrulandı! Giriş yapabilirsiniz.")
     except:
-        flash("Onay linki geçersiz.")
+        flash("Geçersiz veya süresi dolmuş onay linki.")
     return redirect(url_for('login'))
-
-@app.route('/forgot_password', methods=["GET", "POST"], endpoint='forgot_password')
-@app.route('/reset', methods=["GET", "POST"], endpoint='reset')
-def forgot_password():
-    if request.method == "POST":
-        email = request.form.get('email')
-        user = User.query.filter_by(email=email).first()
-        if user:
-            try:
-                token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
-                reset_url = url_for('reset_password_token', token=token, _external=True)
-                msg = Message("EG Optimal Şifre Sıfırlama", recipients=[email])
-                msg.body = f"Link: {reset_url}"
-                mail.send(msg)
-                flash("Sıfırlama maili gönderildi.")
-            except:
-                flash("Mail gönderilemedi.")
-        return redirect(url_for('login'))
-    return render_template('forgot_password.html')
-
-@app.route('/reset/<token>', endpoint='reset_password_token', methods=["GET", "POST"])
-def reset_password_token(token):
-    try:
-        email = ts.loads(token, salt=app.config['SECURITY_PASSWORD_SALT'], max_age=3600)
-    except:
-        flash("Süre dolmuş.")
-        return redirect(url_for('login'))
-    if request.method == "POST":
-        user = User.query.filter_by(email=email).first()
-        user.password = generate_password_hash(request.form.get('password'))
-        db.session.commit()
-        flash("Şifre güncellendi.")
-        return redirect(url_for('login'))
-    return render_template('reset_password.html', token=token)
 
 @app.route('/dashboard', endpoint='dashboard')
 @login_required
 def dashboard():
     sertifikalar = Entry.query.filter_by(user_id=current_user.id).order_by(Entry.expiry_date.asc()).all()
     return render_template('dashboard.html', sertifikalar=sertifikalar, bugun=date.today(), timedelta=timedelta)
+
+@app.route('/export', endpoint='export_excel')
+@login_required
+def export_excel():
+    try:
+        entries = Entry.query.filter_by(user_id=current_user.id).all()
+        data = [{
+            'Kategori': e.category,
+            'Sertifika Adı': e.title,
+            'Firma Adı': e.firma_adi,
+            'Bitiş Tarihi': e.expiry_date.strftime('%d.%m.%Y') if e.expiry_date else "",
+            'Risk Değeri': e.risk_value
+        } for e in entries]
+        
+        df = pd.DataFrame(data)
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Sertifika_Raporu')
+        output.seek(0)
+        
+        return send_file(output, download_name="Sertifika_Takip_Raporu.xlsx", as_attachment=True)
+    except:
+        flash("Excel raporu oluşturulamadı.")
+        return redirect(url_for('dashboard'))
 
 @app.route('/upload_belge/<int:entry_id>', methods=['POST'])
 @login_required
@@ -207,9 +196,9 @@ def upload_belge(entry_id):
             if entry and entry.user_id == current_user.id:
                 entry.belge_url = upload_result['secure_url']
                 db.session.commit()
-                flash('Belge dijital arşive eklendi.')
+                flash('Belge başarıyla arşivlendi.')
         except:
-            flash('Dosya yüklenemedi.')
+            flash('Dosya yüklenirken bir hata oluştu.')
     return redirect(url_for('dashboard'))
 
 @app.route('/logout')
@@ -231,6 +220,16 @@ def ekle(cat):
         return redirect(url_for('dashboard'))
     return render_template('ekle.html', category=cat)
 
+# --- MANUEL KURTARMA YOLLARI ---
+@app.route('/re-confirm')
+def re_confirm():
+    user = User.query.filter_by(email='erhanadea@gmail.com').first()
+    if user:
+        user.is_confirmed = True
+        db.session.commit()
+        return "GÜVENLİK GEÇİLDİ: Admin hesabı onaylandı!"
+    return "Kullanıcı bulunamadı."
+
 @app.route('/sertifikalar/<cat>')
 @login_required
 def sertifikalar(cat):
@@ -238,27 +237,3 @@ def sertifikalar(cat):
 
 if __name__ == '__main__':
     app.run(debug=True)
-# --- MANUEL ONAY VE TEKRAR GÖNDERME SİSTEMİ ---
-
-@app.route('/re-confirm')
-def re_confirm():
-    # Bu route sayesinde mail gelmezse kullanıcıya manuel onay imkanı veririz (Geliştirme aşaması için)
-    user = User.query.filter_by(email='erhanadea@gmail.com').first()
-    if user:
-        user.is_confirmed = True
-        db.session.commit()
-        return "GÜVENLİK KONTROLÜ GEÇİLDİ: Admin hesabı onaylandı. Şimdi giriş yapabilirsiniz!"
-    return "Kullanıcı bulunamadı."
-
-@app.route('/send-again/<email>')
-def send_again(email):
-    # Eğer mail gitmediyse tekrar tetiklemek için profesyonel bir yol
-    try:
-        token = ts.dumps(email, salt=app.config['SECURITY_PASSWORD_SALT'])
-        confirm_url = url_for('confirm_email', token=token, _external=True)
-        msg = Message("Hesap Aktivasyon Linki (Yeniden)", recipients=[email])
-        msg.body = f"Onay linkiniz: {confirm_url}"
-        mail.send(msg)
-        return "Onay maili tekrar gönderildi. Lütfen Spam kutusunu da kontrol edin."
-    except:
-        return "Mail sunucusu şu an yanıt vermiyor, lütfen manuel onay yolunu kullanın."
