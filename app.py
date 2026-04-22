@@ -140,28 +140,31 @@ def akilli_analiz_motoru(satir):
     """Excel satırından branş tespiti — Personel, Ürün (Sertifika), Araç ve Tesis önceliği."""
     txt = " ".join([str(v) for v in satir]).lower()
 
-    # 1. PERSONEL ÖNCELİĞİ (Belge personel ile ilgiliyse)
-    personel_kw = ['src', 'ehliyet', 'psikoteknik', 'mesleki yeterlilik', 'isg eğitimi', 'sofor', 'operator']
-    if any(k in txt for k in personel_kw):
+    # 1. PERSONEL (Kişi adları, operatörler ve şoför belgeleri)
+    personel_kw = ['src', 'ehliyet', 'psikoteknik', 'mesleki yeterlilik', 'isg eğitimi', 
+                   'sofor', 'operator', 'operatör', 'tc no', 'personel', 'uzman']
+    # Eğer satırda operatör geçiyorsa veya isim kalıbı (Ahmet Yılmaz gibi) varsa
+    isim_var = bool(re.search(r'[A-ZÇĞİÖŞÜ][a-zçğışöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğışöşü]+', " ".join([str(v) for v in satir])))
+    if any(k in txt for k in personel_kw) or isim_var:
         return 'Personel'
 
-    # 2. ÜRÜN ÖNCELİĞİ (Sertifika kelimesi veya kalite belgeleri varsa)
-    urun_kw = ['sertifika', 'belgesi', 'iso', 'ce ', 'tse', 'helal', 'kalite', 'haccp']
-    if any(k in txt for k in urun_kw):
-        return 'Urun'
-
-    # 3. ARAÇ ÖNCELİĞİ
-    arac_kw = ['plaka', 'muayene', 'sigorta', 'kasko', 'egzoz', 'çekici', 'kamyon', 'scania']
-    if any(k in txt for k in arac_kw):
-        return 'Arac'
-
-    # 4. TESİS ÖNCELİĞİ
-    tesis_kw = ['yangin', 'tesis', 'bina', 'ruhsat', 'kapasite raporu', 'itfaiye', 'sicil']
+    # 2. TESİS & MEKAN (Yangın tüpü, bina ve fabrika güvenliği)
+    tesis_kw = ['yangin', 'yangın', 'tüp', 'tesis', 'bina', 'ruhsat', 'kapasite raporu', 
+                'itfaiye', 'sicil', 'fabrika', 'depo', 'periyodik', 'kazan', 'asansor']
     if any(k in txt for k in tesis_kw):
         return 'Tesis'
 
-    return 'Genel'
+    # 3. ÜRÜN & SERTİFİKA (Kalite belgeleri ve ürün sertifikaları)
+    urun_kw = ['sertifika', 'belgesi', 'iso', 'ce ', 'tse', 'helal', 'kalite', 'haccp', 'uretim', 'üretim']
+    if any(k in txt for k in urun_kw):
+        return 'Urun'
 
+    # 4. ARAÇ & FİLO (Plaka ve araç detayları)
+    arac_kw = ['plaka', 'muayene', 'sigorta', 'kasko', 'egzoz', 'çekici', 'kamyon', 'scania', 'ford', 'mercedes']
+    if any(k in txt for k in arac_kw):
+        return 'Arac'
+
+    return 'Genel'
 
 # ============================================================
 # AUTH
