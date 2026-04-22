@@ -354,24 +354,20 @@ def sil(id):
 @app.route('/upload_belge/<int:entry_id>', methods=['POST'])
 @login_required
 def upload_belge(entry_id):
-    f   = request.files.get('file')
+    f = request.files.get('file')
     cat = request.args.get('cat', 'all')
     if f:
         try:
             res = cloudinary.uploader.upload(f, resource_type="auto")
-            e   = Entry.query.get(entry_id)
+            e = Entry.query.get(entry_id)
             if e and (e.user_id == current_user.id or current_user.email == 'erhanadea@gmail.com'):
                 raw_url = res.get('secure_url', '')
-                # PDF'lerin tarayıcıda açılabilmesi için fl_attachment ekle
-                e.belge_url = cloudinary_belge_url(raw_url)
+                # URL'yi görüntüleme formatına çevir
+                e.belge_url = raw_url.replace('/upload/', '/upload/fl_attachment/', 1)
                 db.session.commit()
-                flash("Belge başarıyla yüklendi.", "success")
-            else:
-                flash("Yetki hatası.", "danger")
+                flash("Belge başarıyla yüklendi ve arşivlendi.", "success")
         except Exception as ex:
             flash(f"Yükleme hatası: {ex}", "danger")
-    else:
-        flash("Lütfen bir dosya seçin.", "warning")
     return redirect(url_for('dashboard', cat=cat))
 
 
