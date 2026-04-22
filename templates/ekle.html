@@ -1,58 +1,94 @@
 {% extends "base.html" %}
-
 {% block content %}
 <div class="container py-4">
     <div class="card shadow-lg border-0" style="border-radius: 15px;">
-        <div class="card-header p-4 {% if cat == 'Arac' %}bg-warning text-dark{% elif cat == 'Personel' %}bg-info text-white{% elif cat == 'Tesis' %}bg-secondary text-white{% else %}bg-primary text-white{% endif %}" style="border-radius: 15px 15px 0 0;">
+
+        {# ─── KART BAŞLIĞI (kategoriye göre renk) ─── #}
+        <div class="card-header p-4
+            {% if cat == 'Arac' %}bg-warning text-dark
+            {% elif cat == 'Personel' %}bg-info text-white
+            {% elif cat == 'Tesis' %}bg-secondary text-white
+            {% else %}bg-primary text-white{% endif %}"
+            style="border-radius: 15px 15px 0 0;">
             <h3 class="mb-0">
-                <i class="fas {% if cat == 'Arac' %}fa-truck{% elif cat == 'Personel' %}fa-user-tie{% elif cat == 'Tesis' %}fa-industry{% else %}fa-box-open{% endif %} mr-2"></i> 
-                Yeni Kayıt: {% if cat == 'Arac' %}Araç & Filo{% elif cat == 'Personel' %}Personel & SRC{% elif cat == 'Tesis' %}Tesis & Mekan{% else %}Üretim & Ürün{% endif %}
+                <i class="fas
+                    {% if cat == 'Arac' %}fa-truck
+                    {% elif cat == 'Personel' %}fa-user-tie
+                    {% elif cat == 'Tesis' %}fa-industry
+                    {% else %}fa-box-open{% endif %} me-2"></i>
+                Yeni Kayıt:
+                {% if cat == 'Arac' %}Araç & Filo
+                {% elif cat == 'Personel' %}Personel & SRC
+                {% elif cat == 'Tesis' %}Tesis & Mekan
+                {% else %}Üretim & Ürün{% endif %}
             </h3>
         </div>
-        
+
         <div class="card-body p-4 bg-white">
-            <form method="POST">
+            {#
+                ACTION: url_for('ekle', cat=cat)  →  aynı route, POST metodu
+                reCAPTCHA KALDIRILDI — site key ortam değişkenine bağlandığında
+                tekrar eklenebilir.
+            #}
+            <form method="POST" action="{{ url_for('ekle', cat=cat) }}">
                 <input type="hidden" name="category" value="{{ cat }}">
 
-                <div class="row">
-                    <div class="col-md-4 form-group mb-4">
-                        <label class="font-weight-bold text-success"><i class="fab fa-whatsapp"></i> Müşteri WhatsApp (905...)</label>
-                        <input type="text" name="whatsapp_no" class="form-control form-control-lg" placeholder="905321234567" required>
+                {# ─── İLETİŞİM & FİRMA SATIRI ─── #}
+                <div class="row mb-4">
+                    <div class="col-md-4 mb-3">
+                        <label class="fw-bold text-success">
+                            <i class="fab fa-whatsapp"></i> Müşteri WhatsApp (905...)
+                        </label>
+                        <input type="text" name="whatsapp_no" class="form-control form-control-lg"
+                               placeholder="905321234567">
                     </div>
-                    <div class="col-md-4 form-group mb-4">
-                        <label class="font-weight-bold text-primary"><i class="fas fa-user-shield"></i> Danışman / Takipçi No</label>
-                        <input type="text" name="danisman_no" class="form-control form-control-lg" placeholder="905051234567">
+                    <div class="col-md-4 mb-3">
+                        <label class="fw-bold text-primary">
+                            <i class="fas fa-user-shield"></i> Danışman / Takipçi No
+                        </label>
+                        <input type="text" name="danisman_no" class="form-control form-control-lg"
+                               placeholder="905051234567">
                     </div>
-                    <div class="col-md-4 form-group mb-4">
-                        <label class="font-weight-bold text-dark">Firma / Kurum Adı</label>
-                        <input type="text" name="firma_adi" class="form-control form-control-lg" placeholder="Müşteri/Firma adını yazın" required>
+                    <div class="col-md-4 mb-3">
+                        <label class="fw-bold text-dark">Firma / Kurum Adı</label>
+                        <input type="text" name="firma_adi" class="form-control form-control-lg"
+                               placeholder="Müşteri/Firma adını yazın" required>
                     </div>
                 </div>
 
+                {# ─── ARAÇ / PERSONEL / DİĞER NOTU ─── #}
                 <div class="row bg-light p-3 rounded mb-4 shadow-sm border">
-                    {% if cat == 'Arac' %}
                     <div class="col-md-12">
-                        <label class="font-weight-bold text-primary">Araç Detayları (Plaka / Marka / Model)</label>
-                        <input type="text" name="note" class="form-control form-control-lg" placeholder="Örn: 34 ABC 123 - Mercedes Axor" required>
+                        {% if cat == 'Arac' %}
+                        <label class="fw-bold text-primary">
+                            Araç Detayları (Plaka / Marka / Model)
+                        </label>
+                        <input type="text" name="note" class="form-control form-control-lg"
+                               placeholder="Örn: 34 ABC 123 - Mercedes Axor" required>
+                        {% elif cat == 'Personel' %}
+                        <label class="fw-bold text-primary">
+                            Personel Bilgileri (Ad Soyad / TC No / Uyruk)
+                        </label>
+                        <input type="text" name="note" class="form-control form-control-lg"
+                               placeholder="Örn: Erhan ADEA - 12345678901 - T.C." required>
+                        {% else %}
+                        <label class="fw-bold text-primary">
+                            Tanımlayıcı Bilgi (Kapasite Rapor No / Belge Notu)
+                        </label>
+                        <input type="text" name="note" class="form-control form-control-lg"
+                               placeholder="Ayırt edici notu buraya yazın">
+                        {% endif %}
                     </div>
-                    {% elif cat == 'Personel' %}
-                    <div class="col-md-12">
-                        <label class="font-weight-bold text-primary">Personel Bilgileri (Ad Soyad / TC No / Uyruk)</label>
-                        <input type="text" name="note" class="form-control form-control-lg" placeholder="Örn: Erhan ADEA - 12345678901 - T.C." required>
-                    </div>
-                    {% else %}
-                    <div class="col-md-12">
-                        <label class="font-weight-bold text-primary">Tanımlayıcı Bilgi (Kapasite Rapor No / Belge Notu)</label>
-                        <input type="text" name="note" class="form-control form-control-lg" placeholder="Ayırt edici notu buraya yazın">
-                    </div>
-                    {% endif %}
                 </div>
 
-                <div class="form-group mb-4">
-                    <label class="font-weight-bold text-dark">Sertifika / Belge Tipi Seçin</label>
-                    <select name="title" class="form-control form-control-lg" required size="10" onchange="checkManual(this)">
-                        
+                {# ─── SERTİFİKA / BELGE TİPİ SEÇİMİ ─── #}
+                <div class="mb-4">
+                    <label class="fw-bold text-dark">Sertifika / Belge Tipi Seçin</label>
+                    <select name="title" class="form-control form-control-lg"
+                            required size="10" onchange="checkManual(this)">
+
                         {% if cat == 'Arac' %}
+                            <option value="">-- Seçiniz --</option>
                             <option value="Araç Muayenesi (TÜVTÜRK)">🚚 Araç Muayenesi</option>
                             <option value="Zorunlu Trafik Sigortası">🛡️ Zorunlu Trafik Sigortası</option>
                             <option value="Kasko Sigortası">📈 Kasko Sigortası</option>
@@ -64,6 +100,7 @@
                             <option value="LİSTEDE YOK / MANUEL YAZ">➕ LİSTEDE YOK / MANUEL YAZ</option>
 
                         {% elif cat == 'Personel' %}
+                            <option value="">-- Seçiniz --</option>
                             <option value="SRC 1 (Uluslararası Yolcu)">🪪 SRC 1 Belgesi</option>
                             <option value="SRC 2 (Yurtiçi Yolcu)">🪪 SRC 2 Belgesi</option>
                             <option value="SRC 3 (Uluslararası Eşya - 5 Yıllık)">🪪 SRC 3 (5 Yılda Bir Yenilenir)</option>
@@ -76,6 +113,7 @@
                             <option value="LİSTEDE YOK / MANUEL YAZ">➕ LİSTEDE YOK / MANUEL YAZ</option>
 
                         {% elif cat == 'Tesis' %}
+                            <option value="">-- Seçiniz --</option>
                             <option value="Kapasite Raporu">📊 Kapasite Raporu</option>
                             <option value="Yıllık İşletme Cetveli">📅 Yıllık İşletme Cetveli</option>
                             <option value="İtfaiye Uygunluk Raporu">🔥 İtfaiye Uygunluk Raporu</option>
@@ -91,6 +129,7 @@
 
                         {% else %}
                             <optgroup label="📦 ÜRETİM & ÜRÜN KÜTÜPHANESİ">
+                                <option value="">-- Seçiniz --</option>
                                 <option>ACS (Sağlık Uygunluk Sertifikası)</option>
                                 <option>ADR Sertifikaları</option>
                                 <option>AD 2000 CODE</option>
@@ -222,19 +261,32 @@
                     </select>
                 </div>
 
-                <div id="manualInputDiv" class="form-group mb-4" style="display: none;">
-                    <label class="font-weight-bold text-danger">Lütfen Belge Adını Manuel Yazın</label>
-                    <input type="text" name="manual_title" id="manual_title" class="form-control form-control-lg border-danger" placeholder="Örn: Özel Eğitim Sertifikası">
+                {# ─── MANUEL GİRİŞ (gizli, seçime göre açılır) ─── #}
+                <div id="manualInputDiv" class="mb-4" style="display:none;">
+                    <label class="fw-bold text-danger">Lütfen Belge Adını Manuel Yazın</label>
+                    <input type="text" name="manual_title" id="manual_title"
+                           class="form-control form-control-lg border-danger"
+                           placeholder="Örn: Özel Eğitim Sertifikası">
                 </div>
 
-                <div class="form-group mb-4">
-                    <label class="font-weight-bold text-danger">Belge Bitiş Tarihi</label>
-                    <input type="date" name="expiry_date" class="form-control form-control-lg border-danger" required>
+                {# ─── BİTİŞ TARİHİ ─── #}
+                <div class="mb-4">
+                    <label class="fw-bold text-danger">
+                        <i class="fas fa-calendar-times me-1"></i>Belge Bitiş Tarihi
+                    </label>
+                    <input type="date" name="expiry_date"
+                           class="form-control form-control-lg border-danger" required>
                 </div>
 
-                <button type="submit" class="btn btn-success btn-block btn-lg shadow-lg py-3">
-                    <i class="fas fa-save mr-2"></i> Verileri Kaydet ve Takibe Al
+                {# ─── KAYDET ─── #}
+                <button type="submit" class="btn btn-success w-100 btn-lg shadow-lg py-3">
+                    <i class="fas fa-save me-2"></i> Verileri Kaydet ve Takibe Al
                 </button>
+
+                <a href="{{ url_for('dashboard') }}"
+                   class="btn btn-outline-secondary w-100 btn-lg mt-2">
+                    <i class="fas fa-arrow-left me-2"></i> İptal / Geri Dön
+                </a>
             </form>
         </div>
     </div>
@@ -242,13 +294,14 @@
 
 <script>
 function checkManual(select) {
-    var div = document.getElementById('manualInputDiv');
+    const div   = document.getElementById('manualInputDiv');
+    const input = document.getElementById('manual_title');
     if (select.value === 'LİSTEDE YOK / MANUEL YAZ') {
         div.style.display = 'block';
-        document.getElementById('manual_title').setAttribute('required', 'required');
+        input.setAttribute('required', 'required');
     } else {
         div.style.display = 'none';
-        document.getElementById('manual_title').removeAttribute('required');
+        input.removeAttribute('required');
     }
 }
 </script>
