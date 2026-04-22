@@ -186,16 +186,17 @@
 
                         {# WhatsApp Hatırlat #}
                         <td class="align-middle text-center">
-                            {% if s.whatsapp_no %}
-                            <a href="https://wa.me/{{ s.whatsapp_no }}"
-                               class="btn btn-sm btn-outline-success rounded-pill px-3"
-                               target="_blank">
-                                <i class="fab fa-whatsapp"></i> Hatırlat
-                            </a>
-                            {% else %}
-                            <span class="text-muted small">-</span>
-                            {% endif %}
-                        </td>
+    {# kalan <= 30 yaparak butonun tüm kritik (kırmızı) vadelere gelmesini sağlarız #}
+    {% if s.whatsapp_no and kalan <= 30 %}
+    <a href="https://wa.me/{{ s.whatsapp_no }}"
+       class="btn btn-sm btn-outline-success rounded-pill px-3"
+       target="_blank">
+        <i class="fab fa-whatsapp"></i> Hatırlat
+    </a>
+    {% else %}
+    <span class="text-muted small">-</span>
+    {% endif %}
+</td>
 
                         {# Dijital Arşiv: Belge varsa Aç, yoksa Yükle #}
                         <td class="align-middle text-center">
