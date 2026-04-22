@@ -2,7 +2,6 @@ import os
 import re
 import cloudinary
 import cloudinary.uploader
-import requests
 import pandas as pd
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file
 from flask_sqlalchemy import SQLAlchemy
@@ -77,6 +76,17 @@ class Entry(db.Model):
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+# ============================================================
+# 🔧 VERİTABANI KONTROLÜ
+# ============================================================
+def check_database():
+    try:
+        db.session.execute(text('SELECT 1'))
+        return True
+    except Exception as e:
+        print(f"Veritabanı bağlantı hatası: {e}")
+        return False
 
 @app.before_request
 def setup_db():
@@ -189,23 +199,34 @@ def forgot_password():
         return redirect(url_for('login'))
     return render_template('forgot_password.html')
 
-# 🔥 ANA DASHBOARD - SORGU KORUMALI
+# 🔥 ANA DASHBOARD - EN SADE VE SAĞLAM HALİ
 @app.route('/sertifikalar/<cat>')
 @login_required
 def sertifikalar(cat='all'):
+    # Veritabanı kontrolü
+    if not check_database():
+        flash("Veritabanı bağlantısı kurulamadı. Lütfen daha sonra tekrar deneyin.", "danger")
+        return render_template('dashboard.html', sertifikalar=[], bugun=date.today(), timedelta=timedelta, current_cat=cat)
+    
     try:
-        q = Entry.query.filter_by(is_active=True)
-        if current_user.email != 'erhanadea@gmail.com':
-            q = q.filter_by(user_id=current_user.id)
-        if cat and cat != 'all':
-            q = q.filter_by(category=cat)
+        # En basit SQLAlchemy sorgusu
+        sorgu = Entry.query.filter(Entry.is_active == True)
         
-        # 🔥 Sorgu koruması: Hata olursa boş liste döndür
-        sertifikalar_listesi = q.all()
+        # Admin değilse sadece kendi verileri
+        if current_user.email != 'erhanadea@gmail.com':
+            sorgu = sorgu.filter(Entry.user_id == current_user.id)
+        
+        # Kategori filtresi
+        if cat and cat != 'all':
+            sorgu = sorgu.filter(Entry.category == cat)
+        
+        # Sorguyu çalıştır ve listeye çevir
+        sertifikalar_listesi = list(sorgu.all())
+        
     except Exception as e:
         print(f"Sorgu hatası: {e}")
         sertifikalar_listesi = []
-        flash("Veritabanı sorgulama hatası oluştu.", "danger")
+        flash("Veri yüklenirken bir hata oluştu.", "danger")
     
     return render_template('dashboard.html', 
                          sertifikalar=sertifikalar_listesi, 
@@ -220,13 +241,13 @@ def admin_panel():
         return redirect(url_for('sertifikalar', cat='all'))
     
     try:
-        users_listesi = User.query.all()
-        entries_listesi = Entry.query.filter_by(is_active=True).all()
+        users_listesi = list(User.query.all())
+        entries_listesi = list(Entry.query.filter(Entry.is_active == True).all())
     except Exception as e:
         print(f"Admin sorgu hatası: {e}")
         users_listesi = []
         entries_listesi = []
-        flash("Veritabanı sorgulama hatası oluştu.", "danger")
+        flash("Veri yüklenirken bir hata oluştu.", "danger")
     
     return render_template('admin.html', 
                          users=users_listesi, 
@@ -334,7 +355,6 @@ def import_excel():
     if f:
         try:
             df = pd.read_excel(f)
-            df.columns = [str(c).strip().lower() for c in df.columns]
             for _, r in df.iterrows():
                 kategori = akilli_analiz_motoru(list(r.values))
                 db.session.add(Entry(
