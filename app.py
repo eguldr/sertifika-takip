@@ -189,25 +189,48 @@ def forgot_password():
         return redirect(url_for('login'))
     return render_template('forgot_password.html')
 
-# 🔥 ANA DASHBOARD - İSMİ "sertifikalar" OLARAK DÜZELTİLDİ
+# 🔥 ANA DASHBOARD - SORGU KORUMALI
 @app.route('/sertifikalar/<cat>')
 @login_required
 def sertifikalar(cat='all'):
-    q = Entry.query.filter_by(is_active=True)
-    if current_user.email != 'erhanadea@gmail.com':
-        q = q.filter_by(user_id=current_user.id)
-    if cat and cat != 'all':
-        q = q.filter_by(category=cat)
-    return render_template('dashboard.html', sertifikalar=q.all(), bugun=date.today(), timedelta=timedelta, current_cat=cat)
+    try:
+        q = Entry.query.filter_by(is_active=True)
+        if current_user.email != 'erhanadea@gmail.com':
+            q = q.filter_by(user_id=current_user.id)
+        if cat and cat != 'all':
+            q = q.filter_by(category=cat)
+        
+        # 🔥 Sorgu koruması: Hata olursa boş liste döndür
+        sertifikalar_listesi = q.all()
+    except Exception as e:
+        print(f"Sorgu hatası: {e}")
+        sertifikalar_listesi = []
+        flash("Veritabanı sorgulama hatası oluştu.", "danger")
+    
+    return render_template('dashboard.html', 
+                         sertifikalar=sertifikalar_listesi, 
+                         bugun=date.today(), 
+                         timedelta=timedelta, 
+                         current_cat=cat)
 
 @app.route('/admin_panel')
 @login_required
 def admin_panel():
     if current_user.email != 'erhanadea@gmail.com':
         return redirect(url_for('sertifikalar', cat='all'))
+    
+    try:
+        users_listesi = User.query.all()
+        entries_listesi = Entry.query.filter_by(is_active=True).all()
+    except Exception as e:
+        print(f"Admin sorgu hatası: {e}")
+        users_listesi = []
+        entries_listesi = []
+        flash("Veritabanı sorgulama hatası oluştu.", "danger")
+    
     return render_template('admin.html', 
-                         users=User.query.all(), 
-                         all_entries=Entry.query.filter_by(is_active=True).all(), 
+                         users=users_listesi, 
+                         all_entries=entries_listesi, 
                          bugun=date.today(), 
                          timedelta=timedelta)
 
@@ -231,14 +254,17 @@ def delete_user(uid):
         flash('Yetkisiz işlem!', 'danger')
         return redirect(url_for('sertifikalar', cat='all'))
     
-    kullanici = User.query.get(uid)
-    if kullanici:
-        Entry.query.filter_by(user_id=kullanici.id).delete()
-        db.session.delete(kullanici)
-        db.session.commit()
-        flash(f'{kullanici.email} ve tüm verileri sistemden silindi.', 'success')
-    else:
-        flash('Kullanıcı bulunamadı.', 'danger')
+    try:
+        kullanici = User.query.get(uid)
+        if kullanici:
+            Entry.query.filter_by(user_id=kullanici.id).delete()
+            db.session.delete(kullanici)
+            db.session.commit()
+            flash(f'{kullanici.email} ve tüm verileri sistemden silindi.', 'success')
+        else:
+            flash('Kullanıcı bulunamadı.', 'danger')
+    except Exception as e:
+        flash(f'Silme hatası: {str(e)}', 'danger')
     
     return redirect(url_for('admin_panel'))
 
@@ -246,14 +272,16 @@ def delete_user(uid):
 @login_required
 def sil(id):
     cat = request.args.get('cat', 'all')
-    e = Entry.query.get(id)
-    
-    if e and (current_user.id == e.user_id or current_user.email == 'erhanadea@gmail.com'):
-        e.is_active = False
-        db.session.commit()
-        flash('Kayıt başarıyla silindi.', 'success')
-    else:
-        flash('Kayıt bulunamadı veya yetkiniz yok.', 'danger')
+    try:
+        e = Entry.query.get(id)
+        if e and (current_user.id == e.user_id or current_user.email == 'erhanadea@gmail.com'):
+            e.is_active = False
+            db.session.commit()
+            flash('Kayıt başarıyla silindi.', 'success')
+        else:
+            flash('Kayıt bulunamadı veya yetkiniz yok.', 'danger')
+    except Exception as e:
+        flash(f'Silme hatası: {str(e)}', 'danger')
     
     return redirect(url_for('sertifikalar', cat=cat))
 
@@ -280,19 +308,23 @@ def ekle_post(cat):
         flash('Lütfen bitiş tarihini girin.', 'danger')
         return redirect(url_for('ekle', cat=cat))
     
-    yeni_kayit = Entry(
-        user_id=current_user.id,
-        category=cat,
-        title=title,
-        firma_adi=request.form.get('firma_adi', ''),
-        whatsapp_no=request.form.get('whatsapp_no', ''),
-        danisman_no=request.form.get('danisman_no', ''),
-        note=request.form.get('note', ''),
-        expiry_date=datetime.strptime(expiry_date_str, '%Y-%m-%d').date()
-    )
-    db.session.add(yeni_kayit)
-    db.session.commit()
-    flash(f'{title} başarıyla eklendi.', 'success')
+    try:
+        yeni_kayit = Entry(
+            user_id=current_user.id,
+            category=cat,
+            title=title,
+            firma_adi=request.form.get('firma_adi', ''),
+            whatsapp_no=request.form.get('whatsapp_no', ''),
+            danisman_no=request.form.get('danisman_no', ''),
+            note=request.form.get('note', ''),
+            expiry_date=datetime.strptime(expiry_date_str, '%Y-%m-%d').date()
+        )
+        db.session.add(yeni_kayit)
+        db.session.commit()
+        flash(f'{title} başarıyla eklendi.', 'success')
+    except Exception as e:
+        flash(f'Ekleme hatası: {str(e)}', 'danger')
+    
     return redirect(url_for('sertifikalar', cat=cat))
 
 @app.route('/import_excel', methods=['POST'])
@@ -316,21 +348,27 @@ def import_excel():
             flash("Excel verileri akıllı algoritma ile başarıyla aktarıldı!", "success")
         except Exception as e:
             flash(f"Excel Aktarım Hatası: {e}", "danger")
+    else:
+        flash("Lütfen bir Excel dosyası seçin.", "warning")
     return redirect(url_for('sertifikalar', cat='all'))
 
 @app.route('/export_excel')
 @login_required
 def export_excel():
-    res = Entry.query.filter_by(user_id=current_user.id, is_active=True).all()
-    df = pd.DataFrame([
-        {'Kategori': e.category, 'Belge Adı': e.title, 'Firma': e.firma_adi, 'Vade Tarihi': e.expiry_date} 
-        for e in res
-    ])
-    out = BytesIO()
-    with pd.ExcelWriter(out, engine='openpyxl') as wr:
-        df.to_excel(wr, index=False)
-    out.seek(0)
-    return send_file(out, download_name="eg_optimal_rapor.xlsx", as_attachment=True)
+    try:
+        res = Entry.query.filter_by(user_id=current_user.id, is_active=True).all()
+        df = pd.DataFrame([
+            {'Kategori': e.category, 'Belge Adı': e.title, 'Firma': e.firma_adi, 'Vade Tarihi': e.expiry_date} 
+            for e in res
+        ])
+        out = BytesIO()
+        with pd.ExcelWriter(out, engine='openpyxl') as wr:
+            df.to_excel(wr, index=False)
+        out.seek(0)
+        return send_file(out, download_name="eg_optimal_rapor.xlsx", as_attachment=True)
+    except Exception as e:
+        flash(f"Excel dışa aktarım hatası: {e}", "danger")
+        return redirect(url_for('sertifikalar', cat='all'))
 
 @app.route('/upload_belge/<int:entry_id>', methods=['POST'])
 @login_required
@@ -359,14 +397,16 @@ def upload_belge(entry_id):
 @login_required
 def delete_entry(id):
     cat = request.args.get('cat', 'all')
-    e = Entry.query.get(id)
-    
-    if e and (current_user.id == e.user_id or current_user.email == 'erhanadea@gmail.com'):
-        e.is_active = False
-        db.session.commit()
-        flash('Kayıt başarıyla devre dışı bırakıldı.', 'success')
-    else:
-        flash('Kayıt bulunamadı veya yetkiniz yok.', 'danger')
+    try:
+        e = Entry.query.get(id)
+        if e and (current_user.id == e.user_id or current_user.email == 'erhanadea@gmail.com'):
+            e.is_active = False
+            db.session.commit()
+            flash('Kayıt başarıyla devre dışı bırakıldı.', 'success')
+        else:
+            flash('Kayıt bulunamadı veya yetkiniz yok.', 'danger')
+    except Exception as e:
+        flash(f'Silme hatası: {str(e)}', 'danger')
     
     return redirect(url_for('sertifikalar', cat=cat))
 
