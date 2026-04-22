@@ -42,9 +42,9 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
 cloudinary.config(
-    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dh2pefkk'),
-    api_key    = os.environ.get('CLOUDINARY_API_KEY', '414697559795627'),
-    api_secret = os.environ.get('CLOUDINARY_API_SECRET', '')
+    cloud_name='dh2pefkk', 
+    api_key='414697559795627', 
+    api_secret='0q2xexoiKr25EeuI6CmFF8CXf2c'
 )
 
 
