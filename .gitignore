@@ -1,40 +1,5 @@
-# Python
-__pycache__/
-*.py[cod]
-*.so
-.Python
-venv/
-env/
-ENV/
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-instance/
-
-# Environment variables
 .env
-.env.local
-.env.*.local
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
+*.db
+__pycache__/
+*.pyc
 .DS_Store
-Thumbs.db
-
-# Logs
-*.log
-*.pid
-
-# Uploads
-uploads/
-cloudinary_*
-
-# Flask
-flask_session/
