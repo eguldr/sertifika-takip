@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+
 {% block content %}
 <div class="container py-4">
     <div class="card shadow-lg border-0" style="border-radius: 15px;">
@@ -49,7 +50,7 @@
 
                 <div class="form-group mb-4">
                     <label class="font-weight-bold text-dark">Sertifika / Belge Tipi Seçin</label>
-                    <select name="title" class="form-control form-control-lg" required size="10">
+                    <select name="title" class="form-control form-control-lg" required size="10" onchange="checkManual(this)">
                         
                         {% if cat == 'Arac' %}
                             <option value="Araç Muayenesi (TÜVTÜRK)">🚚 Araç Muayenesi</option>
@@ -238,27 +239,17 @@
         </div>
     </div>
 </div>
-{% endblock %}
-Forgotpassword
-{% extends "base.html" %}
-{% block content %}
-<div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
-    <div class="card shadow-lg p-4" style="max-width: 450px; width: 100%; border-radius: 20px;">
-        <div class="text-center mb-4">
-            <h3 class="fw-bold text-primary">Yeni Şifre Oluştur</h3>
-        </div>
-        <form method="POST">
-            <div class="mb-3">
-                <label class="form-label fw-bold">Yeni Şifreniz</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                    <input type="password" name="password" class="form-control" placeholder="******" required>
-                </div>
-            </div>
-            <button type="submit" class="btn btn-success w-100 py-2 fw-bold shadow">
-                <i class="fas fa-check-circle me-2"></i>Şifreyi Güncelle ve Giriş Yap
-            </button>
-        </form>
-    </div>
-</div>
+
+<script>
+function checkManual(select) {
+    var div = document.getElementById('manualInputDiv');
+    if (select.value === 'LİSTEDE YOK / MANUEL YAZ') {
+        div.style.display = 'block';
+        document.getElementById('manual_title').setAttribute('required', 'required');
+    } else {
+        div.style.display = 'none';
+        document.getElementById('manual_title').removeAttribute('required');
+    }
+}
+</script>
 {% endblock %}
