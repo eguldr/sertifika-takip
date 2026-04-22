@@ -7,6 +7,7 @@
     </div>
 
     <div class="row">
+        <!-- SOL: KULLANICILAR -->
         <div class="col-md-5">
             <div class="card shadow border-0 mb-4" style="border-radius: 15px;">
                 <div class="card-header bg-dark text-white" style="border-radius: 15px 15px 0 0;">
@@ -30,7 +31,6 @@
                                         <small class="text-muted">{{ u.email }}</small>
                                     </td>
                                     <td>
-                                        {# app.py içindeki is_paid değişkeniyle eşitledik #}
                                         {% if u.is_paid %}
                                             <span class="badge bg-success">Aktif / Ödendi</span>
                                         {% else %}
@@ -38,18 +38,23 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#editUser{{ u.id }}">
+                                        <button class="btn btn-sm btn-primary shadow-sm"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editUser{{ u.id }}">
                                             <i class="fas fa-cog"></i> Yönet
                                         </button>
                                     </td>
                                 </tr>
 
+                                <!-- Modal -->
                                 <div class="modal fade" id="editUser{{ u.id }}" tabindex="-1">
                                     <div class="modal-dialog modal-dialog-centered">
                                         <div class="modal-content text-dark shadow-lg border-0" style="border-radius: 15px;">
                                             <form action="{{ url_for('update_payment', uid=u.id) }}" method="POST">
                                                 <div class="modal-header bg-primary text-white" style="border-radius: 15px 15px 0 0;">
-                                                    <h5 class="modal-title"><i class="fas fa-edit"></i> Hesap Yönetimi</h5>
+                                                    <h5 class="modal-title">
+                                                        <i class="fas fa-edit"></i> Hesap Yönetimi: {{ u.email }}
+                                                    </h5>
                                                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                                 </div>
                                                 <div class="modal-body p-4">
@@ -68,10 +73,16 @@
                                                         <label class="form-label fw-bold">Sistem Notları</label>
                                                         <textarea name="admin_note" class="form-control" rows="3">{{ u.admin_note }}</textarea>
                                                     </div>
-                                                    <button type="submit" class="btn btn-success w-100 fw-bold py-2 shadow-sm mb-3">Bilgileri Güncelle</button>
+                                                    <button type="submit" class="btn btn-success w-100 fw-bold py-2 shadow-sm mb-3">
+                                                        <i class="fas fa-save me-1"></i> Güncelle
+                                                    </button>
                                                     <hr>
                                                     <div class="text-center">
-                                                        <a href="{{ url_for('delete_user', uid=u.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Bu kullanıcıyı ve tüm verilerini silmek istediğinize emin misiniz?')">Sistemden Tamamen Sil</a>
+                                                        <a href="{{ url_for('delete_user', uid=u.id) }}"
+                                                           class="btn btn-sm btn-outline-danger"
+                                                           onclick="return confirm('Bu kullanıcıyı ve tüm verilerini silmek istediğinize emin misiniz?')">
+                                                            <i class="fas fa-trash me-1"></i> Sistemden Tamamen Sil
+                                                        </a>
                                                     </div>
                                                 </div>
                                             </form>
@@ -84,8 +95,33 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Ödeme Bekleyenler -->
+            {% if odeme_yapmayanlar %}
+            <div class="card shadow border-0 mb-4" style="border-radius: 15px;">
+                <div class="card-header bg-warning text-dark" style="border-radius: 15px 15px 0 0;">
+                    <h5 class="m-0"><i class="fas fa-clock"></i> Ödeme Bekleyenler ({{ odeme_yapmayanlar|length }})</h5>
+                </div>
+                <div class="card-body p-2">
+                    {% for u in odeme_yapmayanlar %}
+                    <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                        <div>
+                            <strong class="d-block">{{ u.company_name if u.company_name else 'İsimsiz' }}</strong>
+                            <small class="text-muted">{{ u.email }}</small>
+                        </div>
+                        <a href="{{ url_for('update_payment', uid=u.id) }}"
+                           class="btn btn-sm btn-success"
+                           onclick="return confirm('Ödeme alındı olarak işaretlensin mi?')">
+                            <i class="fas fa-check"></i> Onayla
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
         </div>
 
+        <!-- SAĞ: GLOBAL RADAR -->
         <div class="col-md-7">
             <div class="card shadow border-0" style="border-radius: 15px;">
                 <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center" style="border-radius: 15px 15px 0 0;">
@@ -105,26 +141,31 @@
                             </thead>
                             <tbody>
                                 {% for e in all_entries %}
-                                {% if e.is_active %}
                                 <tr>
-                                    <td class="ps-3 py-3">
-                                        <strong>{{ e.firma_adi }}</strong><br>
+                                    <td class="ps-3 py-2">
+                                        <strong>{{ e.firma_adi or '-' }}</strong><br>
                                         <small class="text-muted">{{ e.category }}</small>
                                     </td>
                                     <td>{{ e.title }}</td>
                                     <td>
+                                        {% if e.expiry_date %}
                                         {% set kalan = (e.expiry_date - bugun).days %}
                                         <span class="fw-bold {% if kalan <= 7 %}text-danger{% elif kalan <= 30 %}text-warning{% else %}text-success{% endif %}">
                                             {{ kalan }} Gün
                                         </span>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
                                     </td>
                                     <td class="text-center">
-                                        <a href="{{ url_for('delete_entry', id=e.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Belgeyi silmek istiyor musunuz?')">
+                                        <!-- DÜZELTİLDİ: delete_entry → sil -->
+                                        <a href="{{ url_for('sil', id=e.id) }}"
+                                           class="btn btn-sm btn-outline-danger"
+                                           onclick="return confirm('Belgeyi silmek istiyor musunuz?')">
                                             <i class="fas fa-trash"></i>
                                         </a>
                                     </td>
                                 </tr>
-                                {% endif %}
                                 {% endfor %}
                             </tbody>
                         </table>
