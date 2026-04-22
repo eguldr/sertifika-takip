@@ -268,9 +268,11 @@ def dashboard(cat=None):
 # ekle.html url_for('ekle', cat=cat) kullanıyor
 # kayit_ekle da aynı route'a bağlı
 # ============================================================
-@app.route('/ekle/<cat>', methods=['GET', 'POST'])
-@app.route('/kayit_ekle/<cat>', methods=['GET', 'POST'])
+@app.route('/kayit_ekle/<cat>')
 @login_required
+def ekle(cat):
+    # Bu rota sadece ekle.html sayfasını çağırır
+    return render_template('ekle.html', cat=cat)
 def ekle(cat):
     if request.method == 'POST':
         exp_str = request.form.get('expiry_date')
