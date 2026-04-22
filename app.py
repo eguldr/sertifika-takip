@@ -137,30 +137,28 @@ app.jinja_env.globals['cloudinary_belge_url'] = cloudinary_belge_url
 
 
 def akilli_analiz_motoru(satir):
-    """Excel satırından branş tespiti — Personel, Ürün (Sertifika), Araç ve Tesis önceliği."""
+    """Excel satırından branş tespiti — Personel, Tesis, Ürün ve Araç önceliği."""
     txt = " ".join([str(v) for v in satir]).lower()
 
-    # 1. PERSONEL (Kişi adları, operatörler ve şoför belgeleri)
-    personel_kw = ['src', 'ehliyet', 'psikoteknik', 'mesleki yeterlilik', 'isg eğitimi', 
-                   'sofor', 'operator', 'operatör', 'tc no', 'personel', 'uzman']
-    # Eğer satırda operatör geçiyorsa veya isim kalıbı (Ahmet Yılmaz gibi) varsa
-    isim_var = bool(re.search(r'[A-ZÇĞİÖŞÜ][a-zçğışöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğışöşü]+', " ".join([str(v) for v in satir])))
-    if any(k in txt for k in personel_kw) or isim_var:
+    # 1. PERSONEL (Operatör, şoför ve kişi belgeleri)
+    # Satırda operatör, şoför veya SRC geçiyorsa doğrudan Personel yap.
+    personel_kw = ['src', 'ehliyet', 'psikoteknik', 'mesleki yeterlilik', 'sofor', 'şoför', 'operator', 'operatör', 'personel']
+    if any(k in txt for k in personel_kw):
         return 'Personel'
 
-    # 2. TESİS & MEKAN (Yangın tüpü, bina ve fabrika güvenliği)
-    tesis_kw = ['yangin', 'yangın', 'tüp', 'tesis', 'bina', 'ruhsat', 'kapasite raporu', 
-                'itfaiye', 'sicil', 'fabrika', 'depo', 'periyodik', 'kazan', 'asansor']
+    # 2. TESİS (Yangın tüpü, bina ve fabrika güvenliği)
+    # 'tüp' veya 'yangın' kelimesini gördüğünde Tesis'e at.
+    tesis_kw = ['yangin', 'yangın', 'tüp', 'tup', 'tesis', 'bina', 'ruhsat', 'kapasite raporu', 'itfaiye', 'fabrika']
     if any(k in txt for k in tesis_kw):
         return 'Tesis'
 
-    # 3. ÜRÜN & SERTİFİKA (Kalite belgeleri ve ürün sertifikaları)
-    urun_kw = ['sertifika', 'belgesi', 'iso', 'ce ', 'tse', 'helal', 'kalite', 'haccp', 'uretim', 'üretim']
+    # 3. ÜRÜN & SERTİFİKA (Kalite belgeleri ve genel sertifikalar)
+    urun_kw = ['sertifika', 'belgesi', 'belge', 'iso', 'ce ', 'tse', 'helal', 'kalite', 'haccp']
     if any(k in txt for k in urun_kw):
         return 'Urun'
 
     # 4. ARAÇ & FİLO (Plaka ve araç detayları)
-    arac_kw = ['plaka', 'muayene', 'sigorta', 'kasko', 'egzoz', 'çekici', 'kamyon', 'scania', 'ford', 'mercedes']
+    arac_kw = ['plaka', 'muayene', 'sigorta', 'kasko', 'egzoz', 'scania', 'ford', 'mercedes', 'volvo']
     if any(k in txt for k in arac_kw):
         return 'Arac'
 
