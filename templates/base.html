@@ -102,26 +102,36 @@
 
             <ul class="list-unstyled components">
                 {% if current_user.is_authenticated %}
-                <li class="{{ 'active' if request.endpoint == 'sertifikalar' and current_cat == 'all' }}">
-                    <a href="{{ url_for('sertifikalar', cat='all') }}"><i class="fas fa-table-columns"></i> Dashboard</a>
+
+                <li class="{{ 'active' if request.endpoint == 'dashboard' and current_cat == 'all' }}">
+                    <a href="{{ url_for('dashboard') }}">
+                        <i class="fas fa-table-columns"></i> Dashboard
+                    </a>
                 </li>
-                
-                {# Branşlar: DÜZELTİLDİ - Dinamik filtreleme için #}
+
                 <li class="{{ 'active' if current_cat == 'Urun' }}">
-                    <a href="{{ url_for('sertifikalar', cat='Urun') }}"><i class="fas fa-box-archive"></i> Üretim & Ürün</a>
+                    <a href="{{ url_for('dashboard', cat='Urun') }}">
+                        <i class="fas fa-box-archive"></i> Üretim & Ürün
+                    </a>
                 </li>
                 <li class="{{ 'active' if current_cat == 'Arac' }}">
-                    <a href="{{ url_for('sertifikalar', cat='Arac') }}"><i class="fas fa-truck-fast"></i> Araç & Filo</a>
+                    <a href="{{ url_for('dashboard', cat='Arac') }}">
+                        <i class="fas fa-truck-fast"></i> Araç & Filo
+                    </a>
                 </li>
                 <li class="{{ 'active' if current_cat == 'Personel' }}">
-                    <a href="{{ url_for('sertifikalar', cat='Personel') }}"><i class="fas fa-user-gear"></i> Personel & SRC</a>
+                    <a href="{{ url_for('dashboard', cat='Personel') }}">
+                        <i class="fas fa-user-gear"></i> Personel & SRC
+                    </a>
                 </li>
                 <li class="{{ 'active' if current_cat == 'Tesis' }}">
-                    <a href="{{ url_for('sertifikalar', cat='Tesis') }}"><i class="fas fa-building-shield"></i> Tesis & Mekan</a>
+                    <a href="{{ url_for('dashboard', cat='Tesis') }}">
+                        <i class="fas fa-building-shield"></i> Tesis & Mekan
+                    </a>
                 </li>
 
                 <hr style="opacity: 0.1; margin: 15px 25px; border-color: #fff;">
-                
+
                 {% if current_user.email == 'erhanadea@gmail.com' %}
                 <li class="{{ 'active' if request.endpoint == 'admin_panel' }}">
                     <a href="{{ url_for('admin_panel') }}" style="color: #fbbf24;">
@@ -130,8 +140,12 @@
                 </li>
                 {% endif %}
 
-                <li><a href="{{ url_for('logout') }}" style="color: #fda4af;"><i class="fas fa-power-off"></i> Güvenli Çıkış</a></li>
-                
+                <li>
+                    <a href="{{ url_for('logout') }}" style="color: #fda4af;">
+                        <i class="fas fa-power-off"></i> Güvenli Çıkış
+                    </a>
+                </li>
+
                 {% else %}
                 <li><a href="/login"><i class="fas fa-sign-in-alt"></i> Giriş Yap</a></li>
                 <li><a href="/register"><i class="fas fa-user-plus"></i> Kayıt Ol</a></li>
