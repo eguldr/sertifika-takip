@@ -137,30 +137,28 @@ app.jinja_env.globals['cloudinary_belge_url'] = cloudinary_belge_url
 
 
 def akilli_analiz_motoru(satir):
-    """Excel satırından branş tespiti — isim kalıbı dahil."""
+    """Excel satırından branş tespiti — Personel, Ürün (Sertifika), Araç ve Tesis önceliği."""
     txt = " ".join([str(v) for v in satir]).lower()
 
-    personel_kw = ['src', 'ehliyet', 'operator', 'operatör', 'personel', 'sofor',
-                   'sürücü', 'forklift', 'muhendis', 'teknisyen', 'isci', 'calisan',
-                   'stajyer', 'mudur', 'uzman', 'güvenlik', 'bekci']
-    isim_var = bool(re.search(
-        r'[A-ZÇĞİÖŞÜ][a-zçğışöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğışöşü]+',
-        " ".join([str(v) for v in satir])
-    ))
-    if any(k in txt for k in personel_kw) or isim_var:
+    # 1. PERSONEL ÖNCELİĞİ (Belge personel ile ilgiliyse)
+    personel_kw = ['src', 'ehliyet', 'psikoteknik', 'mesleki yeterlilik', 'isg eğitimi', 'sofor', 'operator']
+    if any(k in txt for k in personel_kw):
         return 'Personel'
 
-    if any(k in txt for k in ['plaka', 'muayene', 'trafik', 'scania', 'arac', 'araç',
-                                'kamyon', 'tir', 'ford', 'mercedes', 'volvo', 'truck']):
+    # 2. ÜRÜN ÖNCELİĞİ (Sertifika kelimesi veya kalite belgeleri varsa)
+    urun_kw = ['sertifika', 'belgesi', 'iso', 'ce ', 'tse', 'helal', 'kalite', 'haccp']
+    if any(k in txt for k in urun_kw):
+        return 'Urun'
+
+    # 3. ARAÇ ÖNCELİĞİ
+    arac_kw = ['plaka', 'muayene', 'sigorta', 'kasko', 'egzoz', 'çekici', 'kamyon', 'scania']
+    if any(k in txt for k in arac_kw):
         return 'Arac'
 
-    if any(k in txt for k in ['yangin', 'yangın', 'tesis', 'bina', 'isg', 'periyodik',
-                                'kapasite', 'depo', 'fabrika', 'kazan', 'asansor']):
+    # 4. TESİS ÖNCELİĞİ
+    tesis_kw = ['yangin', 'tesis', 'bina', 'ruhsat', 'kapasite raporu', 'itfaiye', 'sicil']
+    if any(k in txt for k in tesis_kw):
         return 'Tesis'
-
-    if any(k in txt for k in ['iso', 'kalite', 'haccp', 'ce belgesi', 'tse',
-                                'uretim', 'üretim', 'gıda', 'helal', 'organik']):
-        return 'Urun'
 
     return 'Genel'
 
