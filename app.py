@@ -268,39 +268,41 @@ def dashboard(cat=None):
 # ekle.html url_for('ekle', cat=cat) kullanıyor
 # kayit_ekle da aynı route'a bağlı
 # ============================================================
-@app.route('/kayit_ekle/<cat>')
+@app.route('/kayit_ekle/<cat>', methods=['GET', 'POST'])
 @login_required
 def ekle(cat):
-    # Bu rota sadece ekle.html sayfasını çağırır
+    if request.method == 'POST':
+        # Formdan gelen verileri alıyoruz
+        title = request.form.get('title')
+        if title == 'LİSTEDE YOK / MANUEL YAZ':
+            title = request.form.get('manual_title')
+        
+        try:
+            yeni = Entry(
+                user_id=current_user.id,
+                category=cat,
+                title=title,
+                firma_adi=request.form.get('firma_adi', ''),
+                whatsapp_no=request.form.get('whatsapp_no', ''),
+                danisman_no=request.form.get('danisman_no', ''),
+                note=request.form.get('note', ''),
+                expiry_date=datetime.strptime(request.form.get('expiry_date'), '%Y-%m-%d').date()
+            )
+            db.session.add(yeni)
+            db.session.commit()
+            flash(f'{title} başarıyla takibe alındı!', 'success')
+            return redirect(url_for('sertifikalar', cat=cat))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Hata oluştu: {str(e)}', 'danger')
+            
     return render_template('ekle.html', cat=cat)
-def ekle(cat):
     if request.method == 'POST':
         exp_str = request.form.get('expiry_date')
         title   = request.form.get('title', '')
         if title == 'LİSTEDE YOK / MANUEL YAZ':
             title = request.form.get('manual_title', title)
-        try:
-            yeni = Entry(
-                user_id     = current_user.id,
-                category    = cat,
-                title       = title,
-                firma_adi   = request.form.get('firma_adi', ''),
-                whatsapp_no = request.form.get('whatsapp_no', ''),
-                danisman_no = request.form.get('danisman_no', ''),
-                note        = request.form.get('note', ''),
-                expiry_date = datetime.strptime(exp_str, '%Y-%m-%d').date() if exp_str else date.today(),
-                is_active   = True
-            )
-            db.session.add(yeni)
-            db.session.commit()
-            send_mail(current_user.email, "EG Optimal - Belge Kaydedildi",
-                      f"'{title}' belgeniz kaydedildi.\nBitis: {yeni.expiry_date}")
-            flash(f"{title} basariyla eklendi.", "success")
-        except Exception as e:
-            flash(f"Ekleme hatasi: {e}", "danger")
-        return redirect(url_for('dashboard', cat=cat))
-    return render_template('ekle.html', cat=cat)
-
+        
 
 # ============================================================
 # SİL — hem /sil/<id> hem /delete_entry/<id> çalışır
