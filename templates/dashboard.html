@@ -32,11 +32,12 @@
     .btn-excel-import { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; font-weight: 600; }
     .btn-delete-row { color: #cbd5e1; transition: 0.2s; border: none; background: none; }
     .btn-delete-row:hover { color: var(--danger-red); }
+    .text-navy { color: var(--navy-primary); }
 </style>
 
 <div class="container-fluid py-4">
 
-    {# 🚨 KRİTİK UYARI BARI #}
+    {# KRİTİK UYARI BARI #}
     {% set bu_hafta = sertifikalar|selectattr('expiry_date', 'le', bugun + timedelta(days=7))|list %}
     {% if bu_hafta|length > 0 %}
     <div class="emergency-box animate-pulse">
@@ -51,7 +52,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="fw-bold" style="color: var(--navy-primary); margin-bottom: 0;">
-                EG Optimal Dashboard 
+                EG Optimal Dashboard
                 {% if current_user.email == 'erhanadea@gmail.com' %}
                     <span class="badge bg-dark text-white ms-2" style="font-size: 0.4em; vertical-align: middle;">GLOBAL RADAR</span>
                 {% endif %}
@@ -59,7 +60,8 @@
             <p class="text-muted small">Dijital Risk Yönetimi ve Mevzuat Uyumluluk Paneli</p>
         </div>
         
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <!-- Excel İçe Aktar -->
             <form action="{{ url_for('import_excel') }}" method="POST" enctype="multipart/form-data" class="d-inline">
                 <input type="file" name="excel_file" id="excel_file_input" style="display:none" onchange="this.form.submit()">
                 <button type="button" class="btn btn-excel-import px-3" onclick="document.getElementById('excel_file_input').click()">
@@ -67,18 +69,32 @@
                 </button>
             </form>
 
+            <!-- Yeni Ekle Dropdown -->
+            <div class="dropdown">
+                <button class="btn btn-success fw-bold px-3 dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="fas fa-plus me-1"></i> Yeni Ekle
+                </button>
+                <ul class="dropdown-menu shadow">
+                    <li><a class="dropdown-item" href="{{ url_for('ekle', cat='Urun') }}"><i class="fas fa-box-archive me-2 text-primary"></i>Üretim & Ürün</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('ekle', cat='Arac') }}"><i class="fas fa-truck-fast me-2 text-warning"></i>Araç & Filo</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('ekle', cat='Personel') }}"><i class="fas fa-user-gear me-2 text-info"></i>Personel & SRC</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('ekle', cat='Tesis') }}"><i class="fas fa-building-shield me-2 text-secondary"></i>Tesis & Mekan</a></li>
+                </ul>
+            </div>
+
+            <!-- Yenile + Excel Dışa Aktar -->
             <div class="d-flex border rounded bg-white shadow-sm overflow-hidden">
-                <a href="{{ url_for('dashboard') }}" class="btn btn-primary border-0 rounded-0 px-4 fw-bold" style="background-color: var(--navy-primary);">
-                    <i class="fas fa-sync me-2"></i> Yenile
+                <a href="{{ url_for('dashboard') }}" class="btn btn-primary border-0 rounded-0 px-3 fw-bold" style="background-color: var(--navy-primary);">
+                    <i class="fas fa-sync me-1"></i> Yenile
                 </a>
-                <a href="{{ url_for('export_excel') }}" class="btn btn-light border-0 rounded-0 px-3 border-start">
+                <a href="{{ url_for('export_excel') }}" class="btn btn-light border-0 rounded-0 px-3 border-start" title="Excel İndir">
                     <i class="fas fa-file-excel text-success fa-lg"></i>
                 </a>
             </div>
         </div>
     </div>
 
-    {# 📊 İSTATİSTİK KARTLARI #}
+    {# İSTATİSTİK KARTLARI #}
     <div class="row mb-4">
         <div class="col-md-4 mb-3" onclick="filterTable('danger')">
             <div class="card h-100 py-2 bg-white" style="border-left: 5px solid #c62828;">
@@ -106,7 +122,7 @@
         </div>
     </div>
 
-    {# 🛡️ ANA TABLO #}
+    {# ANA TABLO #}
     <div class="table-container">
         <div class="table-responsive">
             <table class="table table-hover mb-0" id="sertifikaTable">
@@ -122,6 +138,7 @@
                 </thead>
                 <tbody>
                     {% for s in sertifikalar %}
+                    {% if s.expiry_date %}
                     {% set kalan = (s.expiry_date - bugun).days %}
                     {% set status = 'danger' if kalan <= 30 else 'warning' if kalan <= 90 else 'success' %}
                     <tr class="table-row" data-status="{{ status }}">
@@ -129,7 +146,7 @@
                             <span class="fw-bold d-block mb-1 text-navy">{{ s.title }}</span>
                             <small class="text-muted">
                                 <i class="fas fa-tag me-1"></i> {{ s.category }} | 
-                                <i class="fas fa-building me-1"></i> {{ s.firma_adi }}
+                                <i class="fas fa-building me-1"></i> {{ s.firma_adi or '-' }}
                             </small>
                         </td>
                         <td class="align-middle text-muted fw-bold">{{ s.expiry_date.strftime('%d.%m.%Y') }}</td>
@@ -139,18 +156,22 @@
                             </span>
                         </td>
                         <td class="align-middle text-center">
-                            <a href="https://wa.me/{{ s.whatsapp_no or '' }}" class="btn btn-sm btn-outline-success rounded-pill px-3" target="_blank">
+                            <a href="https://wa.me/{{ s.whatsapp_no or '' }}"
+                               class="btn btn-sm btn-outline-success rounded-pill px-3"
+                               target="_blank">
                                 <i class="fab fa-whatsapp"></i> Hatırlat
                             </a>
                         </td>
                         <td class="align-middle text-center">
                             {% if s.belge_url %}
-                                <a href="{{ s.belge_url }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                <a href="{{ s.belge_url }}" target="_blank"
+                                   class="btn btn-sm btn-outline-primary rounded-pill px-3">
                                     <i class="fas fa-file-pdf me-1"></i> Aç
                                 </a>
                             {% else %}
-                                <form action="{{ url_for('upload_belge', entry_id=s.id) }}" method="POST" enctype="multipart/form-data" class="m-0">
-                                    <label style="cursor: pointer;">
+                                <form action="{{ url_for('upload_belge', entry_id=s.id, cat=current_cat) }}"
+                                      method="POST" enctype="multipart/form-data" class="m-0">
+                                    <label style="cursor: pointer;" title="Belge Yükle">
                                         <i class="fas fa-cloud-upload-alt fa-lg text-secondary"></i>
                                         <input type="file" name="file" onchange="this.form.submit()" style="display: none;">
                                     </label>
@@ -158,11 +179,15 @@
                             {% endif %}
                         </td>
                         <td class="align-middle text-center">
-                            <a href="{{ url_for('delete_entry', id=s.id) }}" class="btn-delete-row" onclick="return confirm('Bu belgeyi silmek istediğinize emin misiniz?')">
+                            <!-- DÜZELTİLDİ: delete_entry → sil -->
+                            <a href="{{ url_for('sil', id=s.id, cat=current_cat) }}"
+                               class="btn-delete-row"
+                               onclick="return confirm('Bu belgeyi silmek istediğinize emin misiniz?')">
                                 <i class="fas fa-trash-alt"></i>
                             </a>
                         </td>
                     </tr>
+                    {% endif %}
                     {% endfor %}
                 </tbody>
             </table>
