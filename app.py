@@ -15,7 +15,7 @@ from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy import text
 
 # ============================================================
-# ⚙️ GLOBAL SİSTEM YAPILANDIRMASI (DETAYLI)
+# ⚙️ GLOBAL SİSTEM YAPILANDIRMASI
 # ============================================================
 app = Flask(__name__)
 app.config.update(
@@ -29,7 +29,7 @@ app.config.update(
     MAIL_DEFAULT_SENDER='erhanadea@gmail.com'
 )
 
-# Veritabanı ve Login Yönetimi (Detaylı Yapı)
+# Veritabanı
 uri = os.environ.get('DATABASE_URL', 'sqlite:///test.db')
 if uri and uri.startswith("postgres://"):
     uri = uri.replace("postgres://", "postgresql://", 1)
@@ -42,7 +42,7 @@ ts = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# 🔥 CLOUDINARY DİJİTAL ARŞİV (401 HATASI KESİN ÇÖZÜM)
+# Cloudinary
 cloudinary.config(
     cloud_name='dh2pefkk',
     api_key='414697559795627',
@@ -50,7 +50,7 @@ cloudinary.config(
 )
 
 # ============================================================
-# 🗄️ VERİ MODELLERİ (GÜVENLİK VE AKTİVASYON KATMANLI)
+# 🗄️ VERİ MODELLERİ
 # ============================================================
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -70,8 +70,8 @@ class Entry(db.Model):
     expiry_date = db.Column(db.Date)
     belge_url = db.Column(db.String(500))
     whatsapp_no = db.Column(db.String(20))
-    danisman_no = db.Column(db.String(20))  # EKLENDI
-    note = db.Column(db.Text)               # EKLENDI
+    danisman_no = db.Column(db.String(20))
+    note = db.Column(db.Text)
     is_active = db.Column(db.Boolean, default=True)
 
 @login_manager.user_loader
@@ -83,7 +83,6 @@ def setup_db():
     if not getattr(app, '_db_init', False):
         with app.app_context():
             db.create_all()
-            # Sütunları manuel kontrol edip eksik varsa ekliyoruz (Senkronizasyon)
             q_list = [
                 "ALTER TABLE entry ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE",
                 "ALTER TABLE entry ADD COLUMN IF NOT EXISTS whatsapp_no VARCHAR(20)",
@@ -102,13 +101,11 @@ def setup_db():
         app._db_init = True
 
 # ============================================================
-# 🧠 AKILLI ALGORİTMALAR: BRANŞ TESPİTİ VE TOPLU YÜKLEME
+# 🧠 AKILLI ANALİZ MOTORU
 # ============================================================
 def akilli_analiz_motoru(satir):
-    """ Excel'den gelen verileri Regex mantığıyla analiz eder """
     txt = " ".join([str(v) for v in satir]).lower()
     
-    # Branş Tespit Kuralları
     if any(k in txt for k in ['src', 'ehliyet', 'operator', 'personel', 'sofor']):
         return 'Personel'
     if any(k in txt for k in ['plaka', 'muayene', 'trafik', 'scania', 'arac']):
@@ -116,63 +113,20 @@ def akilli_analiz_motoru(satir):
     if any(k in txt for k in ['yangin', 'tesis', 'bina', 'isg', 'periyodik']):
         return 'Tesis'
     if any(k in txt for k in ['iso', 'kalite', 'haccp', 'ce belgesi', 'tse']):
-        return 'Urun'  # DÜZELTİLDİ: Uretim -> Urun
-        
+        return 'Urun'
     return 'Genel'
 
-@app.route('/import_excel', methods=['POST'])
-@login_required
-def import_excel():
-    """ Toplu excel verilerini akıllıca sisteme aktarır """
-    f = request.files.get('excel_file')
-    if f:
-        try:
-            df = pd.read_excel(f)
-            df.columns = [str(c).strip().lower() for c in df.columns]
-            for _, r in df.iterrows():
-                # Akıllı analiz fonksiyonunu çağırıyoruz
-                kategori = akilli_analiz_motoru(list(r.values))
-                db.session.add(Entry(
-                    user_id=current_user.id, 
-                    category=kategori,
-                    title=str(r.iloc[0]), 
-                    firma_adi="Excel Kaydı",
-                    expiry_date=date.today() + timedelta(days=365)
-                ))
-            db.session.commit()
-            flash("Excel verileri akıllı algoritma ile başarıyla sisteme mühürlendi!", "success")
-        except Exception as e:
-            flash(f"Excel Aktarım Hatası: {e}", "danger")
-    return redirect(url_for('dashboard'))
-
-@app.route('/export_excel')
-@login_required
-def export_excel():
-    """ Kullanıcının aktif verilerini Excel formatında dışa aktarır """
-    res = Entry.query.filter_by(user_id=current_user.id, is_active=True).all()
-    df = pd.DataFrame([
-        {'Kategori': e.category, 'Belge Adı': e.title, 'Firma': e.firma_adi, 'Vade Tarihi': e.expiry_date} 
-        for e in res
-    ])
-    out = BytesIO()
-    with pd.ExcelWriter(out, engine='openpyxl') as wr:
-        df.to_excel(wr, index=False)
-    out.seek(0)
-    return send_file(out, download_name="eg_optimal_rapor.xlsx", as_attachment=True)
-
 # ============================================================
-# ⏰ OTOMATİK HATIRLATMA (SABAH 09:00 MAİL SİSTEMİ)
+# ⏰ OTOMATİK HATIRLATMA
 # ============================================================
 @app.route('/cron/9am_check')
 def morning_check():
-    """ Her sabah 09:00'da tetiklenen mail motoru """
     bugun = date.today()
     liste = Entry.query.filter_by(is_active=True).all()
     count = 0
     for e in liste:
         if e.expiry_date:
             kalan = (e.expiry_date - bugun).days
-            # Kritik hatırlatma periyotları
             if kalan in [30, 15, 7, 1]:
                 u = User.query.get(e.user_id)
                 if u:
@@ -192,10 +146,12 @@ Lütfen aksiyon alınız.
     return f"Bitti. {count} mail gönderildi.", 200
 
 # ============================================================
-# 🛣️ ANA ROTALAR (GÜVENLİK VE YÖNETİM)
+# 🛣️ ANA ROTALAR
 # ============================================================
 @app.route('/')
 def index():
+    if current_user.is_authenticated:
+        return redirect(url_for('sertifikalar', cat='all'))
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -204,7 +160,7 @@ def login():
         u = User.query.filter_by(email=request.form.get('email', '').strip()).first()
         if u and check_password_hash(u.password, request.form.get('password', '')):
             login_user(u)
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('sertifikalar', cat='all'))
         flash("E-posta veya şifre hatalı.", "danger")
     return render_template('login.html')
 
@@ -233,15 +189,14 @@ def forgot_password():
         return redirect(url_for('login'))
     return render_template('forgot_password.html')
 
-@app.route('/dashboard')
+# 🔥 ANA DASHBOARD - İSMİ "sertifikalar" OLARAK DÜZELTİLDİ
 @app.route('/sertifikalar/<cat>')
 @login_required
-def dashboard(cat=None):
-    # Dinamik sekme filtresi ve Global Radar mantığı
+def sertifikalar(cat='all'):
     q = Entry.query.filter_by(is_active=True)
     if current_user.email != 'erhanadea@gmail.com':
         q = q.filter_by(user_id=current_user.id)
-    if cat:
+    if cat and cat != 'all':
         q = q.filter_by(category=cat)
     return render_template('dashboard.html', sertifikalar=q.all(), bugun=date.today(), timedelta=timedelta, current_cat=cat)
 
@@ -249,7 +204,7 @@ def dashboard(cat=None):
 @login_required
 def admin_panel():
     if current_user.email != 'erhanadea@gmail.com':
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('sertifikalar', cat='all'))
     return render_template('admin.html', 
                          users=User.query.all(), 
                          all_entries=Entry.query.filter_by(is_active=True).all(), 
@@ -260,7 +215,7 @@ def admin_panel():
 @login_required
 def update_payment(uid):
     if current_user.email != 'erhanadea@gmail.com': 
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('sertifikalar', cat='all'))
     u = User.query.get(uid)
     if u:
         u.is_paid = (request.form.get('is_paid') == 'true' or request.form.get('status') == 'Odendi')
@@ -269,16 +224,12 @@ def update_payment(uid):
         flash("Kullanıcı güncellendi!", "success")
     return redirect(url_for('admin_panel'))
 
-# ============================================================
-# 🆕 EKLENEN ROTALAR (EKSİK OLANLAR)
-# ============================================================
-
 @app.route('/delete_user/<int:uid>')
 @login_required
 def delete_user(uid):
     if current_user.email != 'erhanadea@gmail.com':
         flash('Yetkisiz işlem!', 'danger')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('sertifikalar', cat='all'))
     
     kullanici = User.query.get(uid)
     if kullanici:
@@ -311,7 +262,7 @@ def sil(id):
 def ekle(cat):
     if cat not in ['Arac', 'Personel', 'Tesis', 'Urun']:
         flash('Geçersiz kategori!', 'danger')
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('sertifikalar', cat='all'))
     return render_template('ekle.html', cat=cat)
 
 @app.route('/ekle/<cat>', methods=['POST'])
@@ -343,6 +294,43 @@ def ekle_post(cat):
     db.session.commit()
     flash(f'{title} başarıyla eklendi.', 'success')
     return redirect(url_for('sertifikalar', cat=cat))
+
+@app.route('/import_excel', methods=['POST'])
+@login_required
+def import_excel():
+    f = request.files.get('excel_file')
+    if f:
+        try:
+            df = pd.read_excel(f)
+            df.columns = [str(c).strip().lower() for c in df.columns]
+            for _, r in df.iterrows():
+                kategori = akilli_analiz_motoru(list(r.values))
+                db.session.add(Entry(
+                    user_id=current_user.id, 
+                    category=kategori,
+                    title=str(r.iloc[0]), 
+                    firma_adi="Excel Kaydı",
+                    expiry_date=date.today() + timedelta(days=365)
+                ))
+            db.session.commit()
+            flash("Excel verileri akıllı algoritma ile başarıyla aktarıldı!", "success")
+        except Exception as e:
+            flash(f"Excel Aktarım Hatası: {e}", "danger")
+    return redirect(url_for('sertifikalar', cat='all'))
+
+@app.route('/export_excel')
+@login_required
+def export_excel():
+    res = Entry.query.filter_by(user_id=current_user.id, is_active=True).all()
+    df = pd.DataFrame([
+        {'Kategori': e.category, 'Belge Adı': e.title, 'Firma': e.firma_adi, 'Vade Tarihi': e.expiry_date} 
+        for e in res
+    ])
+    out = BytesIO()
+    with pd.ExcelWriter(out, engine='openpyxl') as wr:
+        df.to_excel(wr, index=False)
+    out.seek(0)
+    return send_file(out, download_name="eg_optimal_rapor.xlsx", as_attachment=True)
 
 @app.route('/upload_belge/<int:entry_id>', methods=['POST'])
 @login_required
