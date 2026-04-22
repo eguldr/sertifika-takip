@@ -42,8 +42,8 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
 cloudinary.config(
-    cloud_name='dh2pefkk', 
-    api_key='414697559795627', 
+    cloud_name='dh2pefkk',
+    api_key='414697559795627',
     api_secret='0q2xexoiKr25EeuI6CmFF8CXf2c'
 )
 
@@ -119,11 +119,27 @@ def send_mail(to, subject, body):
         return False
 
 
+def cloudinary_belge_url(url):
+    """
+    Cloudinary'den yüklenen PDF/belge URL'ini görüntülenebilir hale getirir.
+    /upload/ → /upload/fl_attachment/ dönüşümü yapar.
+    """
+    if not url:
+        return url
+    # Zaten fl_attachment varsa dokunma
+    if 'fl_attachment' in url:
+        return url
+    return url.replace('/upload/', '/upload/fl_attachment/', 1)
+
+
+# Jinja2 template'lerinde kullanılabilmesi için global olarak tanıt
+app.jinja_env.globals['cloudinary_belge_url'] = cloudinary_belge_url
+
+
 def akilli_analiz_motoru(satir):
     """Excel satırından branş tespiti — isim kalıbı dahil."""
     txt = " ".join([str(v) for v in satir]).lower()
 
-    # Personel — meslek unvanları + Ad Soyad kalıbı
     personel_kw = ['src', 'ehliyet', 'operator', 'operatör', 'personel', 'sofor',
                    'sürücü', 'forklift', 'muhendis', 'teknisyen', 'isci', 'calisan',
                    'stajyer', 'mudur', 'uzman', 'güvenlik', 'bekci']
@@ -166,7 +182,7 @@ def login():
         if u and check_password_hash(u.password, request.form.get('password', '')):
             login_user(u)
             return redirect(url_for('dashboard'))
-        flash("E-posta veya sifre hatali.", "danger")
+        flash("E-posta veya şifre hatalı.", "danger")
     return render_template('login.html')
 
 
@@ -185,7 +201,7 @@ def register():
         password = request.form.get('password', '')
 
         if User.query.filter_by(email=email).first():
-            flash("Bu e-posta zaten kayitli.", "warning")
+            flash("Bu e-posta zaten kayıtlı.", "warning")
             return redirect(url_for('register'))
 
         u = User(
@@ -197,11 +213,10 @@ def register():
         )
         db.session.add(u)
         db.session.commit()
-        flash("Kayit basarili! Giris yapabilirsiniz.", "success")
+        flash("Kayıt başarılı! Giriş yapabilirsiniz.", "success")
         return redirect(url_for('login'))
 
-    return render_template('kayit.html',
-        recaptcha_site_key=os.environ.get('RECAPTCHA_SITE_KEY', ''))
+    return render_template('kayit.html')
 
 
 @app.route('/forgot_password', methods=['GET', 'POST'])
@@ -212,9 +227,9 @@ def forgot_password():
         if user:
             token       = ts.dumps(email, salt='recover-key')
             recover_url = url_for('reset_password', token=token, _external=True)
-            send_mail(email, "Sifre Sifirlama - EG Optimal",
-                      f"Sifrenizi sifirlamak icin:\n\n{recover_url}\n\n30 dakika gecerlidir.")
-        flash("Kayitli e-postaniza sifirlama baglantisi gonderildi.", "info")
+            send_mail(email, "Şifre Sıfırlama - EG Optimal",
+                      f"Şifrenizi sıfırlamak için:\n\n{recover_url}\n\n30 dakika geçerlidir.")
+        flash("Kayıtlı e-postanıza sıfırlama bağlantısı gönderildi.", "info")
         return redirect(url_for('login'))
     return render_template('forgot_password.html')
 
@@ -224,36 +239,39 @@ def reset_password(token):
     try:
         email = ts.loads(token, salt='recover-key', max_age=1800)
     except Exception:
-        flash("Link gecersiz veya suresi dolmus.", "danger")
+        flash("Link geçersiz veya süresi dolmuş.", "danger")
         return redirect(url_for('forgot_password'))
     if request.method == 'POST':
         user = User.query.filter_by(email=email).first()
         if user:
             user.password = generate_password_hash(request.form.get('password', ''))
             db.session.commit()
-            flash("Sifreniz guncellendi.", "success")
+            flash("Şifreniz güncellendi.", "success")
             return redirect(url_for('login'))
     return render_template('reset_password.html', token=token)
 
 
 # ============================================================
-# DASHBOARD — /dashboard ve /sertifikalar/<cat> aynı fonksiyon
+# DASHBOARD
 # ============================================================
 @app.route('/dashboard')
-@app.route('/sertifikalar/<cat>')
+@app.route('/dashboard/<cat>')
 @login_required
 def dashboard(cat=None):
     try:
-        sorgu = Entry.query.filter(Entry.is_active == True)
-        if current_user.email != 'erhanadea@gmail.com':
-            sorgu = sorgu.filter(Entry.user_id == current_user.id)
+        # Her kullanıcı (admin dahil) yalnızca kendi belgelerini görür.
+        # Admin tüm kullanıcıları admin_panel'den takip eder.
+        sorgu = Entry.query.filter(
+            Entry.is_active == True,
+            Entry.user_id == current_user.id
+        )
         if cat and cat != 'all':
             sorgu = sorgu.filter(Entry.category == cat)
         liste = sorgu.order_by(Entry.expiry_date.asc()).all()
     except Exception as e:
         print(f"Dashboard sorgu hatasi: {e}")
         liste = []
-        flash("Veri yuklenirken hata olustu.", "danger")
+        flash("Veri yüklenirken hata oluştu.", "danger")
 
     return render_template('dashboard.html',
         sertifikalar = liste,
@@ -263,49 +281,56 @@ def dashboard(cat=None):
     )
 
 
+# Eski /sertifikalar/<cat> URL'ini yönlendir (geriye dönük uyumluluk)
+@app.route('/sertifikalar/<cat>')
+@login_required
+def sertifikalar(cat):
+    return redirect(url_for('dashboard', cat=cat))
+
+
 # ============================================================
 # KAYIT EKLE
-# ekle.html url_for('ekle', cat=cat) kullanıyor
-# kayit_ekle da aynı route'a bağlı
 # ============================================================
 @app.route('/kayit_ekle/<cat>', methods=['GET', 'POST'])
 @login_required
 def ekle(cat):
     if request.method == 'POST':
-        # Formdan gelen verileri alıyoruz
-        title = request.form.get('title')
+        title = request.form.get('title', '').strip()
         if title == 'LİSTEDE YOK / MANUEL YAZ':
-            title = request.form.get('manual_title')
-        
+            title = request.form.get('manual_title', '').strip()
+
+        exp_str = request.form.get('expiry_date', '')
+        try:
+            expiry = datetime.strptime(exp_str, '%Y-%m-%d').date()
+        except (ValueError, TypeError):
+            flash('Geçerli bir tarih giriniz.', 'danger')
+            return render_template('ekle.html', cat=cat)
+
         try:
             yeni = Entry(
-                user_id=current_user.id,
-                category=cat,
-                title=title,
-                firma_adi=request.form.get('firma_adi', ''),
-                whatsapp_no=request.form.get('whatsapp_no', ''),
-                danisman_no=request.form.get('danisman_no', ''),
-                note=request.form.get('note', ''),
-                expiry_date=datetime.strptime(request.form.get('expiry_date'), '%Y-%m-%d').date()
+                user_id     = current_user.id,
+                category    = cat,
+                title       = title,
+                firma_adi   = request.form.get('firma_adi', '').strip(),
+                whatsapp_no = request.form.get('whatsapp_no', '').strip(),
+                danisman_no = request.form.get('danisman_no', '').strip(),
+                note        = request.form.get('note', '').strip(),
+                expiry_date = expiry,
+                is_active   = True
             )
             db.session.add(yeni)
             db.session.commit()
             flash(f'{title} başarıyla takibe alındı!', 'success')
-            return redirect(url_for('sertifikalar', cat=cat))
+            return redirect(url_for('dashboard', cat=cat))
         except Exception as e:
             db.session.rollback()
-            flash(f'Hata oluştu: {str(e)}', 'danger')
-            
+            flash(f'Kayıt hatası: {str(e)}', 'danger')
+
     return render_template('ekle.html', cat=cat)
-    if request.method == 'POST':
-        exp_str = request.form.get('expiry_date')
-        title   = request.form.get('title', '')
-        if title == 'LİSTEDE YOK / MANUEL YAZ':
-            title = request.form.get('manual_title', title)
-        
+
 
 # ============================================================
-# SİL — hem /sil/<id> hem /delete_entry/<id> çalışır
+# SİL
 # ============================================================
 @app.route('/sil/<int:id>')
 @app.route('/delete_entry/<int:id>')
@@ -317,11 +342,11 @@ def sil(id):
         if e and (e.user_id == current_user.id or current_user.email == 'erhanadea@gmail.com'):
             e.is_active = False
             db.session.commit()
-            flash("Kayit silindi.", "success")
+            flash("Kayıt silindi.", "success")
         else:
-            flash("Kayit bulunamadi veya yetkiniz yok.", "danger")
+            flash("Kayıt bulunamadı veya yetkiniz yok.", "danger")
     except Exception as ex:
-        flash(f"Silme hatasi: {ex}", "danger")
+        flash(f"Silme hatası: {ex}", "danger")
     return redirect(url_for('dashboard', cat=cat))
 
 
@@ -338,28 +363,31 @@ def upload_belge(entry_id):
             res = cloudinary.uploader.upload(f, resource_type="auto")
             e   = Entry.query.get(entry_id)
             if e and (e.user_id == current_user.id or current_user.email == 'erhanadea@gmail.com'):
-                e.belge_url = res.get('secure_url')
+                raw_url = res.get('secure_url', '')
+                # PDF'lerin tarayıcıda açılabilmesi için fl_attachment ekle
+                e.belge_url = cloudinary_belge_url(raw_url)
                 db.session.commit()
-                flash("Belge basariyla yuklendi.", "success")
+                flash("Belge başarıyla yüklendi.", "success")
+            else:
+                flash("Yetki hatası.", "danger")
         except Exception as ex:
-            flash(f"Yukleme hatasi: {ex}", "danger")
+            flash(f"Yükleme hatası: {ex}", "danger")
     else:
-        flash("Lutfen bir dosya secin.", "warning")
+        flash("Lütfen bir dosya seçin.", "warning")
     return redirect(url_for('dashboard', cat=cat))
 
 
 # ============================================================
-# EXCEL İÇE AKTAR — Akıllı Branş + Firma + Gerçek Tarih
+# EXCEL İÇE AKTAR
 # ============================================================
 @app.route('/import_excel', methods=['POST'])
 @login_required
 def import_excel():
     f = request.files.get('excel_file')
     if not f:
-        flash("Dosya secilmedi.", "warning")
+        flash("Dosya seçilmedi.", "warning")
         return redirect(url_for('dashboard'))
     try:
-        # Eski kayıtları pasife al (mükerrer önleme)
         Entry.query.filter_by(user_id=current_user.id).update({'is_active': False})
         db.session.commit()
 
@@ -400,9 +428,9 @@ def import_excel():
             eklenen += 1
 
         db.session.commit()
-        flash(f"Excel yuklendi. {eklenen} kayit eklendi.", "success")
+        flash(f"Excel yüklendi. {eklenen} kayıt eklendi.", "success")
     except Exception as e:
-        flash(f"Excel hatasi: {e}", "danger")
+        flash(f"Excel hatası: {e}", "danger")
     return redirect(url_for('dashboard'))
 
 
@@ -421,10 +449,10 @@ def export_excel():
         data = [{
             "Kategori":     e.category,
             "Firma":        e.firma_adi,
-            "Belge Adi":    e.title,
+            "Belge Adı":    e.title,
             "WhatsApp":     e.whatsapp_no,
             "Not":          e.note,
-            "Bitis Tarihi": e.expiry_date.strftime('%d.%m.%Y') if e.expiry_date else "",
+            "Bitiş Tarihi": e.expiry_date.strftime('%d.%m.%Y') if e.expiry_date else "",
             "Belge URL":    e.belge_url or ""
         } for e in entries]
 
@@ -437,7 +465,7 @@ def export_excel():
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             as_attachment=True, download_name="EG_Optimal_Rapor.xlsx")
     except Exception as e:
-        flash(f"Disari aktarim hatasi: {e}", "danger")
+        flash(f"Dışa aktarım hatası: {e}", "danger")
         return redirect(url_for('dashboard'))
 
 
@@ -450,12 +478,13 @@ def admin_panel():
     if current_user.email != 'erhanadea@gmail.com':
         return redirect(url_for('dashboard'))
     try:
-        tum_kullanicilar    = User.query.all()
-        odeme_yapmayanlar   = User.query.filter_by(is_paid=False).all()
-        tum_belgeler        = Entry.query.filter_by(is_active=True)\
-                                   .order_by(Entry.expiry_date.asc()).all()
-        kullanici_belge     = {u.id: Entry.query.filter_by(user_id=u.id, is_active=True).count()
-                               for u in tum_kullanicilar}
+        tum_kullanicilar  = User.query.all()
+        odeme_yapmayanlar = User.query.filter_by(is_paid=False).all()
+        # Global Radar: tüm aktif belgeler (tüm kullanıcılar)
+        tum_belgeler      = Entry.query.filter_by(is_active=True)\
+                                 .order_by(Entry.expiry_date.asc()).all()
+        kullanici_belge   = {u.id: Entry.query.filter_by(user_id=u.id, is_active=True).count()
+                             for u in tum_kullanicilar}
     except Exception as e:
         print(f"Admin sorgu hatasi: {e}")
         tum_kullanicilar = odeme_yapmayanlar = tum_belgeler = []
@@ -485,7 +514,7 @@ def update_payment(uid):
         else:
             u.is_paid = not u.is_paid
         db.session.commit()
-        flash(f"{u.email} guncellendi.", "success")
+        flash(f"{u.email} güncellendi.", "success")
     return redirect(url_for('admin_panel'))
 
 
@@ -499,12 +528,12 @@ def delete_user(uid):
         Entry.query.filter_by(user_id=uid).delete()
         db.session.delete(u)
         db.session.commit()
-        flash("Kullanici silindi.", "success")
+        flash("Kullanıcı silindi.", "success")
     return redirect(url_for('admin_panel'))
 
 
 # ============================================================
-# OTOMATİK HATIRLATMA
+# OTOMATİK HATIRLATMA (Cron)
 # ============================================================
 @app.route('/cron/check_reminders')
 @app.route('/cron/9am_check')
@@ -520,12 +549,12 @@ def check_reminders():
             user = User.query.get(e.user_id)
             if user:
                 send_mail(user.email,
-                    f"EG Optimal Hatirlatma: {e.title} ({kalan} Gun)",
-                    f"'{e.title}' belgenizin bitmesine {kalan} gun kalmistir.\n"
+                    f"EG Optimal Hatırlatma: {e.title} ({kalan} Gün)",
+                    f"'{e.title}' belgenizin bitmesine {kalan} gün kalmıştır.\n"
                     f"Firma: {e.firma_adi}\n"
-                    f"Bitis: {e.expiry_date.strftime('%d.%m.%Y')}\n\nEG Optimal")
+                    f"Bitiş: {e.expiry_date.strftime('%d.%m.%Y')}\n\nEG Optimal")
                 gonderr += 1
-    return f"OK - {gonderr} hatirlatma gonderildi.", 200
+    return f"OK - {gonderr} hatırlatma gönderildi.", 200
 
 
 # ============================================================
