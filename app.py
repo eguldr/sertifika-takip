@@ -200,30 +200,29 @@ def logout():
  
  
 @app.route('/kayit', methods=['GET', 'POST'])
-@app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        email    = request.form.get('email', '').strip()
+        # Robot Kontrolü (Matematiksel reCAPTCHA)
+        robot_cevap = request.form.get('robot_kontrol')
+        if robot_cevap != "5": # 2+3 sorusunun cevabı
+            flash("Robot kontrolü başarısız. Lütfen 2+3'ün cevabını doğru girin.", "danger")
+            return redirect(url_for('register'))
+
+        email = request.form.get('email', '').strip()
         password = request.form.get('password', '')
- 
+        
+        # Mevcut kayıt mantığın devam ediyor...
         if User.query.filter_by(email=email).first():
             flash("Bu e-posta zaten kayıtlı.", "warning")
             return redirect(url_for('register'))
- 
-        u = User(
-            email        = email,
-            password     = generate_password_hash(password),
-            company_name = request.form.get('company_name', ''),
-            is_confirmed = True,
-            is_paid      = False
-        )
+            
+        u = User(email=email, password=generate_password_hash(password), is_confirmed=True)
         db.session.add(u)
         db.session.commit()
         flash("Kayıt başarılı! Giriş yapabilirsiniz.", "success")
         return redirect(url_for('login'))
- 
+        
     return render_template('kayit.html')
- 
  
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
