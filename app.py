@@ -41,10 +41,12 @@ ts            = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
  
+import os
+
 cloudinary.config(
-    cloud_name='dh2pefkko',
-    api_key='626365126779241', # Yeni Key
-    api_secret='A1q12Oiih6Gc6PfKdPFextUsm-l' # Yeni Secret
+    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dh2pefkko'),
+    api_key = os.environ.get('CLOUDINARY_API_KEY', '626365126779241'),
+    api_secret = os.environ.get('CLOUDINARY_API_SECRET', 'A1q12Oiih6Gc6PfKdPFextUsm-l')
 )
  
  
