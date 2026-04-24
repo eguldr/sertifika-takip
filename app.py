@@ -136,33 +136,45 @@ def cloudinary_belge_url(url):
 app.jinja_env.globals['cloudinary_belge_url'] = cloudinary_belge_url
 
 
-def akilli_analiz_motoru(satir):
-    """Excel satırından branş tespiti — Personel, Tesis, Ürün ve Araç önceliği."""
-    txt = " ".join([str(v) for v in satir]).lower()
+# 1. ÖNCE YENİ YARDIMCI FONKSİYONU EKLEYELİM
+def ai_analiz_yardimcisi(satir_metni):
+    """
+    Yerel motorun çözemediği satırları AI'ya soran fonksiyon.
+    Burada OpenAI, Gemini veya benzeri bir API kullanılabilir.
+    """
+    api_key = os.environ.get('AI_API_KEY') # Render'a ekleyeceğin bir API KEY
+    if not api_key:
+        return 'Genel' # Key yoksa sistemi bozma
 
-    # 1. PERSONEL (Operatör, şoför ve kişi belgeleri)
-    # Satırda operatör, şoför veya SRC geçiyorsa doğrudan Personel yap.
-    personel_kw = ['src', 'ehliyet', 'psikoteknik', 'mesleki yeterlilik', 'sofor', 'şoför', 'operator', 'operatör', 'personel']
-    if any(k in txt for k in personel_kw):
-        return 'Personel'
+    try:
+        # Örnek API Çağrısı (Prompt):
+        # "Bu satır bir araç muayenesi mi, personel belgesi mi, tesis ruhsatı mı yoksa ürün sertifikası mı? 
+        # Sadece 'Arac', 'Personel', 'Tesis' veya 'Urun' kelimesini döndür: {satir_metni}"
+        
+        # Buraya istek (request) kodu gelecek.
+        return 'Tespit_Edilen_Kategori' 
+    except:
+        return 'Genel'
 
-    # 2. TESİS (Yangın tüpü, bina ve fabrika güvenliği)
-    # 'tüp' veya 'yangın' kelimesini gördüğünde Tesis'e at.
-    tesis_kw = ['yangin', 'yangın', 'tüp', 'tup', 'tesis', 'bina', 'ruhsat', 'kapasite raporu', 'itfaiye', 'fabrika']
-    if any(k in txt for k in tesis_kw):
-        return 'Tesis'
-
-    # 3. ÜRÜN & SERTİFİKA (Kalite belgeleri ve genel sertifikalar)
-    urun_kw = ['sertifika', 'belgesi', 'belge', 'iso', 'ce ', 'tse', 'helal', 'kalite', 'haccp']
-    if any(k in txt for k in urun_kw):
-        return 'Urun'
-
-    # 4. ARAÇ & FİLO (Plaka ve araç detayları)
-    arac_kw = ['plaka', 'muayene', 'sigorta', 'kasko', 'egzoz', 'scania', 'ford', 'mercedes', 'volvo']
-    if any(k in txt for k in arac_kw):
-        return 'Arac'
-
-    return 'Genel'
+# 2. IMPORT_EXCEL FONKSİYONUNU GÜNCELLEYELİM
+@app.route('/import_excel', methods=['POST'])
+@login_required
+def import_excel():
+    # ... mevcut dosya kontrol kodların ...
+    try:
+        # ... DataFrame okuma kodların ...
+        
+        for _, r in df.iterrows():
+            satirlar = list(r.values)
+            
+            # ADIM 1: Önce senin yazdığın hızlı motoru dene
+            cat = akilli_analiz_motoru(satirlar)
+            
+            # ADIM 2: Eğer 'Genel' döndüyse AI devreye girsin
+            if cat == 'Genel':
+                cat = ai_analiz_yardimcisi(" ".join([str(v) for v in satirlar]))
+            
+            # ... kayıt işlemleri ...
 
 # ============================================================
 # AUTH
