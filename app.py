@@ -141,7 +141,9 @@ def cloudinary_belge_url(url):
     
     # 2. Eğer PDF ise ve fl_inline yoksa, tarayıcıda açılması için ekle
     if ".pdf" in clean_url and "fl_inline" not in clean_url:
-        clean_url = clean_url.replace("/upload/", "/upload/fl_inline/")
+        # /v ile başlayan versiyon kısmından hemen önceye fl_inline/ ekler
+        # Bu dizilim Cloudinary için en güvenli olanıdır.
+        clean_url = clean_url.replace("/v", "/fl_inline/v")
     
     return clean_url
  
