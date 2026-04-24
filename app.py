@@ -42,10 +42,11 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
 # FIX: cloud_name 'dh2pefkko' → 'dh2pefkk' (sondaki hatalı 'o' kaldırıldı)
+# Cloud name sonuna 'o' harfini Geri ekle!
 cloudinary.config(
-    cloud_name='dh2pefkk',
-    api_key='626365126779241',
-    api_secret='A1q12Oiih6Gc6PfKdPFextUsm-l',
+    cloud_name='dh2pefkko',      # Görseldeki ile birebir aynı: dh2pefkko
+    api_key='626365126779241',   # Görseldeki ilk key ile aynı
+    api_secret='A1q12Oiih6Gc6PfKdPFextUsm-l', 
     secure=True
 )
 
