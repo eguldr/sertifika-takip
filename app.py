@@ -367,8 +367,11 @@ def upload_belge(entry_id):
             )
             e   = Entry.query.get(entry_id)
             if e and (e.user_id == current_user.id or current_user.email == 'erhanadea@gmail.com'):
-                raw_url = res.get('secure_url', '')
-                # PDF'lerin tarayıcıda açılabilmesi için fl_attachment ekle
+                raw_url = res.get('secure_url')
+
+                if not raw_url:
+                        raise Exception("Cloudinary URL alınamadı")
+
                 e.belge_url = cloudinary_belge_url(raw_url)
                 db.session.commit()
                 flash("Belge başarıyla yüklendi.", "success")
