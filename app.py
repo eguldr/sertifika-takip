@@ -137,31 +137,23 @@ app.jinja_env.globals['cloudinary_belge_url'] = cloudinary_belge_url
  
  
 def akilli_analiz_motoru(satir):
-    """Excel satırından branş tespiti — isim kalıbı dahil."""
     txt = " ".join([str(v) for v in satir]).lower()
- 
-    personel_kw = ['src', 'ehliyet', 'operator', 'operatör', 'personel', 'sofor',
-                   'sürücü', 'forklift', 'muhendis', 'teknisyen', 'isci', 'calisan',
-                   'stajyer', 'mudur', 'uzman', 'güvenlik', 'bekci']
-    isim_var = bool(re.search(
-        r'[A-ZÇĞİÖŞÜ][a-zçğışöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğışöşü]+',
-        " ".join([str(v) for v in satir])
-    ))
-    if any(k in txt for k in personel_kw) or isim_var:
-        return 'Personel'
- 
-    if any(k in txt for k in ['plaka', 'muayene', 'trafik', 'scania', 'arac', 'araç',
-                                'kamyon', 'tir', 'ford', 'mercedes', 'volvo', 'truck']):
+
+    # ÖNCE SPESİFİK ARAÇ VE TESİS KELİMELERİNE BAKALIM
+    if any(k in txt for k in ['plaka', 'scania', 'muayene', 'kamyon', 'ford']):
         return 'Arac'
- 
-    if any(k in txt for k in ['yangin', 'yangın', 'tesis', 'bina', 'isg', 'periyodik',
-                                'kapasite', 'depo', 'fabrika', 'kazan', 'asansor']):
+    
+    if any(k in txt for k in ['yangin', 'yangın', 'tüp', 'bina', 'fabrika', 'kapasite']):
         return 'Tesis'
- 
-    if any(k in txt for k in ['iso', 'kalite', 'haccp', 'ce belgesi', 'tse',
-                                'uretim', 'üretim', 'gıda', 'helal', 'organik']):
+    
+    if any(k in txt for k in ['sertifika', 'iso', 'kalite', 'ce belgesi']):
         return 'Urun'
- 
+
+    # PERSONEL KONTROLÜNÜ EN SONA VE DAHA NET KELİMELERLE YAPALIM
+    personel_kw = ['src', 'ehliyet', 'operator', 'operatör', 'sofor', 'şoför', 'personel']
+    if any(k in txt for k in personel_kw):
+        return 'Personel'
+
     return 'Genel'
  
  
