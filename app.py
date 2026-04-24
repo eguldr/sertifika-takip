@@ -128,25 +128,22 @@ def send_mail(to, subject, body):
         return False
  
  
+import re  # Eğer dosyanın en başında yoksa mutlaka ekle!
+
 def cloudinary_belge_url(url):
-    """
-    Cloudinary URL'sini tarayıcıda doğrudan açılacak (inline) hale getirir.
-    Hatalı attachment parametrelerini temizler, PDF için inline zorlar.
-    """
     if not url:
         return url
-    
-    # 1. Önce hatalı fl_attachment parametrelerini temizle
-    clean_url = url.replace("/upload/fl_attachment/", "/upload/")
-    
-    # 2. Eğer PDF ise ve fl_inline yoksa, tarayıcıda açılması için ekle
-    if ".pdf" in clean_url and "fl_inline" not in clean_url:
-        # Baştaki bölü işaretini kaldırarak çift bölü hatasını engelliyoruz
-        clean_url = clean_url.replace("/v", "/fl_inline/v") # Eğer buysa
-        # Şunu dene:
-        clean_url = clean_url.replace("/v", "/fl_inline/v").replace("//v", "/v")
-    
-    return clean_url
+
+    # Sadece PDF'lere uygula
+    if not url.lower().endswith(".pdf"):
+        return url
+
+    # Zaten inline varsa dokunma (Çiftleme hatasını bu engeller)
+    if "/fl_inline/" in url:
+        return url
+
+    # Sadece /upload/ segmentinden hemen SONRA ekle
+    return re.sub(r'(/upload/)', r'\1fl_inline/', url, count=1)
  
  
 # Jinja2 template'lerinde kullanılabilmesi için global olarak tanıt
