@@ -43,9 +43,8 @@ login_manager.login_view = 'login'
  
 cloudinary.config(
     cloud_name='dh2pefkko',
-    api_key='414697559795627',
-    api_secret='0q2xexoiKr25EeuI6CmFF8CXf2c',
-    secure=True
+    api_key='626365126779241', # Yeni Key
+    api_secret='A1q12Oiih6Gc6PfKdPFextUsm-l' # Yeni Secret
 )
  
  
