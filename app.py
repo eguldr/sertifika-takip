@@ -388,49 +388,55 @@ def import_excel():
         flash("Dosya seçilmedi.", "warning")
         return redirect(url_for('dashboard'))
     try:
+        # Mevcut kayıtları pasife çek
         Entry.query.filter_by(user_id=current_user.id).update({'is_active': False})
         db.session.commit()
- 
+
         df = pd.read_excel(f)
         df.columns = [str(c).strip() for c in df.columns]
- 
+
         def find_col(keywords):
             for col in df.columns:
                 if any(k in col.lower() for k in keywords):
                     return col
             return None
- 
+
         title_col = find_col(['belge', 'plaka', 'isim', 'ad', 'tanim', 'title'])
         firma_col = find_col(['firma', 'kurum', 'sirket', 'company', 'musteri'])
         tarih_col = find_col(['bitis', 'tarih', 'expiry', 'son', 'gecerlilik', 'vade'])
- 
+
         eklenen = 0
         for _, r in df.iterrows():
             satirlar = list(r.values)
-            cat      = akilli_analiz_motoru(satirlar)
-            title    = str(r[title_col]).strip() if title_col and pd.notna(r.get(title_col)) else str(r.iloc[0])
-            firma    = str(r[firma_col]).strip() if firma_col and pd.notna(r.get(firma_col)) else ''
-            expiry   = date.today() + timedelta(days=365)
+            cat = akilli_analiz_motoru(satirlar)
+            
+            if cat == 'Genel':
+                pass 
+
+            title = str(r[title_col]).strip() if title_col and pd.notna(r.get(title_col)) else str(r.iloc[0])
+            firma = str(r[firma_col]).strip() if firma_col and pd.notna(r.get(firma_col)) else ''
+            expiry = date.today() + timedelta(days=365)
             if tarih_col and pd.notna(r.get(tarih_col)):
                 try:
                     expiry = pd.to_datetime(r[tarih_col], dayfirst=True).date()
-                except Exception:
+                except:
                     pass
- 
+
             db.session.add(Entry(
-                user_id     = current_user.id,
-                category    = cat,
-                title       = title,
-                firma_adi   = firma,
-                expiry_date = expiry,
-                is_active   = True
+                user_id=current_user.id,
+                category=cat,
+                title=title,
+                firma_adi=firma,
+                expiry_date=expiry,
+                is_active=True
             ))
             eklenen += 1
- 
+
         db.session.commit()
-        flash(f"Excel yüklendi. {eklenen} kayıt eklendi.", "success")
+        flash(f"Excel başarıyla yüklendi. {eklenen} kayıt eklendi.", "success")
     except Exception as e:
-        flash(f"Excel hatası: {e}", "danger")
+        db.session.rollback()
+        flash(f"Excel hatası: {str(e)}", "danger")
     return redirect(url_for('dashboard'))
  
  
