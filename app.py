@@ -42,12 +42,19 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
  
 import os
+import time
 
 cloudinary.config(
-    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME', 'dh2pefkko'),
-    api_key = os.environ.get('CLOUDINARY_API_KEY', '626365126779241'),
-    api_secret = os.environ.get('CLOUDINARY_API_SECRET', 'A1q12Oiih6Gc6PfKdPFextUsm-l')
+    cloud_name='dh2pefkko',
+    api_key='626365126779241',           # Yeni Key
+    api_secret='A1q12Oiih6Gc6PfKdPFextUsm-l', # Word'deki Yeni Şifre
+    secure=True
 )
+
+# ChatGPT'nin istediği kontrol satırlarını ekleyelim:
+print("CLOUDINARY DEBUG:")
+print("cloud_name:", cloudinary.config().cloud_name)
+print("api_key:", cloudinary.config().api_key)
  
  
 # ============================================================
