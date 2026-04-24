@@ -199,7 +199,9 @@ def logout():
     return redirect(url_for('login'))
  
  
-@app.route('/yeni_uye_kayit', methods=['GET', 'POST'])
+@app.route('/cok_ozel_kayit_sayfasi', methods=['GET', 'POST']) # İsmi kimsenin aklına gelmeyecek şekilde değiştik
+def yeni_kayit_fonksiyonu():
+    # ... içerideki kodlar aynı kalsın ...
 def yeni_kayit_fonksiyonu():
     if request.method == 'POST':
         # Robot Kontrolü (Matematiksel reCAPTCHA)
