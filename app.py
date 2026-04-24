@@ -367,10 +367,10 @@ def upload_belge(entry_id):
             # İmza gerektirmeyen en garanti yöntem
             # 'access_mode' ekleyerek kapıdaki kilidi doğrudan kodla açıyoruz
             # 'type' parametresini siliyoruz çünkü unsigned yüklemede yasakmış
+            # Preset'teki 'Public' ayarı artık devreye girecek
             res = cloudinary.uploader.unsigned_upload(
                 f, 
-                upload_preset='erhan_preset',
-                access_mode='public'
+                upload_preset='erhan_preset'
             )
             e   = Entry.query.get(entry_id)
             if e and (e.user_id == current_user.id or current_user.email == 'erhanadea@gmail.com'):
