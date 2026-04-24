@@ -42,7 +42,7 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
  
 cloudinary.config(
-    cloud_name='dh2pefkk',
+    cloud_name='dh2pefkko',  # Sonuna 'o' harfini EKLEDİK (Görseldeki gibi)
     api_key='414697559795627',
     api_secret='0q2xexoiKr25EeuI6CmFF8CXf2c'
 )
