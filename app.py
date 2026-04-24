@@ -366,13 +366,7 @@ def upload_belge(entry_id):
     cat = request.args.get('cat', 'all')
     if f:
         try:
-            res = cloudinary.uploader.upload(
-                f,
-                resource_type="auto",
-                use_filename=False,
-                unique_filename=True,
-                overwrite=False
-            )
+            res = cloudinary.uploader.upload(f, resource_type="auto")
             e   = Entry.query.get(entry_id)
             if e and (e.user_id == current_user.id or current_user.email == 'erhanadea@gmail.com'):
                 raw_url = res.get('secure_url')
