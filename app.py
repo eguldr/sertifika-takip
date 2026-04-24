@@ -372,8 +372,9 @@ def upload_belge(entry_id):
             # 'type' parametresini siliyoruz çünkü unsigned yüklemede yasakmış
             # Preset'teki 'Public' ayarı artık devreye girecek
             res = cloudinary.uploader.unsigned_upload(
-                f, 
-                upload_preset='erhan_preset'
+                f,
+                upload_preset='erhan_preset',
+                resource_type='raw'   # İşte o kritik dokunuş!
             )
             e   = Entry.query.get(entry_id)
             if e and (e.user_id == current_user.id or current_user.email == 'erhanadea@gmail.com'):
