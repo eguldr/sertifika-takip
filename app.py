@@ -130,20 +130,17 @@ def send_mail(to, subject, body):
  
 def cloudinary_belge_url(url):
     """
-    Cloudinary URL'lerini tarayıcıda açılabilir hale getirir
-    PDF için inline görüntüleme sağlar
+    Cloudinary URL'lerini tarayıcıda doğrudan açılabilir hale getirir.
+    Hata veren fl_attachment parametrelerini temizler.
     """
     if not url:
         return url
-
-    # zaten dönüştürülmüşse dokunma
-    if 'fl_attachment' in url or 'fl_inline' in url:
-        return url
-
-    try:
-        return url.replace('/upload/', '/upload/fl_attachment/', 1)
-    except Exception:
-        return url
+    
+    # URL içindeki kısıtlayıcı parametreleri temizle ve doğrudan ana dosyaya odaklan
+    clean_url = url.replace("/upload/fl_attachment/", "/upload/")
+    clean_url = clean_url.replace("/upload/fl_inline/", "/upload/")
+    
+    return clean_url
  
  
 # Jinja2 template'lerinde kullanılabilmesi için global olarak tanıt
