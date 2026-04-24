@@ -367,7 +367,8 @@ def upload_belge(entry_id):
     if f:
         try:
             # En sade hali, imza hatası riskini sıfıra indirir
-            res = cloudinary.uploader.upload(f)
+            # İmza gerektirmeyen en garanti yöntem
+            res = cloudinary.uploader.unsigned_upload(f, upload_preset='ml_default')
             e   = Entry.query.get(entry_id)
             if e and (e.user_id == current_user.id or current_user.email == 'erhanadea@gmail.com'):
                 raw_url = res.get('secure_url')
