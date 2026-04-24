@@ -199,14 +199,12 @@ def logout():
     return redirect(url_for('login'))
  
  
-@app.route('/kayit', methods=['GET', 'POST'])
-def kayit():
+@app.route('/yeni_uye_kayit', methods=['GET', 'POST']) # İsmi tamamen eşsiz yaptık
+def yeni_kayit_fonksiyonu():
     if request.method == 'POST':
-        # Robot Kontrolü (Matematiksel reCAPTCHA)
-        robot_cevap = request.form.get('robot_kontrol')
-        if robot_cevap != "5": # 2+3 sorusunun cevabı
-            flash("Robot kontrolü başarısız. Lütfen 2+3'ün cevabını doğru girin.", "danger")
-            return redirect(url_for('register'))
+        # Robot kontrolü ve kayıt mantığı buraya...
+        return redirect(url_for('login'))
+    return render_template('kayit.html') # Buradaki dosya adının doğruluğundan emin ol!
 
         email = request.form.get('email', '').strip()
         password = request.form.get('password', '')
