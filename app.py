@@ -378,6 +378,7 @@ def upload_belge(entry_id):
             else:
                 flash("Yetki hatası.", "danger")
         except Exception as ex:
+            print("CLOUDINARY HATA DETAY:", str(ex))
             flash(f"Yükleme hatası: {ex}", "danger")
     else:
         flash("Lütfen bir dosya seçin.", "warning")
