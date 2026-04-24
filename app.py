@@ -543,26 +543,22 @@ def delete_user(uid):
 # OTOMATİK HATIRLATMA (Cron)
 # ============================================================
 @app.route('/cron/check_reminders')
-@app.route('/cron/9am_check')
 def check_reminders():
-    bugun    = date.today()
-    kayitlar = Entry.query.filter_by(is_active=True).all()
-    gonderr  = 0
-    for e in kayitlar:
-        if not e.expiry_date:
-            continue
-        kalan = (e.expiry_date - bugun).days
-        if kalan in [180, 90, 30, 15, 7, 1]:
-            user = User.query.get(e.user_id)
-            if user:
-                send_mail(user.email,
-                    f"EG Optimal Hatırlatma: {e.title} ({kalan} Gün)",
-                    f"'{e.title}' belgenizin bitmesine {kalan} gün kalmıştır.\n"
-                    f"Firma: {e.firma_adi}\n"
-                    f"Bitiş: {e.expiry_date.strftime('%d.%m.%Y')}\n\nEG Optimal")
-                gonderr += 1
-    return f"OK - {gonderr} hatırlatma gönderildi.", 200
-
+    try:
+        bugun = date.today()
+        kayitlar = Entry.query.filter_by(is_active=True).all()
+        for e in kayitlar:
+            if not e.expiry_date: continue
+            kalan = (e.expiry_date - bugun).days
+            if kalan in [180, 90, 30, 15, 7, 1]:
+                user = User.query.get(e.user_id)
+                if user:
+                    send_mail(user.email,
+                        f"EG Optimal Hatırlatma: {e.title} ({kalan} Gün)",
+                        f"'{e.title}' belgenizin bitmesine {kalan} gün kalmıştır.")
+        return "OK", 200 # Hata almamak için kısa cevap
+    except Exception as e:
+        return str(e), 500
 
 # ============================================================
 if __name__ == '__main__':
