@@ -367,12 +367,12 @@ def upload_belge(entry_id):
             # İmza gerektirmeyen en garanti yöntem
             # 'access_mode' ekleyerek kapıdaki kilidi doğrudan kodla açıyoruz
             # 'type' ve 'access_mode' ikilisi 401 hatasını kökten imha eder
-        res = cloudinary.uploader.unsigned_upload(
-            f, 
-            upload_preset='erhan_preset',
-            type='upload',
-            access_mode='public'
-        )
+            res = cloudinary.uploader.unsigned_upload(
+                f, 
+                upload_preset='erhan_preset',
+                type='upload',
+                access_mode='public'
+            )
             e   = Entry.query.get(entry_id)
             if e and (e.user_id == current_user.id or current_user.email == 'erhanadea@gmail.com'):
                 raw_url = res.get('secure_url')
