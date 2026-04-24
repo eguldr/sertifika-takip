@@ -200,7 +200,7 @@ def logout():
  
  
 @app.route('/kayit', methods=['GET', 'POST'])
-def register():
+def kayit():
     if request.method == 'POST':
         # Robot Kontrolü (Matematiksel reCAPTCHA)
         robot_cevap = request.form.get('robot_kontrol')
