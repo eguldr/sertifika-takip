@@ -242,23 +242,29 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-center">
-                                        <div class="d-flex justify-content-center align-items-center gap-3">
-                                                {# WhatsApp Hatırlatma Butonu #}
+                                        <div class="d-flex flex-column align-items-center gap-1">
+                                            <div class="d-flex justify-content-center align-items-center gap-3">
+                                                {# WhatsApp Butonu #}
                                                 {% if e.whatsapp_no %}
                                                 <a href="https://wa.me/{{ e.whatsapp_no }}?text=Sayın İş Ortağımız, %0A%0AEG Optimal Global Radar üzerinden yapılan kontrolde, sistemdeki '{{ e.firma_adi }}' firmasına ait '{{ e.title }}' belgesinin vadesinin yaklaştığı tespit edilmiştir. %0A%0ALütfen gerekli aksiyonları alınız. %0A%0A Saygılarımızla, %0AEG Optimal" 
-                                                   target="_blank" class="text-success" title="WhatsApp ile Hatırlat">
+                                                   target="_blank" class="text-success" title="WhatsApp ile Hatırlat"
+                                                   onclick="document.getElementById('sent-{{ e.id }}').classList.remove('d-none'); localStorage.setItem('sent-{{ e.id }}', 'true');">
                                                    <i class="fab fa-whatsapp fa-lg"></i>
                                                 </a>
                                                 {% endif %}
 
-                                                {# Mevcut Silme Butonu #}
-                                                <a href="{{ url_for('sil', id=e.id) }}"
-                                                   class="text-danger"
-                                                   onclick="return confirm('Belgeyi silmek istiyor musunuz?')">
+                                                {# Silme Butonu #}
+                                                <a href="{{ url_for('sil', id=e.id) }}" class="text-danger" onclick="return confirm('Belgeyi silmek istiyor musunuz?')">
                                                     <i class="fas fa-trash"></i>
                                                 </a>
+                                            </div>
+        
+                                            {# Statü Notu #}
+                                            <small id="sent-{{ e.id }}" class="text-primary fw-bold d-none" style="font-size: 0.65rem;">
+                                                <i class="fas fa-check-double"></i> İletildi
+                                            </small>
                                         </div>
-                                </td>
+                                    </td>
                                 </tr>
                                 {% else %}
                                 <tr>
