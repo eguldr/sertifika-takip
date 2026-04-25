@@ -184,17 +184,28 @@
                             </span>
                         </td>
 
-                        {# WhatsApp Hatırlat #}
-                        <td class="align-middle text-center">
-    {# kalan <= 30 yaparak butonun tüm kritik (kırmızı) vadelere gelmesini sağlarız #}
-    {% if s.whatsapp_no and kalan <= 30 %}
-    <a href="https://wa.me/{{ s.whatsapp_no }}"
-       class="btn btn-sm btn-outline-success rounded-pill px-3"
-       target="_blank">
-        <i class="fab fa-whatsapp"></i> Hatırlat
-    </a>
+                        {# WhatsApp Hatırlat (Çift Butonlu Sistem) #}
+<td class="align-middle text-center">
+    {% if kalan <= 30 %}
+        <div class="d-flex justify-content-center gap-2">
+            {# 1. Buton: Personele (Zimmetli Sorumluya) - İmza: EG Optimal #}
+            {% if s.danisman_no %}
+            <a href="https://wa.me/{{ s.danisman_no }}?text=Merhaba, %0A%0ATakibindeki '{{ s.title }}' belgesinin süresi 30 günün altına düşmüştür. Lütfen süreci takip ederek gerekli aksiyonları tamamla. %0A%0ABilgi Sistemi: EG Optimal" 
+               target="_blank" class="btn btn-sm btn-outline-info rounded-pill px-2" title="Personele Hatırlat">
+               <i class="fas fa-user-clock"></i>
+            </a>
+            {% endif %}
+
+            {# 2. Buton: Müşteriye (Firma Yetkilisine) - İmza: Danışmanlık Firması #}
+            {% if s.whatsapp_no %}
+            <a href="https://wa.me/{{ s.whatsapp_no }}?text=Sayın Müşterimiz, %0A%0A{{ s.firma_adi }} bünyesinde takip ettiğimiz '{{ s.title }}' belgenizin süresi dolmak üzeredir. Yenileme işlemleri için bizimle iletişime geçmenizi rica ederiz. %0A%0ASaygılarımızla, %0A{{ current_user.company_name if current_user.company_name else 'Hizmet Sağlayıcınız' }}" 
+               target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-2" title="Müşteriye Hatırlat">
+               <i class="fab fa-whatsapp"></i>
+            </a>
+            {% endif %}
+        </div>
     {% else %}
-    <span class="text-muted small">-</span>
+        <span class="text-muted small">-</span>
     {% endif %}
 </td>
 
