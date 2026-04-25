@@ -522,7 +522,14 @@ def admin_panel():
         tum_kullanicilar = odeme_yapmayanlar = tum_belgeler = []
         kullanici_belge = {}
 
-    return render_template('admin.html', users=users, all_entries=all_entries, kullanici_belge=kullanici_belge, odeme_yapmayanlar=odeme_yapmayanlar, bugun=__import__('datetime').datetime.now())
+    return render_template(
+        'admin.html',
+        users             = tum_kullanicilar,
+        all_entries       = tum_belgeler,
+        kullanici_belge   = kullanici_belge,
+        odeme_yapmayanlar = odeme_yapmayanlar,
+        bugun             = date.today()
+    )
 @app.route('/update_payment/<int:uid>', methods=['GET', 'POST'])
 @login_required
 def update_payment(uid):
