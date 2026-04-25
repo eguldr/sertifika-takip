@@ -283,4 +283,18 @@
 
     </div>
 </div>
+... (yukarıdaki diğer kodlar) ...
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Sayfa yüklendiğinde hafızayı kontrol et
+        document.querySelectorAll('[id^="sent-"]').forEach(el => {
+            if (localStorage.getItem(el.id)) {
+                el.classList.remove('d-none'); // Eğer hafızada varsa görünür yap
+            }
+        });
+    });
+    </script>
+
+{% endblock %}
 {% endblock %}
