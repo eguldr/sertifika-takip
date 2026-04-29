@@ -191,8 +191,8 @@ def akilli_analiz_motoru(satir):
         'personel', 'psikoteknik', 'isg', 'mesleki yeterlilik'
     ]
     # Sadece senin personel_kw listendekilere bakar
-if any(k in txt for k in personel_kw):
-    return 'Personel'
+    if any(k in txt for k in personel_kw):
+        return 'Personel'
 
     return ai_ile_analiz_et(txt)
 
