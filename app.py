@@ -160,7 +160,7 @@ def ai_ile_analiz_et(satir_metni):
 def akilli_analiz_motoru(satir):
     """
     Excel satırından kategori tespiti.
-    Öncelik: Araç → Tesis → Ürün → Personel → Genel
+    Öncelik: Araç → Tesis → Ürün → Personel → AI Analiz
     """
     txt = " ".join([str(v) for v in satir]).lower()
 
@@ -190,12 +190,9 @@ def akilli_analiz_motoru(satir):
         'src', 'ehliyet', 'operator', 'operatör', 'sofor', 'şoför',
         'personel', 'psikoteknik', 'isg', 'mesleki yeterlilik'
     ]
-    isim_var = bool(re.search(
-        r'[A-ZÇĞİÖŞÜ][a-zçğışöşü]+\s+[A-ZÇĞİÖŞÜ][a-zçğışöşü]+',
-        " ".join([str(v) for v in satir])
-    ))
-    if any(k in txt for k in personel_kw) or isim_var:
-        return 'Personel'
+    # Sadece senin personel_kw listendekilere bakar
+if any(k in txt for k in personel_kw):
+    return 'Personel'
 
     return ai_ile_analiz_et(txt)
 
