@@ -1,4 +1,8 @@
 import os
+import google.generativeai as genai  # Yeni Eklenen
+# Gemini API Yapılandırması
+genai.configure(api_key=os.environ.get('GEMINI_API_KEY', 'BURAYA_API_ANAHTARINI_YAZ'))
+model = genai.GenerativeModel('gemini-pro')
 import re
 import cloudinary
 import cloudinary.uploader
@@ -139,7 +143,20 @@ def cloudinary_belge_url(url):
 # Jinja2 template'lerinde doğrudan kullanılabilsin
 app.jinja_env.globals['cloudinary_belge_url'] = cloudinary_belge_url
 
-
+def ai_ile_analiz_et(satir_metni):
+    """Manuel kurallar tanıyamazsa devreye giren AI motoru"""
+    prompt = f"""
+    Aşağıdaki Excel verisini analiz et: "{satir_metni}"
+    Bu veriyi şu 4 kategoriden sadece birine yerleştir: 'Arac', 'Tesis', 'Urun', 'Personel'.
+    Cevabın sadece kategori adı olsun, başka açıklama yazma.
+    """
+    try:
+        response = model.generate_content(prompt)
+        cevap = response.text.strip().replace("'", "").replace('"', '')
+        valid_cats = ['Arac', 'Tesis', 'Urun', 'Personel']
+        return cevap if cevap in valid_cats else 'Urun'
+    except:
+        return 'Urun' # Hata olursa güvenli kategori
 def akilli_analiz_motoru(satir):
     """
     Excel satırından kategori tespiti.
@@ -180,7 +197,7 @@ def akilli_analiz_motoru(satir):
     if any(k in txt for k in personel_kw) or isim_var:
         return 'Personel'
 
-    return 'Genel'
+    return ai_ile_analiz_et(txt)
 
 
 # ============================================================
