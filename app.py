@@ -1,4 +1,5 @@
 import os
+import time
 # YENİSİNİ YAZ
 from google import genai
 import os
@@ -144,7 +145,10 @@ def cloudinary_belge_url(url):
 app.jinja_env.globals['cloudinary_belge_url'] = cloudinary_belge_url
 
 def ai_ile_analiz_et(satir_metni):
-    prompt = f"Excel verisi: {satir_metni}. Bu veriyi sadece 'Arac', 'Tesis', 'Urun' veya 'Personel' kategorilerinden birine yerleştir. Sadece kategori adını yaz."
+    # Google'ın ücretsiz limitine takılmamak için 2 saniye bekle
+    time.sleep(2) 
+    
+    prompt = f"Veri: {satir_metni}. Sadece şu kategorilerden birini yaz: Arac, Tesis, Urun, Personel."
     try:
         response = client.models.generate_content(
             model="gemini-2.0-flash", 
@@ -154,7 +158,7 @@ def ai_ile_analiz_et(satir_metni):
         valid_cats = ['Arac', 'Tesis', 'Urun', 'Personel']
         return cevap if cevap in valid_cats else 'Urun'
     except Exception as e:
-        print(f"AI HATASI: {e}")
+        print(f"AI LIMIT VEYA HATA: {e}")
         return 'Urun'
 def akilli_analiz_motoru(satir):
     """
