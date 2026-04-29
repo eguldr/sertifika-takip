@@ -1,8 +1,8 @@
 import os
-import google.generativeai as genai  # Yeni Eklenen
-# Gemini API Yapılandırması
-genai.configure(api_key=os.environ.get('GEMINI_API_KEY', 'BURAYA_API_ANAHTARINI_YAZ'))
-model = genai.GenerativeModel('gemini-pro')
+# YENİSİNİ YAZ
+from google import genai
+import os
+client = genai.Client(api_key=os.environ.get('GEMINI_API_KEY'))
 import re
 import cloudinary
 import cloudinary.uploader
