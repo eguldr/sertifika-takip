@@ -237,6 +237,17 @@
 
                         {# Sil #}
                         <td class="align-middle text-center">
+                            <div class="btn-group me-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                                    <i class="fas fa-folder-open"></i> Taşı
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Arac') }}">Araç & Filo</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Tesis') }}">Tesis & Mekan</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Urun') }}">Üretim & Ürün</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Personel') }}">Personel & SRC</a></li>
+                                </ul>
+                            </div>
                             <a href="{{ url_for('sil', id=s.id, cat=current_cat) }}"
                                class="btn-delete-row"
                                onclick="return confirm('Bu belgeyi silmek istediğinize emin misiniz?')">
