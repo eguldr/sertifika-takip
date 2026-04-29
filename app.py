@@ -167,11 +167,13 @@ def akilli_analiz_motoru(satir):
     """
     txt = " ".join([str(v) for v in satir]).lower()
 
-    if any(k in txt for k in [
-        'plaka', 'scania', 'muayene', 'kamyon', 'ford', 'mercedes',
-        'volvo', 'tir', 'tır', 'araç', 'arac', 'kasko', 'egzoz',
-        'takograf', 'k belgesi', 'vdi 2700''vinc', 'vinç', 'emisyon', 'pul', 'lojistik'
-    ]):
+    # ÖNCE PERSONEL KONTROLÜ (Daha spesifik olduğu için)
+    personel_kw = ['src', 'ehliyet', 'operator', 'operatör', 'sofor', 'şoför', 'personel', 'psikoteknik', 'isg', 'mesleki yeterlilik', 'yetki', 'kullanım', 'kullanim', 'belgesi', 'vinc', 'vinç']
+    if any(k in txt for k in personel_kw):
+        return 'Personel'
+
+    # SONRA ARAÇ KONTROLÜ
+    if any(k in txt for k in ['plaka', 'scania', 'muayene', 'kamyon', 'ford', 'mercedes', 'volvo', 'tir', 'tır', 'araç', 'arac', 'kasko', 'egzoz', 'takograf', 'k belgesi', 'vdi 2700', 'emisyon', 'pul', 'lojistik']):
         return 'Arac'
 
     if any(k in txt for k in [
@@ -189,13 +191,7 @@ def akilli_analiz_motoru(satir):
     ]):
         return 'Urun'
 
-    personel_kw = [
-        'src', 'ehliyet', 'operator', 'operatör', 'sofor', 'şoför', 'yetki', 'kullanım', 'kullanim', 'belgesi'
-        'personel', 'psikoteknik', 'isg', 'mesleki yeterlilik'
-    ]
-    # Sadece senin personel_kw listendekilere bakar
-    if any(k in txt for k in personel_kw):
-        return 'Personel'
+   
 
     return ai_ile_analiz_et(txt)
 
