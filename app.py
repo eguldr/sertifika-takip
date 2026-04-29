@@ -170,14 +170,14 @@ def akilli_analiz_motoru(satir):
     if any(k in txt for k in [
         'plaka', 'scania', 'muayene', 'kamyon', 'ford', 'mercedes',
         'volvo', 'tir', 'tır', 'araç', 'arac', 'kasko', 'egzoz',
-        'takograf', 'k belgesi', 'vdi 2700'
+        'takograf', 'k belgesi', 'vdi 2700''vinc', 'vinç', 'emisyon', 'pul', 'lojistik'
     ]):
         return 'Arac'
 
     if any(k in txt for k in [
         'yangin', 'yangın', 'tüp', 'bina', 'fabrika', 'kapasite',
         'tesis', 'itfaiye', 'ced', 'çed', 'sanayi sicil', 'ruhsat',
-        'atik', 'atık', 'tabs', 'cevre', 'çevre', 'asansor', 'asansör'
+        'atik', 'atık', 'tabs', 'cevre', 'çevre', 'asansor', 'asansör','söndürme', 'sondurme', 'gazlı', 'gazli', 'oda'
     ]):
         return 'Tesis'
 
@@ -185,12 +185,12 @@ def akilli_analiz_motoru(satir):
         'sertifika', 'iso', 'kalite', 'ce belgesi', 'ce işareti',
         'brc', 'fssc', 'atex', 'ukca', 'eac', 'gdp', 'gmp',
         'kalibrasyon', 'basec', 'benor', 'acs', 'adr', 'vde',
-        'haccp', 'helal', 'organik', 'gida', 'gıda'
+        'haccp', 'helal', 'organik', 'gida', 'gıda', 'hijyen', 'gıda', 'gida', 'helal'
     ]):
         return 'Urun'
 
     personel_kw = [
-        'src', 'ehliyet', 'operator', 'operatör', 'sofor', 'şoför',
+        'src', 'ehliyet', 'operator', 'operatör', 'sofor', 'şoför', 'yetki', 'kullanım', 'kullanim', 'belgesi'
         'personel', 'psikoteknik', 'isg', 'mesleki yeterlilik'
     ]
     # Sadece senin personel_kw listendekilere bakar
