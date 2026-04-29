@@ -11,3 +11,4 @@ itsdangerous==2.1.2
 requests
 cloudinary
 python-dotenv
+google-generativeai
