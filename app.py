@@ -159,7 +159,7 @@ def ai_ile_analiz_et(satir_metni):
         return cevap if cevap in valid_cats else 'Urun'
     except Exception as e:
         print(f"AI LIMIT VEYA HATA: {e}")
-        return 'Urun'
+        return 'Genel'
 def akilli_analiz_motoru(satir):
     """
     Excel satırından kategori tespiti.
