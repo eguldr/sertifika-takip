@@ -613,6 +613,14 @@ def check_reminders():
 
 
 # ============================================================
+@app.route('/kategori_guncelle/<int:id>/<string:yeni_kat>')
+@login_required
+def kategori_guncelle(id, yeni_kat):
+    item = Entry.query.get_or_404(id)
+    item.category = yeni_kat
+    db.session.commit()
+    flash(f'Belge başarıyla {yeni_kat} kategorisine taşındı.', 'success')
+    return redirect(url_for('dashboard'))
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
