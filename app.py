@@ -144,19 +144,18 @@ def cloudinary_belge_url(url):
 app.jinja_env.globals['cloudinary_belge_url'] = cloudinary_belge_url
 
 def ai_ile_analiz_et(satir_metni):
-    """Manuel kurallar tanıyamazsa devreye giren AI motoru"""
-    prompt = f"""
-    Aşağıdaki Excel verisini analiz et: "{satir_metni}"
-    Bu veriyi şu 4 kategoriden sadece birine yerleştir: 'Arac', 'Tesis', 'Urun', 'Personel'.
-    Cevabın sadece kategori adı olsun, başka açıklama yazma.
-    """
+    prompt = f"Excel verisi: {satir_metni}. Bu veriyi sadece 'Arac', 'Tesis', 'Urun' veya 'Personel' kategorilerinden birine yerleştir. Sadece kategori adını yaz."
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model="gemini-2.0-flash", 
+            contents=prompt
+        )
         cevap = response.text.strip().replace("'", "").replace('"', '')
         valid_cats = ['Arac', 'Tesis', 'Urun', 'Personel']
         return cevap if cevap in valid_cats else 'Urun'
-    except:
-        return 'Urun' # Hata olursa güvenli kategori
+    except Exception as e:
+        print(f"AI HATASI: {e}")
+        return 'Urun'
 def akilli_analiz_motoru(satir):
     """
     Excel satırından kategori tespiti.
