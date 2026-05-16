@@ -26,12 +26,12 @@ app = Flask(__name__)
 app.config.update(
     SECRET_KEY=os.environ.get('SECRET_KEY', 'eg_optimal_ultra_master_final_v2200_2026'),
     SECURITY_PASSWORD_SALT='eg_super_salt_secure_99_pro',
-    MAIL_SERVER='smtp.gmail.com',
-    MAIL_PORT=587,
-    MAIL_USE_TLS=True,
-    MAIL_USERNAME=os.environ.get('MAIL_USERNAME', 'erhanadea@gmail.com'),
-    MAIL_PASSWORD=os.environ.get('MAIL_PASSWORD', 'bwdxhwamvoggqdko'),
-    MAIL_DEFAULT_SENDER=os.environ.get('MAIL_USERNAME', 'erhanadea@gmail.com')
+    MAIL_SERVER=os.environ.get('MAIL_SERVER', 'smtp-relay.brevo.com'),
+    MAIL_PORT=int(os.environ.get('MAIL_PORT', 587)),
+    MAIL_USE_TLS=os.environ.get('MAIL_USE_TLS', 'True') == 'True',
+    MAIL_USERNAME=os.environ.get('MAIL_USERNAME', ''),
+    MAIL_PASSWORD=os.environ.get('MAIL_PASSWORD', ''),
+    MAIL_DEFAULT_SENDER=os.environ.get('MAIL_USERNAME', '')
 )
 
 uri = os.environ.get('DATABASE_URL', 'sqlite:///test.db')
