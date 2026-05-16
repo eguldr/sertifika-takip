@@ -118,10 +118,20 @@ def setup_db():
 # ============================================================
 def send_mail(to, subject, body):
     try:
-        msg = Message(subject, recipients=[to])
-        msg.body = body
-        mail.send(msg)
-        return True
+        response = requests.post(
+            "https://api.brevo.com/v3/smtp/email",
+            headers={
+                "api-key": os.environ.get("BREVO_API_KEY"),
+                "Content-Type": "application/json"
+            },
+            json={
+                "sender": {"name": "EG Optimal", "email": "eguldr@gmail.com"},
+                "to": [{"email": to}],
+                "subject": subject,
+                "textContent": body
+            }
+        )
+        return response.status_code == 201
     except Exception as e:
         print(f"Mail hatasi: {e}")
         return False
