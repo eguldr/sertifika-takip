@@ -1,13 +1,16 @@
 import os
-import time
-import hashlib
-from google import genai
-client = genai.Client(api_key=os.environ.get('GEMINI_API_KEY'))
 import re
+import time
+import json
+import base64
+import hashlib
+
 import cloudinary
 import cloudinary.uploader
 import requests
 import pandas as pd
+
+from google import genai
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -37,6 +40,8 @@ ts            = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+client = genai.Client(api_key=os.environ.get('GEMINI_API_KEY'))
+
 cloudinary.config(
     cloud_name='dh2pefkko',
     api_key='626365126779241',
@@ -44,23 +49,24 @@ cloudinary.config(
     secure=True
 )
 
-BREVO_API_KEY    = os.environ.get('BREVO_API_KEY', '')
+BREVO_API_KEY     = os.environ.get('BREVO_API_KEY', '')
 BREVO_SENDER_MAIL = os.environ.get('BREVO_SENDER_MAIL', 'eguldr@gmail.com')
 BREVO_SENDER_NAME = 'EG Optimal'
+
 
 # ============================================================
 # VERİTABANI MODELLERİ
 # ============================================================
 class User(UserMixin, db.Model):
-    id              = db.Column(db.Integer, primary_key=True)
-    email           = db.Column(db.String(100), unique=True, nullable=False)
-    password        = db.Column(db.String(256), nullable=False)
-    company_name    = db.Column(db.String(100), default='')
-    is_confirmed    = db.Column(db.Boolean, default=False)   # E-posta doğrulama
-    is_paid         = db.Column(db.Boolean, default=False)
-    admin_note      = db.Column(db.Text, default='')
-    kvkk_onay       = db.Column(db.Boolean, default=False)
-    sektor          = db.Column(db.String(50), default='genel')  # lojistik / gida / danismanlik / genel
+    id           = db.Column(db.Integer, primary_key=True)
+    email        = db.Column(db.String(100), unique=True, nullable=False)
+    password     = db.Column(db.String(256), nullable=False)
+    company_name = db.Column(db.String(100), default='')
+    is_confirmed = db.Column(db.Boolean, default=False)
+    is_paid      = db.Column(db.Boolean, default=False)
+    admin_note   = db.Column(db.Text, default='')
+    kvkk_onay   = db.Column(db.Boolean, default=False)
+    sektor       = db.Column(db.String(50), default='genel')
 
 
 class Entry(db.Model):
@@ -75,7 +81,7 @@ class Entry(db.Model):
     danisman_no = db.Column(db.String(20))
     note        = db.Column(db.Text)
     is_active   = db.Column(db.Boolean, default=True)
-    dosya_hash  = db.Column(db.String(64))  # Delta işleme için
+    dosya_hash  = db.Column(db.String(64))
 
 
 @login_manager.user_loader
@@ -112,10 +118,9 @@ def setup_db():
 
 
 # ============================================================
-# YARDIMCI FONKSİYONLAR
+# YARDIMCI FONKSIYONLAR
 # ============================================================
 def send_mail(to, subject, body):
-    """Brevo HTTP API üzerinden mail gönder (SMTP port sorunu yok)"""
     try:
         response = requests.post(
             "https://api.brevo.com/v3/smtp/email",
@@ -131,7 +136,7 @@ def send_mail(to, subject, body):
             },
             timeout=15
         )
-        print(f"Brevo yanit: {response.status_code} - {response.text[:200]}")
+        print(f"Brevo yanit: {response.status_code}")
         return response.status_code == 201
     except Exception as e:
         print(f"Mail hatasi: {e}")
@@ -139,17 +144,14 @@ def send_mail(to, subject, body):
 
 
 def send_verification_mail(email, token):
-    """E-posta doğrulama maili gönder"""
     verify_url = url_for('verify_email', token=token, _external=True)
     body = (
         f"Merhaba,\n\n"
-        f"EG Optimal'e kayıt olduğunuz için teşekkürler!\n\n"
-        f"Hesabınızı aktifleştirmek için aşağıdaki bağlantıya tıklayın:\n\n"
-        f"{verify_url}\n\n"
-        f"Bu bağlantı 24 saat geçerlidir.\n\n"
-        f"Saygılarımızla,\nEG Optimal Ekibi"
+        f"EG Optimal'e kayit oldugunuz icin tesekkurler!\n\n"
+        f"Hesabinizi aktifleştirmek icin:\n\n{verify_url}\n\n"
+        f"Bu baglanti 24 saat gecerlidir.\n\nEG Optimal Ekibi"
     )
-    return send_mail(email, "EG Optimal - E-posta Doğrulama", body)
+    return send_mail(email, "EG Optimal - E-posta Dogrulama", body)
 
 
 def cloudinary_belge_url(url):
@@ -167,7 +169,7 @@ app.jinja_env.globals['cloudinary_belge_url'] = cloudinary_belge_url
 
 def ai_ile_analiz_et(satir_metni):
     time.sleep(2)
-    prompt = f"Veri: {satir_metni}. Sadece şu kategorilerden birini yaz: Arac, Tesis, Urun, Personel."
+    prompt = f"Veri: {satir_metni}. Sadece su kategorilerden birini yaz: Arac, Tesis, Urun, Personel."
     try:
         response = client.models.generate_content(
             model="gemini-2.0-flash",
@@ -177,41 +179,35 @@ def ai_ile_analiz_et(satir_metni):
         valid_cats = ['Arac', 'Tesis', 'Urun', 'Personel']
         return cevap if cevap in valid_cats else 'Urun'
     except Exception as e:
-        print(f"AI LIMIT VEYA HATA: {e}")
+        print(f"AI HATA: {e}")
         return 'Genel'
 
 
 def akilli_analiz_motoru(satir):
     txt = " ".join([str(v) for v in satir]).lower()
 
-    personel_kw = ['src', 'ehliyet', 'operator', 'operatör', 'sofor', 'şoför',
-                   'personel', 'psikoteknik', 'isg', 'mesleki yeterlilik',
-                   'yetki', 'kullanım', 'kullanim', 'belgesi', 'vinc', 'vinç']
+    personel_kw = ['src', 'ehliyet', 'operator', 'sofor', 'personel',
+                   'psikoteknik', 'isg', 'yetki', 'kullanim', 'vinc']
     if any(k in txt for k in personel_kw):
         return 'Personel'
 
-    if any(k in txt for k in ['plaka', 'scania', 'muayene', 'kamyon', 'ford',
-                               'mercedes', 'volvo', 'tir', 'tır', 'araç', 'arac',
-                               'kasko', 'egzoz', 'takograf', 'k belgesi', 'vdi 2700',
-                               'emisyon', 'pul', 'lojistik']):
+    if any(k in txt for k in ['plaka', 'muayene', 'kamyon', 'araç', 'arac',
+                               'kasko', 'emisyon', 'takograf', 'lojistik']):
         return 'Arac'
 
-    if any(k in txt for k in ['yangin', 'yangın', 'tüp', 'bina', 'fabrika', 'kapasite',
-                               'tesis', 'itfaiye', 'ced', 'çed', 'sanayi sicil', 'ruhsat',
-                               'atik', 'atık', 'tabs', 'cevre', 'çevre', 'asansor', 'asansör',
-                               'söndürme', 'sondurme', 'gazlı', 'gazli', 'oda']):
+    if any(k in txt for k in ['yangin', 'tesis', 'itfaiye', 'ruhsat',
+                               'cevre', 'asansor', 'sondurme']):
         return 'Tesis'
 
-    if any(k in txt for k in ['sertifika', 'iso', 'kalite', 'ce belgesi', 'brc', 'fssc',
-                               'atex', 'ukca', 'eac', 'gdp', 'gmp', 'kalibrasyon',
-                               'haccp', 'helal', 'organik', 'gida', 'gıda', 'hijyen']):
+    if any(k in txt for k in ['sertifika', 'iso', 'kalite', 'haccp',
+                               'helal', 'organik', 'gida', 'hijyen']):
         return 'Urun'
 
     return ai_ile_analiz_et(txt)
 
 
 # ============================================================
-# AUTH — KAYIT, GİRİŞ, DOĞRULAMA
+# AUTH
 # ============================================================
 @app.route('/')
 def index():
@@ -225,13 +221,12 @@ def login():
     if request.method == 'POST':
         u = User.query.filter_by(email=request.form.get('email', '').strip()).first()
         if u and check_password_hash(u.password, request.form.get('password', '')):
-            # Admin her zaman girebilir
             if not u.is_confirmed and u.email != 'erhanadea@gmail.com':
-                flash("Lütfen önce e-postanızı doğrulayın. Gelen kutunuzu kontrol edin.", "warning")
+                flash("Lutfen once e-postanizi dogrulayin.", "warning")
                 return redirect(url_for('login'))
             login_user(u)
             return redirect(url_for('dashboard'))
-        flash("E-posta veya şifre hatalı.", "danger")
+        flash("E-posta veya sifre hatali.", "danger")
     return render_template('login.html')
 
 
@@ -247,16 +242,14 @@ def logout():
 @app.route('/kayit', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        # Robot kontrolü
         robot_cevap = request.form.get('robot_kontrol', '').strip()
         if robot_cevap != '5':
-            flash("Robot kontrolü başarısız. 2 + 3 = 5 olmalıdır.", "danger")
+            flash("Robot kontrolu basarisiz. 2 + 3 = 5 olmalidir.", "danger")
             return redirect(url_for('register'))
 
-        # KVKK kontrolü
         kvkk = request.form.get('kvkk_onay')
         if not kvkk:
-            flash("Devam edebilmek için KVKK metnini onaylamanız gerekmektedir.", "danger")
+            flash("KVKK metnini onaylamaniz gerekmektedir.", "danger")
             return redirect(url_for('register'))
 
         email    = request.form.get('email', '').strip()
@@ -264,29 +257,28 @@ def register():
         sektor   = request.form.get('sektor', 'genel')
 
         if User.query.filter_by(email=email).first():
-            flash("Bu e-posta zaten kayıtlı.", "warning")
+            flash("Bu e-posta zaten kayitli.", "warning")
             return redirect(url_for('register'))
 
         u = User(
             email        = email,
             password     = generate_password_hash(password),
             company_name = request.form.get('company_name', ''),
-            is_confirmed = False,  # E-posta doğrulanana kadar False
+            is_confirmed = False,
             is_paid      = False,
-            kvkk_onay    = True,
+            kvkk_onay   = True,
             sektor       = sektor
         )
         db.session.add(u)
         db.session.commit()
 
-        # Doğrulama maili gönder
         token = ts.dumps(email, salt='email-confirm-key')
         mail_gitti = send_verification_mail(email, token)
 
         if mail_gitti:
-            flash("Kayıt başarılı! E-postanıza doğrulama bağlantısı gönderdik. Lütfen gelen kutunuzu kontrol edin.", "success")
+            flash("Kayit basarili! E-postaniza dogrulama baglantisi gonderildi.", "success")
         else:
-            flash("Kayıt başarılı ancak doğrulama maili gönderilemedi. Lütfen bizimle iletişime geçin.", "warning")
+            flash("Kayit basarili ancak dogrulama maili gonderilemedi. Bize ulasin.", "warning")
 
         return redirect(url_for('login'))
 
@@ -295,30 +287,17 @@ def register():
 
 @app.route('/verify_email/<token>')
 def verify_email(token):
-    """E-posta doğrulama linki"""
     try:
-        email = ts.loads(token, salt='email-confirm-key', max_age=86400)  # 24 saat
+        email = ts.loads(token, salt='email-confirm-key', max_age=86400)
     except Exception:
-        flash("Doğrulama linki geçersiz veya süresi dolmuş.", "danger")
+        flash("Dogrulama linki gecersiz veya suresi dolmus.", "danger")
         return redirect(url_for('login'))
 
     user = User.query.filter_by(email=email).first()
     if user:
         user.is_confirmed = True
         db.session.commit()
-        flash("E-postanız doğrulandı! Artık giriş yapabilirsiniz.", "success")
-    return redirect(url_for('login'))
-
-
-@app.route('/resend_verification', methods=['POST'])
-def resend_verification():
-    """Doğrulama mailini tekrar gönder"""
-    email = request.form.get('email', '').strip()
-    user = User.query.filter_by(email=email).first()
-    if user and not user.is_confirmed:
-        token = ts.dumps(email, salt='email-confirm-key')
-        send_verification_mail(email, token)
-    flash("Doğrulama maili tekrar gönderildi.", "info")
+        flash("E-postaniz dogrulandi! Giris yapabilirsiniz.", "success")
     return redirect(url_for('login'))
 
 
@@ -330,10 +309,9 @@ def forgot_password():
         if user:
             token       = ts.dumps(email, salt='recover-key')
             recover_url = url_for('reset_password', token=token, _external=True)
-            send_mail(email, "Şifre Sıfırlama - EG Optimal",
-                      f"Merhaba,\n\nŞifrenizi sıfırlamak için:\n\n{recover_url}\n\n"
-                      f"Bu link 30 dakika geçerlidir.\n\nEG Optimal Ekibi")
-        flash("Kayıtlı e-postanıza sıfırlama bağlantısı gönderildi.", "info")
+            send_mail(email, "Sifre Sifirlama - EG Optimal",
+                      f"Sifrenizi sifirlamak icin:\n\n{recover_url}\n\n30 dakika gecerlidir.\n\nEG Optimal")
+        flash("Kayitli e-postaniza sifirlama baglantisi gonderildi.", "info")
         return redirect(url_for('login'))
     return render_template('forgot_password.html')
 
@@ -343,14 +321,14 @@ def reset_password(token):
     try:
         email = ts.loads(token, salt='recover-key', max_age=1800)
     except Exception:
-        flash("Link geçersiz veya süresi dolmuş.", "danger")
+        flash("Link gecersiz veya suresi dolmus.", "danger")
         return redirect(url_for('forgot_password'))
     if request.method == 'POST':
         user = User.query.filter_by(email=email).first()
         if user:
             user.password = generate_password_hash(request.form.get('password', ''))
             db.session.commit()
-            flash("Şifreniz güncellendi.", "success")
+            flash("Sifreniz guncellendi.", "success")
             return redirect(url_for('login'))
     return render_template('reset_password.html', token=token)
 
@@ -373,7 +351,7 @@ def dashboard(cat=None):
     except Exception as e:
         print(f"Dashboard sorgu hatasi: {e}")
         liste = []
-        flash("Veri yüklenirken hata oluştu.", "danger")
+        flash("Veri yuklenirken hata olustu.", "danger")
 
     return render_template('dashboard.html',
         sertifikalar = liste,
@@ -397,14 +375,14 @@ def sertifikalar(cat):
 def ekle(cat):
     if request.method == 'POST':
         title = request.form.get('title', '').strip()
-        if title == 'LİSTEDE YOK / MANUEL YAZ':
+        if title == 'LISTEDE YOK / MANUEL YAZ':
             title = request.form.get('manual_title', '').strip()
 
         exp_str = request.form.get('expiry_date', '')
         try:
             expiry = datetime.strptime(exp_str, '%Y-%m-%d').date()
         except (ValueError, TypeError):
-            flash('Geçerli bir tarih giriniz.', 'danger')
+            flash('Gecerli bir tarih giriniz.', 'danger')
             return render_template('ekle.html', cat=cat)
 
         try:
@@ -421,17 +399,17 @@ def ekle(cat):
             )
             db.session.add(yeni)
             db.session.commit()
-            flash(f'{title} başarıyla takibe alındı!', 'success')
+            flash(f'{title} basariyla takibe alindi!', 'success')
             return redirect(url_for('dashboard', cat=cat))
         except Exception as e:
             db.session.rollback()
-            flash(f'Kayıt hatası: {str(e)}', 'danger')
+            flash(f'Kayit hatasi: {str(e)}', 'danger')
 
     return render_template('ekle.html', cat=cat)
 
 
 # ============================================================
-# SİL
+# SIL
 # ============================================================
 @app.route('/sil/<int:id>')
 @app.route('/delete_entry/<int:id>')
@@ -443,16 +421,16 @@ def sil(id):
         if e and (e.user_id == current_user.id or current_user.email == 'erhanadea@gmail.com'):
             e.is_active = False
             db.session.commit()
-            flash("Kayıt silindi.", "success")
+            flash("Kayit silindi.", "success")
         else:
-            flash("Kayıt bulunamadı veya yetkiniz yok.", "danger")
+            flash("Kayit bulunamadi veya yetkiniz yok.", "danger")
     except Exception as ex:
-        flash(f"Silme hatası: {ex}", "danger")
+        flash(f"Silme hatasi: {ex}", "danger")
     return redirect(url_for('dashboard', cat=cat))
 
 
 # ============================================================
-# CLOUDINARY BELGE YÜKLEME
+# CLOUDINARY BELGE YUKLEME
 # ============================================================
 @app.route('/upload_belge/<int:entry_id>', methods=['POST'])
 @login_required
@@ -470,29 +448,29 @@ def upload_belge(entry_id):
             if e and (e.user_id == current_user.id or current_user.email == 'erhanadea@gmail.com'):
                 raw_url = res.get('secure_url')
                 if not raw_url:
-                    raise Exception("Cloudinary URL alınamadı")
+                    raise Exception("Cloudinary URL alinamadi")
                 e.belge_url = cloudinary_belge_url(raw_url)
                 db.session.commit()
-                flash("Belge başarıyla yüklendi.", "success")
+                flash("Belge basariyla yuklendi.", "success")
             else:
-                flash("Yetki hatası.", "danger")
+                flash("Yetki hatasi.", "danger")
         except Exception as ex:
             print(f"CLOUDINARY HATA: {ex}")
-            flash(f"Yükleme hatası: {ex}", "danger")
+            flash(f"Yukleme hatasi: {ex}", "danger")
     else:
-        flash("Lütfen bir dosya seçin.", "warning")
+        flash("Lutfen bir dosya secin.", "warning")
     return redirect(url_for('dashboard', cat=cat))
 
 
 # ============================================================
-# EXCEL İÇE AKTAR — Hibrit Akıllı Analiz
+# EXCEL ICE AKTAR
 # ============================================================
 @app.route('/import_excel', methods=['POST'])
 @login_required
 def import_excel():
     f = request.files.get('excel_file')
     if not f:
-        flash("Dosya seçilmedi.", "warning")
+        flash("Dosya secilmedi.", "warning")
         return redirect(url_for('dashboard'))
     try:
         Entry.query.filter_by(user_id=current_user.id).update({'is_active': False})
@@ -536,15 +514,170 @@ def import_excel():
             eklenen += 1
 
         db.session.commit()
-        flash(f"Excel başarıyla yüklendi. {eklenen} kayıt eklendi.", "success")
+        flash(f"Excel basariyla yuklendi. {eklenen} kayit eklendi.", "success")
     except Exception as e:
         db.session.rollback()
-        flash(f"Excel hatası: {str(e)}", "danger")
+        flash(f"Excel hatasi: {str(e)}", "danger")
     return redirect(url_for('dashboard'))
 
 
 # ============================================================
-# EXCEL DIŞA AKTAR
+# PDF TOPLU OKUMA MOTORU - Gemini Multimodal
+# ============================================================
+@app.route('/import_pdf', methods=['POST'])
+@login_required
+def import_pdf():
+    dosyalar = request.files.getlist('pdf_files')
+    if not dosyalar or all(f.filename == '' for f in dosyalar):
+        flash("Lutfen en az bir PDF veya gorsel secin.", "warning")
+        return redirect(url_for('dashboard'))
+
+    eklenen = 0
+    hatali  = 0
+
+    for dosya in dosyalar:
+        if not dosya or dosya.filename == '':
+            continue
+
+        try:
+            icerik = dosya.read()
+            if len(icerik) == 0:
+                continue
+
+            dosya_hash = hashlib.md5(icerik).hexdigest()
+            mevcut = Entry.query.filter_by(
+                user_id=current_user.id,
+                dosya_hash=dosya_hash,
+                is_active=True
+            ).first()
+            if mevcut:
+                print(f"Atlandi (zaten var): {dosya.filename}")
+                continue
+
+            b64  = base64.standard_b64encode(icerik).decode('utf-8')
+            fname = dosya.filename.lower()
+            if fname.endswith('.pdf'):
+                mime = 'application/pdf'
+            elif fname.endswith('.png'):
+                mime = 'image/png'
+            else:
+                mime = 'image/jpeg'
+
+            prompt = (
+                "Bu belgeyi dikkatle incele ve asagidaki bilgileri cikar. "
+                "Sadece belgede ACIKCA yazan bilgileri yaz. "
+                "Goremediklerini null yaz.\n\n"
+                "Yaniti SADECE su JSON formatinda ver, baska hicbir sey yazma:\n"
+                '{\n'
+                '  "belge_turu": "Belgenin tam adi",\n'
+                '  "kategori": "Sadece: Arac, Personel, Tesis veya Urun",\n'
+                '  "ad_soyad": "Kisi adi (yoksa null)",\n'
+                '  "tc_no": "TC kimlik no (yoksa null)",\n'
+                '  "plaka": "Arac plakasi (yoksa null)",\n'
+                '  "firma_adi": "Firma adi (yoksa null)",\n'
+                '  "bitis_tarihi": "GG.AA.YYYY formatinda (yoksa null)"\n'
+                '}'
+            )
+
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=[{
+                    "parts": [
+                        {"inline_data": {"mime_type": mime, "data": b64}},
+                        {"text": prompt}
+                    ]
+                }]
+            )
+
+            yanit = response.text.strip()
+            yanit = yanit.replace('```json', '').replace('```', '').strip()
+
+            try:
+                veri = json.loads(yanit)
+            except json.JSONDecodeError:
+                print(f"JSON parse hatasi ({dosya.filename}): {yanit[:200]}")
+                hatali += 1
+                continue
+
+            expiry = None
+            bitis  = veri.get('bitis_tarihi')
+            if bitis and bitis != 'null' and bitis is not None:
+                for fmt in ['%d.%m.%Y', '%Y-%m-%d', '%d/%m/%Y']:
+                    try:
+                        expiry = datetime.strptime(str(bitis), fmt).date()
+                        break
+                    except Exception:
+                        continue
+
+            if not expiry:
+                expiry = date.today() + timedelta(days=365)
+
+            kat = veri.get('kategori', 'Urun')
+            if kat not in ['Arac', 'Personel', 'Tesis', 'Urun']:
+                kat = akilli_analiz_motoru([veri.get('belge_turu', '')])
+
+            notlar = []
+            if veri.get('ad_soyad') and veri.get('ad_soyad') != 'null':
+                notlar.append(str(veri['ad_soyad']))
+            if veri.get('tc_no') and veri.get('tc_no') != 'null':
+                notlar.append(f"TC: {veri['tc_no']}")
+            if veri.get('plaka') and veri.get('plaka') != 'null':
+                notlar.append(f"Plaka: {veri['plaka']}")
+            not_str = ' | '.join(notlar) if notlar else dosya.filename
+
+            belge_url = None
+            try:
+                dosya.seek(0)
+                res = cloudinary.uploader.unsigned_upload(
+                    dosya,
+                    upload_preset='erhan_preset',
+                    resource_type='raw'
+                )
+                raw_url = res.get('secure_url', '')
+                belge_url = cloudinary_belge_url(raw_url) if raw_url else None
+            except Exception as ce:
+                print(f"Cloudinary hatasi ({dosya.filename}): {ce}")
+
+            db.session.add(Entry(
+                user_id     = current_user.id,
+                category    = kat,
+                title       = veri.get('belge_turu') or dosya.filename,
+                firma_adi   = veri.get('firma_adi') or '',
+                expiry_date = expiry,
+                note        = not_str,
+                belge_url   = belge_url,
+                dosya_hash  = dosya_hash,
+                is_active   = True
+            ))
+            eklenen += 1
+            time.sleep(1.5)
+
+        except Exception as e:
+            print(f"PDF isleme hatasi ({dosya.filename}): {e}")
+            hatali += 1
+            continue
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Veritabani hatasi: {e}", "danger")
+        return redirect(url_for('dashboard'))
+
+    if eklenen > 0 and hatali == 0:
+        flash(f"{eklenen} belge basariyla okundu ve sisteme eklendi!", "success")
+    elif eklenen > 0:
+        flash(f"{eklenen} belge eklendi, {hatali} belge okunamadi.", "warning")
+    elif hatali > 0:
+        flash("Hicbir belge okunamadi. PDF kalitesini kontrol edin.", "danger")
+    else:
+        flash("Tum dosyalar zaten sistemde mevcut.", "info")
+
+    return redirect(url_for('dashboard'))
+
+
+# ============================================================
+# EXCEL DISA AKTAR
 # ============================================================
 @app.route('/export_excel')
 @login_required
@@ -558,10 +691,10 @@ def export_excel():
         data = [{
             "Kategori":     e.category,
             "Firma":        e.firma_adi,
-            "Belge Adı":    e.title,
+            "Belge Adi":    e.title,
             "WhatsApp":     e.whatsapp_no,
             "Not":          e.note,
-            "Bitiş Tarihi": e.expiry_date.strftime('%d.%m.%Y') if e.expiry_date else "",
+            "Bitis Tarihi": e.expiry_date.strftime('%d.%m.%Y') if e.expiry_date else "",
             "Belge URL":    e.belge_url or ""
         } for e in entries]
 
@@ -574,449 +707,12 @@ def export_excel():
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             as_attachment=True, download_name="EG_Optimal_Rapor.xlsx")
     except Exception as e:
-        flash(f"Dışa aktarım hatası: {e}", "danger")
+        flash(f"Disa aktarim hatasi: {e}", "danger")
         return redirect(url_for('dashboard'))
-{% extends "base.html" %}
-{% block content %}
-<style>
-    :root {
-        --navy: #1a1c4b;
-        --accent: #c5a059;
-        --danger: #dc2626;
-        --warn: #d97706;
-        --success: #059669;
-    }
-    body { background: #f0f4f8; }
-
-    # KRITIK BANNER
-    .critical-banner {
-        background: linear-gradient(135deg, #fff 0%, #fff5f5 100%);
-        border-left: 6px solid var(--danger);
-        border-radius: 12px;
-        padding: 16px 24px;
-        margin-bottom: 24px;
-        display: flex; align-items: center; justify-content: space-between;
-        box-shadow: 0 4px 20px rgba(220,38,38,0.12);
-        animation: pulse-border 2s infinite;
-    }
-    @keyframes pulse-border {
-        0%,100% { box-shadow: 0 4px 20px rgba(220,38,38,0.12); }
-        50%      { box-shadow: 0 4px 28px rgba(220,38,38,0.28); }
-    }
-    .critical-banner .c-text { color: var(--danger); font-weight: 700; font-size: 1rem; }
-
-    /* ── SAYFA BAŞLIĞI ── */
-    .page-header {
-        display: flex; justify-content: space-between; align-items: center;
-        margin-bottom: 24px; flex-wrap: wrap; gap: 12px;
-    }
-    .page-header h2 { color: var(--navy); font-weight: 800; font-size: 1.6rem; margin: 0; }
-    .page-header .sub { color: #94a3b8; font-size: 0.82rem; margin-top: 2px; }
-
-    /* ── KPI KARTLARI ── */
-    .kpi-card {
-        background: white; border-radius: 14px; padding: 20px 24px;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-        border-top: 4px solid transparent;
-        cursor: pointer; transition: all 0.25s;
-        position: relative; overflow: hidden;
-    }
-    .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
-    .kpi-card::after {
-        content: ''; position: absolute; right: -12px; top: -12px;
-        width: 70px; height: 70px; border-radius: 50%;
-        background: currentColor; opacity: 0.04;
-    }
-    .kpi-card.danger  { border-top-color: var(--danger); }
-    .kpi-card.warning { border-top-color: var(--warn); }
-    .kpi-card.primary { border-top-color: var(--navy); }
-    .kpi-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-    .kpi-value { font-size: 2.4rem; font-weight: 800; line-height: 1; }
-    .kpi-card.danger  .kpi-label, .kpi-card.danger  .kpi-value { color: var(--danger); }
-    .kpi-card.warning .kpi-label, .kpi-card.warning .kpi-value { color: var(--warn); }
-    .kpi-card.primary .kpi-label, .kpi-card.primary .kpi-value { color: var(--navy); }
-
-    /* ── TABLO ── */
-    .data-card {
-        background: white; border-radius: 14px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.07); overflow: hidden;
-    }
-    .data-card .table { margin: 0; }
-    .data-card .table thead th {
-        background: var(--navy); color: white; font-size: 0.68rem;
-        text-transform: uppercase; letter-spacing: 1.2px;
-        padding: 14px 16px; border: none; font-weight: 600;
-    }
-    .data-card .table tbody td { padding: 14px 16px; vertical-align: middle; border-color: #f1f5f9; }
-    .data-card .table tbody tr:hover { background: #f8fafc; }
-
-    .belge-title { font-weight: 700; color: var(--navy); font-size: 0.9rem; }
-    .belge-meta  { color: #94a3b8; font-size: 0.75rem; margin-top: 2px; }
-
-    .badge-days {
-        display: inline-block; padding: 5px 14px; border-radius: 20px;
-        font-size: 0.78rem; font-weight: 700;
-    }
-    .badge-days.danger  { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
-    .badge-days.warning { background: #fffbeb; color: var(--warn);   border: 1px solid #fde68a; }
-    .badge-days.success { background: #f0fdf4; color: var(--success); border: 1px solid #bbf7d0; }
-
-    .btn-action { border: none; background: none; padding: 6px 8px; border-radius: 8px; transition: 0.2s; }
-    .btn-action:hover { background: #f1f5f9; }
-    .btn-action.danger-hover:hover { background: #fef2f2; color: var(--danger); }
-
-    /* ── PDF YÜKLEME ALANI ── */
-    .upload-zone {
-        border: 2px dashed #cbd5e1; border-radius: 12px;
-        padding: 32px; text-align: center; cursor: pointer;
-        transition: all 0.2s; background: #f8fafc;
-    }
-    .upload-zone:hover, .upload-zone.dragover {
-        border-color: var(--navy); background: #f0f4ff;
-    }
-    .upload-zone i { font-size: 2.5rem; color: #94a3b8; margin-bottom: 12px; display: block; }
-
-    /* ── PROGRESS BAR ── */
-    .progress-overlay {
-        display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(15,16,53,0.7); z-index: 9999;
-        align-items: center; justify-content: center; flex-direction: column;
-    }
-    .progress-overlay.show { display: flex; }
-    .progress-box {
-        background: white; border-radius: 16px; padding: 40px 48px;
-        text-align: center; min-width: 320px; box-shadow: 0 24px 60px rgba(0,0,0,0.3);
-    }
-</style>
-
-<!-- ═══ PROGRESS OVERLAY ═══ -->
-<div class="progress-overlay" id="pdfProgress">
-    <div class="progress-box">
-        <div style="font-size: 2.5rem; margin-bottom: 16px;">🤖</div>
-        <h5 style="color:#1a1c4b; font-weight:800;" id="progressTitle">PDF'ler Analiz Ediliyor</h5>
-        <p class="text-muted small" id="progressSub">Gemini AI belgelerinizi okuyor, lütfen bekleyin...</p>
-        <div class="progress mt-3" style="height: 10px; border-radius: 10px;">
-            <div class="progress-bar progress-bar-striped progress-bar-animated"
-                 id="progressBar" style="width: 0%; background: #1a1c4b;"></div>
-        </div>
-        <p class="text-muted small mt-2" id="progressCount"></p>
-    </div>
-</div>
-
-<div class="container-fluid py-2">
-
-    {# ── KRİTİK UYARI ── #}
-    {% set bu_hafta = sertifikalar | selectattr('expiry_date', 'le', bugun + timedelta(days=7)) | list %}
-    {% if bu_hafta | length > 0 %}
-    <div class="critical-banner">
-        <div class="c-text">
-            <i class="fas fa-triangle-exclamation me-2"></i>
-            Bu hafta süresi dolacak <strong>{{ bu_hafta | length }}</strong> kritik belge var!
-        </div>
-        <button class="btn btn-danger btn-sm fw-bold px-4" onclick="filterTable('danger')">
-            Hemen İncele
-        </button>
-    </div>
-    {% endif %}
-
-    {# ── SAYFA BAŞLIĞI ── #}
-    <div class="page-header">
-        <div>
-            <h2>
-                EG Optimal Dashboard
-                {% if current_user.email == 'erhanadea@gmail.com' %}
-                <span class="badge ms-2 align-middle"
-                      style="background:#c5a059; color:#1a1c4b; font-size:0.45em; letter-spacing:1px;">GLOBAL RADAR</span>
-                {% endif %}
-            </h2>
-            <div class="sub">Dijital Risk Yönetimi ve Mevzuat Uyumluluk Paneli</div>
-        </div>
-
-        <div class="d-flex gap-2 flex-wrap align-items-center">
-
-            {# ── PDF TOPLU YÜKLEME ── #}
-            <form action="{{ url_for('import_pdf') }}" method="POST" enctype="multipart/form-data"
-                  id="pdfForm" class="d-inline">
-                <input type="file" name="pdf_files" id="pdf_input" multiple accept=".pdf,.jpg,.jpeg,.png"
-                       style="display:none" onchange="submitPdfForm()">
-                <button type="button" class="btn fw-bold px-3"
-                        style="background:#1a1c4b; color:white; border-radius:10px;"
-                        onclick="document.getElementById('pdf_input').click()">
-                    <i class="fas fa-folder-open me-1"></i> PDF Toplu Yükle
-                </button>
-            </form>
-
-            {# ── EXCEL İÇE AKTAR ── #}
-            <form action="{{ url_for('import_excel') }}" method="POST" enctype="multipart/form-data" class="d-inline">
-                <input type="file" name="excel_file" id="excel_input" style="display:none" onchange="this.form.submit()">
-                <button type="button" class="btn fw-bold px-3"
-                        style="background:#e8f5e9; color:#2e7d32; border:1px solid #a5d6a7; border-radius:10px;"
-                        onclick="document.getElementById('excel_input').click()">
-                    <i class="fas fa-file-import me-1"></i> Excel İçe Aktar
-                </button>
-            </form>
-
-            {# ── YENİ EKLE (sektöre göre) ── #}
-            <div class="dropdown">
-                <button class="btn fw-bold px-3 dropdown-toggle"
-                        style="background:#c5a059; color:#1a1c4b; border:none; border-radius:10px;"
-                        data-bs-toggle="dropdown">
-                    <i class="fas fa-plus me-1"></i> Yeni Ekle
-                </button>
-                <ul class="dropdown-menu shadow border-0" style="border-radius:12px; padding:8px;">
-                    {% set s = current_user.sektor %}
-                    {% if s == 'lojistik' %}
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Arac') }}">
-                            <i class="fas fa-truck-fast me-2 text-warning"></i>Araç & Filo</a></li>
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Personel') }}">
-                            <i class="fas fa-id-badge me-2 text-info"></i>Personel</a></li>
-                    {% elif s == 'gida' %}
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Urun') }}">
-                            <i class="fas fa-box-archive me-2 text-primary"></i>Üretim & Ürün</a></li>
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Tesis') }}">
-                            <i class="fas fa-building-shield me-2 text-secondary"></i>Tesis & Mekan</a></li>
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Personel') }}">
-                            <i class="fas fa-id-badge me-2 text-info"></i>Personel</a></li>
-                    {% elif s == 'isg' %}
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Tesis') }}">
-                            <i class="fas fa-building-shield me-2 text-secondary"></i>Tesis & Mekan</a></li>
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Personel') }}">
-                            <i class="fas fa-id-badge me-2 text-info"></i>Personel</a></li>
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Arac') }}">
-                            <i class="fas fa-truck-fast me-2 text-warning"></i>Araç & Filo</a></li>
-                    {% else %}
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Urun') }}">
-                            <i class="fas fa-box-archive me-2 text-primary"></i>Üretim & Ürün</a></li>
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Arac') }}">
-                            <i class="fas fa-truck-fast me-2 text-warning"></i>Araç & Filo</a></li>
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Personel') }}">
-                            <i class="fas fa-id-badge me-2 text-info"></i>Personel</a></li>
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Tesis') }}">
-                            <i class="fas fa-building-shield me-2 text-secondary"></i>Tesis & Mekan</a></li>
-                    {% endif %}
-                </ul>
-            </div>
-
-            {# ── YENİLE + EXCEL DIŞA ── #}
-            <div class="d-flex border rounded-3 bg-white shadow-sm overflow-hidden">
-                <a href="{{ url_for('dashboard') }}"
-                   class="btn border-0 rounded-0 px-3 fw-bold"
-                   style="background:#1a1c4b; color:white;">
-                    <i class="fas fa-sync me-1"></i> Yenile
-                </a>
-                <a href="{{ url_for('export_excel') }}"
-                   class="btn btn-light border-0 rounded-0 px-3 border-start" title="Excel Rapor İndir">
-                    <i class="fas fa-file-excel text-success fa-lg"></i>
-                </a>
-            </div>
-        </div>
-    </div>
-
-    {# ── KPI KARTLARI ── #}
-    <div class="row mb-4 g-3">
-        <div class="col-md-4" onclick="filterTable('danger')">
-            <div class="kpi-card danger">
-                <div class="kpi-label">Kritik (Son 30 Gün)</div>
-                <div class="kpi-value">
-                    {{ sertifikalar | selectattr('expiry_date', 'le', bugun + timedelta(days=30)) | list | length }}
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4" onclick="filterTable('warning')">
-            <div class="kpi-card warning">
-                <div class="kpi-label">Yaklaşan (1–3 Ay)</div>
-                <div class="kpi-value">
-                    {{ sertifikalar
-                        | selectattr('expiry_date', 'gt', bugun + timedelta(days=30))
-                        | selectattr('expiry_date', 'le', bugun + timedelta(days=90))
-                        | list | length }}
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4" onclick="filterTable('all')">
-            <div class="kpi-card primary">
-                <div class="kpi-label">Toplam Aktif Belge</div>
-                <div class="kpi-value">{{ sertifikalar | length }}</div>
-            </div>
-        </div>
-    </div>
-
-    {# ── ANA TABLO ── #}
-    <div class="data-card">
-        <div class="table-responsive">
-            <table class="table table-hover" id="sertifikaTable">
-                <thead>
-                    <tr>
-                        <th class="ps-4" style="width:35%;">Belge / Tanım</th>
-                        <th>Bitiş Tarihi</th>
-                        <th>Kalan Gün</th>
-                        <th class="text-center">Hızlı Aksiyon</th>
-                        <th class="text-center">Dijital Arşiv</th>
-                        <th class="text-center">İşlem</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in sertifikalar %}
-                    {% if s.expiry_date %}
-                    {% set kalan = (s.expiry_date - bugun).days %}
-                    {% set status = 'danger' if kalan <= 30 else ('warning' if kalan <= 90 else 'success') %}
-                    <tr class="table-row" data-status="{{ status }}">
-
-                        <td class="ps-4">
-                            <div class="belge-title">{{ s.title }}</div>
-                            <div class="belge-meta">
-                                <i class="fas fa-tag me-1"></i>
-                                {% if s.category == 'Personel' %}Personel
-                                {% elif s.category == 'Arac' %}Araç & Filo
-                                {% elif s.category == 'Tesis' %}Tesis & Mekan
-                                {% else %}Üretim & Ürün{% endif %}
-                                {% if s.firma_adi %} · <i class="fas fa-building me-1"></i>{{ s.firma_adi }}{% endif %}
-                                {% if s.note %} · {{ s.note }}{% endif %}
-                            </div>
-                        </td>
-
-                        <td style="color:#64748b; font-weight:600; font-size:0.88rem;">
-                            {{ s.expiry_date.strftime('%d.%m.%Y') }}
-                        </td>
-
-                        <td>
-                            <span class="badge-days {{ status }}">
-                                {% if kalan < 0 %}{{ kalan|abs }} Gün Geçti
-                                {% elif kalan == 0 %}BUGÜN!
-                                {% else %}{{ kalan }} Gün{% endif %}
-                            </span>
-                        </td>
-
-                        <td class="text-center">
-                            {% if kalan <= 30 %}
-                            <div class="d-flex justify-content-center gap-1">
-                                {% if s.danisman_no %}
-                                <a href="https://wa.me/{{ s.danisman_no }}?text=Merhaba,%0A%0A'{{ s.title }}' belgesinin süresi 30 günün altına düşmüştür. Lütfen gerekli aksiyonu alın.%0ABitiş: {{ s.expiry_date.strftime('%d.%m.%Y') }}%0A%0AEG Optimal"
-                                   target="_blank" class="btn-action" title="{% if s.category == 'Personel' %}Amire Hatırlat{% else %}Sorumluya Hatırlat{% endif %}"
-                                   style="color:#0891b2;">
-                                    <i class="fas fa-user-clock"></i>
-                                </a>
-                                {% endif %}
-                                {% if s.whatsapp_no %}
-                                <a href="https://wa.me/{{ s.whatsapp_no }}?text=Sayın ilgili,%0A%0A'{{ s.title }}' belgenizin süresi dolmak üzeredir.%0ABitiş: {{ s.expiry_date.strftime('%d.%m.%Y') }}%0A%0A{{ current_user.company_name or 'EG Optimal' }}"
-                                   target="_blank" class="btn-action" title="{% if s.category == 'Personel' %}Personele Hatırlat{% else %}Müşteriye Hatırlat{% endif %}"
-                                   style="color:#16a34a;">
-                                    <i class="fab fa-whatsapp"></i>
-                                </a>
-                                {% endif %}
-                            </div>
-                            {% else %}
-                            <span class="text-muted small">—</span>
-                            {% endif %}
-                        </td>
-
-                        <td class="text-center">
-                            {% if s.belge_url %}
-                            <a href="{{ cloudinary_belge_url(s.belge_url) }}" target="_blank"
-                               class="btn btn-sm fw-bold px-3"
-                               style="background:#f0f4ff; color:#1a1c4b; border:1px solid #c7d2fe; border-radius:8px; font-size:0.78rem;">
-                                <i class="fas fa-file-pdf me-1 text-danger"></i> Aç
-                            </a>
-                            {% else %}
-                            <form action="{{ url_for('upload_belge', entry_id=s.id, cat=current_cat) }}"
-                                  method="POST" enctype="multipart/form-data" class="m-0">
-                                <label style="cursor:pointer;" title="Belge Yükle"
-                                       class="btn btn-sm px-3"
-                                       style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; font-size:0.78rem; color:#94a3b8;">
-                                    <i class="fas fa-cloud-upload-alt me-1"></i> Yükle
-                                    <input type="file" name="file" onchange="this.form.submit()" style="display:none;">
-                                </label>
-                            </form>
-                            {% endif %}
-                        </td>
-
-                        <td class="text-center">
-                            <div class="d-flex justify-content-center gap-1">
-                                <div class="dropdown">
-                                    <button class="btn-action dropdown-toggle" style="color:#64748b; font-size:0.82rem;"
-                                            data-bs-toggle="dropdown">
-                                        <i class="fas fa-folder-open"></i>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius:10px; font-size:0.85rem;">
-                                        <li class="dropdown-header text-muted" style="font-size:0.7rem;">Kategoriye Taşı</li>
-                                        <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Arac') }}"><i class="fas fa-truck me-2 text-warning"></i>Araç & Filo</a></li>
-                                        <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Tesis') }}"><i class="fas fa-industry me-2 text-secondary"></i>Tesis & Mekan</a></li>
-                                        <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Urun') }}"><i class="fas fa-box me-2 text-primary"></i>Üretim & Ürün</a></li>
-                                        <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Personel') }}"><i class="fas fa-user me-2 text-info"></i>Personel</a></li>
-                                    </ul>
-                                </div>
-                                <a href="{{ url_for('sil', id=s.id, cat=current_cat) }}"
-                                   class="btn-action danger-hover" style="color:#cbd5e1;"
-                                   onclick="return confirm('Bu belgeyi silmek istediğinize emin misiniz?')">
-                                    <i class="fas fa-trash-alt"></i>
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endif %}
-                    {% endfor %}
-
-                    {% if sertifikalar | length == 0 %}
-                    <tr>
-                        <td colspan="6" class="text-center py-5">
-                            <i class="fas fa-inbox fa-3x mb-3 d-block" style="color:#e2e8f0;"></i>
-                            <span class="text-muted">Henüz kayıt yok. PDF yükleyerek veya manuel ekleyerek başlayın.</span>
-                        </td>
-                    </tr>
-                    {% endif %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-</div>
-
-<script>
-function filterTable(status) {
-    document.querySelectorAll('.table-row').forEach(row => {
-        row.style.display =
-            (status === 'all' || row.dataset.status === status) ? '' : 'none';
-    });
-}
-
-function submitPdfForm() {
-    const input = document.getElementById('pdf_input');
-    if (!input.files.length) return;
-
-    const total = input.files.length;
-    const overlay = document.getElementById('pdfProgress');
-    const bar = document.getElementById('progressBar');
-    const countEl = document.getElementById('progressCount');
-    const titleEl = document.getElementById('progressTitle');
-    const subEl = document.getElementById('progressSub');
-
-    overlay.classList.add('show');
-    titleEl.textContent = total + ' PDF Analiz Ediliyor';
-    subEl.textContent = 'Gemini AI belgelerinizi okuyor, lütfen bekleyin...';
-
-    // Sahte ilerleme göster (gerçek işlem sunucuda)
-    let pct = 0;
-    const interval = setInterval(() => {
-        pct = Math.min(pct + Math.random() * 8, 90);
-        bar.style.width = pct + '%';
-        countEl.textContent = Math.floor(pct / 100 * total) + ' / ' + total + ' belge işlendi';
-    }, 600);
-
-    // Formu gönder
-    document.getElementById('pdfForm').submit();
-}
-
-// Drag & drop (opsiyonel görsel destek)
-document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
-});
-</script>
-{% endblock %}
-
 
 
 # ============================================================
-# ADMİN PANELİ
+# ADMIN PANELI
 # ============================================================
 @app.route('/admin_panel')
 @login_required
@@ -1035,8 +731,7 @@ def admin_panel():
         tum_kullanicilar = odeme_yapmayanlar = tum_belgeler = []
         kullanici_belge = {}
 
-    return render_template(
-        'admin.html',
+    return render_template('admin.html',
         users             = tum_kullanicilar,
         all_entries       = tum_belgeler,
         kullanici_belge   = kullanici_belge,
@@ -1059,7 +754,7 @@ def update_payment(uid):
         else:
             u.is_paid = not u.is_paid
         db.session.commit()
-        flash(f"{u.email} güncellendi.", "success")
+        flash(f"{u.email} guncellendi.", "success")
     return redirect(url_for('admin_panel'))
 
 
@@ -1073,22 +768,24 @@ def delete_user(uid):
         Entry.query.filter_by(user_id=uid).delete()
         db.session.delete(u)
         db.session.commit()
-        flash("Kullanıcı silindi.", "success")
+        flash("Kullanici silindi.", "success")
     return redirect(url_for('admin_panel'))
 
 
 # ============================================================
-# OTOMATİK HATIRLATMA (Cron)
-# ─────────────────────────────────────────────────────────────
-# cron-job.org'da SADECE BU endpoint'i çağırın:
-#   https://sertifika-takip.onrender.com/cron/check_reminders
-# Sıklık: Her gün sabah 09:00 (Türkiye = UTC+3, yani UTC 06:00)
+# OTOMATIK HATIRLATMA (Cron)
+# cron-job.org ayarlari:
+#   - Job 1: https://sertifika-takip.onrender.com/ping        - 08:55 her gun
+#   - Job 2: https://sertifika-takip.onrender.com/cron/check_reminders - 09:00 her gun
 # ============================================================
+@app.route('/ping')
+def ping():
+    return "pong", 200
+
+
 @app.route('/cron/check_reminders')
 @app.route('/cron/9am_check')
 def check_reminders():
-    # Güvenlik: Sadece cron-job.org'dan veya doğrudan çağrılabilir
-    # İsterseniz bir secret token ekleyebilirsiniz
     try:
         bugun    = date.today()
         kayitlar = Entry.query.filter_by(is_active=True).all()
@@ -1099,49 +796,45 @@ def check_reminders():
             if not e.expiry_date:
                 continue
             kalan = (e.expiry_date - bugun).days
-            if kalan in [180, 90, 30, 15, 7, 1, 0]:
-                user = User.query.get(e.user_id)
-                if not user:
-                    continue
+            if kalan not in [180, 90, 30, 15, 7, 1, 0]:
+                continue
 
-                # Belge durumuna göre konu
-                if kalan == 0:
-                    konu = f"🚨 BUGÜN Süresi Doluyor: {e.title}"
-                    mesaj_on = "BU BELGE BUGÜN SONA ERIYOR"
-                elif kalan <= 7:
-                    konu = f"🔴 ACİL - {kalan} Gün Kaldı: {e.title}"
-                    mesaj_on = f"Acil! Sadece {kalan} gün kaldı"
-                elif kalan <= 30:
-                    konu = f"⚠️ {kalan} Gün Kaldı: {e.title}"
-                    mesaj_on = f"Dikkat: {kalan} gün kaldı"
-                else:
-                    konu = f"📋 Hatırlatma: {e.title} ({kalan} Gün)"
-                    mesaj_on = f"{kalan} gün kaldı"
+            user = User.query.get(e.user_id)
+            if not user:
+                continue
 
-                body = (
-                    f"Sayın {user.company_name or user.email},\n\n"
-                    f"{mesaj_on}!\n\n"
-                    f"📄 Belge: {e.title}\n"
-                    f"🏢 Firma: {e.firma_adi or '-'}\n"
-                    f"📅 Bitiş Tarihi: {e.expiry_date.strftime('%d.%m.%Y')}\n"
-                    f"⏳ Kalan Süre: {kalan} gün\n\n"
-                    f"Panele erişmek için:\n"
-                    f"https://sertifika-takip.onrender.com/dashboard\n\n"
-                    f"Saygılarımızla,\nEG Optimal Belge Takip Sistemi"
-                )
+            if kalan == 0:
+                konu = f"BUGUN Suresi Doluyor: {e.title}"
+            elif kalan <= 7:
+                konu = f"ACIL - {kalan} Gun Kaldi: {e.title}"
+            elif kalan <= 30:
+                konu = f"UYARI - {kalan} Gun Kaldi: {e.title}"
+            else:
+                konu = f"Hatirlatma: {e.title} ({kalan} Gun)"
 
-                basari = send_mail(user.email, konu, body)
-                if basari:
-                    gonderr += 1
-                else:
-                    hatalar += 1
+            body = (
+                f"Sayın {user.company_name or user.email},\n\n"
+                f"Belge: {e.title}\n"
+                f"Firma: {e.firma_adi or '-'}\n"
+                f"Bitis Tarihi: {e.expiry_date.strftime('%d.%m.%Y')}\n"
+                f"Kalan Sure: {kalan} gun\n\n"
+                f"Panele erisim:\n"
+                f"https://sertifika-takip.onrender.com/dashboard\n\n"
+                f"EG Optimal Belge Takip Sistemi"
+            )
+
+            basari = send_mail(user.email, konu, body)
+            if basari:
+                gonderr += 1
+            else:
+                hatalar += 1
 
         return jsonify({
             "durum": "OK",
             "tarih": str(bugun),
             "gonderilen": gonderr,
             "hata": hatalar,
-            "toplam_kontrol": len(kayitlar)
+            "toplam": len(kayitlar)
         }), 200
 
     except Exception as e:
@@ -1150,7 +843,7 @@ def check_reminders():
 
 
 # ============================================================
-# KATEGORİ GÜNCELLE / TAŞI
+# KATEGORI GUNCELLE
 # ============================================================
 @app.route('/kategori_guncelle/<int:id>/<string:yeni_kat>')
 @login_required
@@ -1158,18 +851,11 @@ def kategori_guncelle(id, yeni_kat):
     item = Entry.query.get_or_404(id)
     item.category = yeni_kat
     db.session.commit()
-    flash(f'Belge başarıyla {yeni_kat} kategorisine taşındı.', 'success')
+    flash(f'Belge basariyla {yeni_kat} kategorisine tasindi.', 'success')
     return redirect(url_for('dashboard'))
-
-
-# ============================================================
-# PING — Render'ı uyandırmak için (cron'dan önce çağrılır)
-# ============================================================
-@app.route('/ping')
-def ping():
-    return "pong", 200
 
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
+
