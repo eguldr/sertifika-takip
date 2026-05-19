@@ -4,6 +4,7 @@ import time
 import json
 import base64
 import hashlib
+import asyncio
 
 import cloudinary
 import cloudinary.uploader
@@ -20,9 +21,6 @@ from io import BytesIO
 from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy import text
 
-# ============================================================
-# UYGULAMA KURULUMU
-# ============================================================
 app = Flask(__name__)
 app.config.update(
     SECRET_KEY=os.environ.get('SECRET_KEY', 'eg_optimal_ultra_master_final_v2200_2026'),
@@ -53,10 +51,22 @@ BREVO_API_KEY     = os.environ.get('BREVO_API_KEY', '')
 BREVO_SENDER_MAIL = os.environ.get('BREVO_SENDER_MAIL', 'eguldr@gmail.com')
 BREVO_SENDER_NAME = 'EG Optimal'
 
+PDF_PROMPT = (
+    "Bu belgeyi dikkatle incele ve asagidaki bilgileri cikar. "
+    "Sadece belgede ACIKCA yazan bilgileri yaz. Goremediklerini null yaz.\n\n"
+    "Yaniti SADECE su JSON formatinda ver, baska hicbir sey yazma:\n"
+    "{\n"
+    '  "belge_turu": "Belgenin tam adi",\n'
+    '  "kategori": "Sadece: Arac, Personel, Tesis veya Urun",\n'
+    '  "ad_soyad": "Kisi adi soyadi (yoksa null)",\n'
+    '  "tc_no": "TC kimlik numarasi (yoksa null)",\n'
+    '  "plaka": "Arac plakasi (yoksa null)",\n'
+    '  "firma_adi": "Firma veya kurum adi (yoksa null)",\n'
+    '  "bitis_tarihi": "GG.AA.YYYY formatinda bitis tarihi (yoksa null)"\n'
+    "}"
+)
 
-# ============================================================
-# VERİTABANI MODELLERİ
-# ============================================================
+
 class User(UserMixin, db.Model):
     id           = db.Column(db.Integer, primary_key=True)
     email        = db.Column(db.String(100), unique=True, nullable=False)
@@ -65,7 +75,7 @@ class User(UserMixin, db.Model):
     is_confirmed = db.Column(db.Boolean, default=False)
     is_paid      = db.Column(db.Boolean, default=False)
     admin_note   = db.Column(db.Text, default='')
-    kvkk_onay   = db.Column(db.Boolean, default=False)
+    kvkk_onay    = db.Column(db.Boolean, default=False)
     sektor       = db.Column(db.String(50), default='genel')
 
 
@@ -117,17 +127,11 @@ def setup_db():
         app._db_init = True
 
 
-# ============================================================
-# YARDIMCI FONKSIYONLAR
-# ============================================================
 def send_mail(to, subject, body):
     try:
         response = requests.post(
             "https://api.brevo.com/v3/smtp/email",
-            headers={
-                "api-key": BREVO_API_KEY,
-                "Content-Type": "application/json"
-            },
+            headers={"api-key": BREVO_API_KEY, "Content-Type": "application/json"},
             json={
                 "sender": {"name": BREVO_SENDER_NAME, "email": BREVO_SENDER_MAIL},
                 "to": [{"email": to}],
@@ -136,7 +140,7 @@ def send_mail(to, subject, body):
             },
             timeout=15
         )
-        print(f"Brevo yanit: {response.status_code}")
+        print(f"Brevo: {response.status_code}")
         return response.status_code == 201
     except Exception as e:
         print(f"Mail hatasi: {e}")
@@ -146,10 +150,9 @@ def send_mail(to, subject, body):
 def send_verification_mail(email, token):
     verify_url = url_for('verify_email', token=token, _external=True)
     body = (
-        f"Merhaba,\n\n"
-        f"EG Optimal'e kayit oldugunuz icin tesekkurler!\n\n"
+        "Merhaba,\n\nEG Optimal'e kayit oldugunuz icin tesekkurler!\n\n"
         f"Hesabinizi aktifleştirmek icin:\n\n{verify_url}\n\n"
-        f"Bu baglanti 24 saat gecerlidir.\n\nEG Optimal Ekibi"
+        "Bu baglanti 24 saat gecerlidir.\n\nEG Optimal Ekibi"
     )
     return send_mail(email, "EG Optimal - E-posta Dogrulama", body)
 
@@ -167,43 +170,67 @@ def cloudinary_belge_url(url):
 app.jinja_env.globals['cloudinary_belge_url'] = cloudinary_belge_url
 
 
-def ai_ile_analiz_et(satir_metni):
-    time.sleep(2)
-    prompt = f"Veri: {satir_metni}. Sadece su kategorilerden birini yaz: Arac, Tesis, Urun, Personel."
-    try:
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt
-        )
-        cevap = response.text.strip().replace("'", "").replace('"', '')
-        valid_cats = ['Arac', 'Tesis', 'Urun', 'Personel']
-        return cevap if cevap in valid_cats else 'Urun'
-    except Exception as e:
-        print(f"AI HATA: {e}")
-        return 'Genel'
-
-
 def akilli_analiz_motoru(satir):
     txt = " ".join([str(v) for v in satir]).lower()
-
-    personel_kw = ['src', 'ehliyet', 'operator', 'sofor', 'personel',
-                   'psikoteknik', 'isg', 'yetki', 'kullanim', 'vinc']
-    if any(k in txt for k in personel_kw):
+    if any(k in txt for k in ['src', 'ehliyet', 'psikoteknik', 'sofor', 'personel', 'isg', 'vinc']):
         return 'Personel'
-
-    if any(k in txt for k in ['plaka', 'muayene', 'kamyon', 'araç', 'arac',
-                               'kasko', 'emisyon', 'takograf', 'lojistik']):
+    if any(k in txt for k in ['plaka', 'muayene', 'kamyon', 'arac', 'kasko', 'emisyon', 'takograf']):
         return 'Arac'
-
-    if any(k in txt for k in ['yangin', 'tesis', 'itfaiye', 'ruhsat',
-                               'cevre', 'asansor', 'sondurme']):
+    if any(k in txt for k in ['yangin', 'tesis', 'itfaiye', 'ruhsat', 'cevre', 'asansor']):
         return 'Tesis'
+    return 'Urun'
 
-    if any(k in txt for k in ['sertifika', 'iso', 'kalite', 'haccp',
-                               'helal', 'organik', 'gida', 'hijyen']):
-        return 'Urun'
 
-    return ai_ile_analiz_et(txt)
+def tarih_parse(bitis_str):
+    if not bitis_str or str(bitis_str) == 'null':
+        return date.today() + timedelta(days=365)
+    for fmt in ['%d.%m.%Y', '%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y']:
+        try:
+            return datetime.strptime(str(bitis_str), fmt).date()
+        except Exception:
+            continue
+    return date.today() + timedelta(days=365)
+
+
+# ============================================================
+# ASYNC PDF MOTORU - Tier 1 (1000 RPM)
+# ============================================================
+async def tek_pdf_isle(semaphore, dosya_verisi):
+    async with semaphore:
+        ad   = dosya_verisi['ad']
+        b64  = dosya_verisi['b64']
+        mime = dosya_verisi['mime']
+        try:
+            response = await asyncio.to_thread(
+                client.models.generate_content,
+                model="gemini-2.5-flash",
+                contents=[{"parts": [
+                    {"inline_data": {"mime_type": mime, "data": b64}},
+                    {"text": PDF_PROMPT}
+                ]}]
+            )
+            yanit = response.text.strip().replace('```json', '').replace('```', '').strip()
+            try:
+                veri = json.loads(yanit)
+                return {"ad": ad, "hash": dosya_verisi['hash'],
+                        "icerik": dosya_verisi['icerik'], "veri": veri, "hata": None}
+            except json.JSONDecodeError:
+                print(f"JSON parse hatasi ({ad}): {yanit[:100]}")
+                return {"ad": ad, "hash": dosya_verisi['hash'],
+                        "icerik": dosya_verisi['icerik'], "hata": "json_parse"}
+        except Exception as e:
+            hata = str(e)
+            print(f"Gemini hatasi ({ad}): {hata[:100]}")
+            if '429' in hata or 'EXHAUSTED' in hata:
+                await asyncio.sleep(5)
+            return {"ad": ad, "hash": dosya_verisi['hash'],
+                    "icerik": dosya_verisi['icerik'], "hata": hata}
+
+
+async def toplu_pdf_isle(dosya_listesi, paralel_sayi=20):
+    semaphore = asyncio.Semaphore(paralel_sayi)
+    gorevler  = [tek_pdf_isle(semaphore, d) for d in dosya_listesi]
+    return await asyncio.gather(*gorevler, return_exceptions=True)
 
 
 # ============================================================
@@ -242,44 +269,35 @@ def logout():
 @app.route('/kayit', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        robot_cevap = request.form.get('robot_kontrol', '').strip()
-        if robot_cevap != '5':
-            flash("Robot kontrolu basarisiz. 2 + 3 = 5 olmalidir.", "danger")
+        if request.form.get('robot_kontrol', '').strip() != '5':
+            flash("Robot kontrolu basarisiz.", "danger")
             return redirect(url_for('register'))
-
-        kvkk = request.form.get('kvkk_onay')
-        if not kvkk:
+        if not request.form.get('kvkk_onay'):
             flash("KVKK metnini onaylamaniz gerekmektedir.", "danger")
             return redirect(url_for('register'))
 
-        email    = request.form.get('email', '').strip()
-        password = request.form.get('password', '')
-        sektor   = request.form.get('sektor', 'genel')
-
+        email = request.form.get('email', '').strip()
         if User.query.filter_by(email=email).first():
             flash("Bu e-posta zaten kayitli.", "warning")
             return redirect(url_for('register'))
 
         u = User(
             email        = email,
-            password     = generate_password_hash(password),
+            password     = generate_password_hash(request.form.get('password', '')),
             company_name = request.form.get('company_name', ''),
             is_confirmed = False,
             is_paid      = False,
-            kvkk_onay   = True,
-            sektor       = sektor
+            kvkk_onay    = True,
+            sektor       = request.form.get('sektor', 'genel')
         )
         db.session.add(u)
         db.session.commit()
 
         token = ts.dumps(email, salt='email-confirm-key')
-        mail_gitti = send_verification_mail(email, token)
-
-        if mail_gitti:
+        if send_verification_mail(email, token):
             flash("Kayit basarili! E-postaniza dogrulama baglantisi gonderildi.", "success")
         else:
-            flash("Kayit basarili ancak dogrulama maili gonderilemedi. Bize ulasin.", "warning")
-
+            flash("Kayit basarili ancak dogrulama maili gonderilemedi.", "warning")
         return redirect(url_for('login'))
 
     return render_template('kayit.html')
@@ -292,7 +310,6 @@ def verify_email(token):
     except Exception:
         flash("Dogrulama linki gecersiz veya suresi dolmus.", "danger")
         return redirect(url_for('login'))
-
     user = User.query.filter_by(email=email).first()
     if user:
         user.is_confirmed = True
@@ -307,11 +324,11 @@ def forgot_password():
         email = request.form.get('email', '').strip()
         user  = User.query.filter_by(email=email).first()
         if user:
-            token       = ts.dumps(email, salt='recover-key')
+            token = ts.dumps(email, salt='recover-key')
             recover_url = url_for('reset_password', token=token, _external=True)
             send_mail(email, "Sifre Sifirlama - EG Optimal",
                       f"Sifrenizi sifirlamak icin:\n\n{recover_url}\n\n30 dakika gecerlidir.\n\nEG Optimal")
-        flash("Kayitli e-postaniza sifirlama baglantisi gonderildi.", "info")
+        flash("Sifirlama baglantisi gonderildi.", "info")
         return redirect(url_for('login'))
     return render_template('forgot_password.html')
 
@@ -341,23 +358,16 @@ def reset_password(token):
 @login_required
 def dashboard(cat=None):
     try:
-        sorgu = Entry.query.filter(
-            Entry.is_active == True,
-            Entry.user_id == current_user.id
-        )
+        sorgu = Entry.query.filter(Entry.is_active == True, Entry.user_id == current_user.id)
         if cat and cat != 'all':
             sorgu = sorgu.filter(Entry.category == cat)
         liste = sorgu.order_by(Entry.expiry_date.asc()).all()
     except Exception as e:
-        print(f"Dashboard sorgu hatasi: {e}")
+        print(f"Dashboard hatasi: {e}")
         liste = []
-        flash("Veri yuklenirken hata olustu.", "danger")
-
     return render_template('dashboard.html',
-        sertifikalar = liste,
-        bugun        = date.today(),
-        timedelta    = timedelta,
-        current_cat  = cat or 'all'
+        sertifikalar=liste, bugun=date.today(),
+        timedelta=timedelta, current_cat=cat or 'all'
     )
 
 
@@ -377,34 +387,27 @@ def ekle(cat):
         title = request.form.get('title', '').strip()
         if title == 'LISTEDE YOK / MANUEL YAZ':
             title = request.form.get('manual_title', '').strip()
-
         exp_str = request.form.get('expiry_date', '')
         try:
             expiry = datetime.strptime(exp_str, '%Y-%m-%d').date()
         except (ValueError, TypeError):
             flash('Gecerli bir tarih giriniz.', 'danger')
             return render_template('ekle.html', cat=cat)
-
         try:
-            yeni = Entry(
-                user_id     = current_user.id,
-                category    = cat,
-                title       = title,
-                firma_adi   = request.form.get('firma_adi', '').strip(),
-                whatsapp_no = request.form.get('whatsapp_no', '').strip(),
-                danisman_no = request.form.get('danisman_no', '').strip(),
-                note        = request.form.get('note', '').strip(),
-                expiry_date = expiry,
-                is_active   = True
-            )
-            db.session.add(yeni)
+            db.session.add(Entry(
+                user_id=current_user.id, category=cat, title=title,
+                firma_adi=request.form.get('firma_adi', '').strip(),
+                whatsapp_no=request.form.get('whatsapp_no', '').strip(),
+                danisman_no=request.form.get('danisman_no', '').strip(),
+                note=request.form.get('note', '').strip(),
+                expiry_date=expiry, is_active=True
+            ))
             db.session.commit()
             flash(f'{title} basariyla takibe alindi!', 'success')
             return redirect(url_for('dashboard', cat=cat))
         except Exception as e:
             db.session.rollback()
             flash(f'Kayit hatasi: {str(e)}', 'danger')
-
     return render_template('ekle.html', cat=cat)
 
 
@@ -423,7 +426,7 @@ def sil(id):
             db.session.commit()
             flash("Kayit silindi.", "success")
         else:
-            flash("Kayit bulunamadi veya yetkiniz yok.", "danger")
+            flash("Yetki hatasi.", "danger")
     except Exception as ex:
         flash(f"Silme hatasi: {ex}", "danger")
     return redirect(url_for('dashboard', cat=cat))
@@ -439,26 +442,21 @@ def upload_belge(entry_id):
     cat = request.args.get('cat', 'all')
     if f:
         try:
-            res = cloudinary.uploader.unsigned_upload(
-                f,
-                upload_preset='erhan_preset',
-                resource_type='raw'
-            )
-            e = Entry.query.get(entry_id)
+            res = cloudinary.uploader.unsigned_upload(f, upload_preset='erhan_preset', resource_type='raw')
+            e   = Entry.query.get(entry_id)
             if e and (e.user_id == current_user.id or current_user.email == 'erhanadea@gmail.com'):
                 raw_url = res.get('secure_url')
                 if not raw_url:
-                    raise Exception("Cloudinary URL alinamadi")
+                    raise Exception("URL alinamadi")
                 e.belge_url = cloudinary_belge_url(raw_url)
                 db.session.commit()
-                flash("Belge basariyla yuklendi.", "success")
+                flash("Belge yuklendi.", "success")
             else:
                 flash("Yetki hatasi.", "danger")
         except Exception as ex:
-            print(f"CLOUDINARY HATA: {ex}")
             flash(f"Yukleme hatasi: {ex}", "danger")
     else:
-        flash("Lutfen bir dosya secin.", "warning")
+        flash("Dosya secin.", "warning")
     return redirect(url_for('dashboard', cat=cat))
 
 
@@ -475,46 +473,35 @@ def import_excel():
     try:
         Entry.query.filter_by(user_id=current_user.id).update({'is_active': False})
         db.session.commit()
-
         df = pd.read_excel(f)
         df.columns = [str(c).strip() for c in df.columns]
 
-        def find_col(keywords):
+        def find_col(kw):
             for col in df.columns:
-                if any(k in col.lower() for k in keywords):
+                if any(k in col.lower() for k in kw):
                     return col
             return None
 
         title_col = find_col(['belge', 'plaka', 'isim', 'ad', 'tanim', 'title'])
-        firma_col = find_col(['firma', 'kurum', 'sirket', 'company', 'musteri'])
-        tarih_col = find_col(['bitis', 'tarih', 'expiry', 'son', 'gecerlilik', 'vade'])
+        firma_col = find_col(['firma', 'kurum', 'sirket', 'company'])
+        tarih_col = find_col(['bitis', 'tarih', 'expiry', 'gecerlilik'])
 
         eklenen = 0
         for _, r in df.iterrows():
-            satirlar = list(r.values)
-            cat      = akilli_analiz_motoru(satirlar)
-            title    = str(r[title_col]).strip() if title_col and pd.notna(r.get(title_col)) else str(r.iloc[0])
-            firma    = str(r[firma_col]).strip() if firma_col and pd.notna(r.get(firma_col)) else ''
-            expiry   = date.today() + timedelta(days=365)
-
+            cat    = akilli_analiz_motoru(list(r.values))
+            title  = str(r[title_col]).strip() if title_col and pd.notna(r.get(title_col)) else str(r.iloc[0])
+            firma  = str(r[firma_col]).strip() if firma_col and pd.notna(r.get(firma_col)) else ''
+            expiry = date.today() + timedelta(days=365)
             if tarih_col and pd.notna(r.get(tarih_col)):
                 try:
                     expiry = pd.to_datetime(r[tarih_col], dayfirst=True).date()
                 except Exception:
                     pass
-
-            db.session.add(Entry(
-                user_id     = current_user.id,
-                category    = cat,
-                title       = title,
-                firma_adi   = firma,
-                expiry_date = expiry,
-                is_active   = True
-            ))
+            db.session.add(Entry(user_id=current_user.id, category=cat, title=title,
+                                 firma_adi=firma, expiry_date=expiry, is_active=True))
             eklenen += 1
-
         db.session.commit()
-        flash(f"Excel basariyla yuklendi. {eklenen} kayit eklendi.", "success")
+        flash(f"Excel yuklendi. {eklenen} kayit eklendi.", "success")
     except Exception as e:
         db.session.rollback()
         flash(f"Excel hatasi: {str(e)}", "danger")
@@ -522,140 +509,92 @@ def import_excel():
 
 
 # ============================================================
-# PDF TOPLU OKUMA MOTORU - Gemini Multimodal
+# PDF TOPLU OKUMA - ASYNC / Tier 1
 # ============================================================
 @app.route('/import_pdf', methods=['POST'])
 @login_required
 def import_pdf():
     dosyalar = request.files.getlist('pdf_files')
     if not dosyalar or all(f.filename == '' for f in dosyalar):
-        flash("Lutfen en az bir PDF veya gorsel secin.", "warning")
+        flash("En az bir dosya secin.", "warning")
         return redirect(url_for('dashboard'))
 
-    eklenen = 0
-    hatali  = 0
+    islenecekler = []
+    atlanan = 0
 
     for dosya in dosyalar:
         if not dosya or dosya.filename == '':
             continue
+        icerik = dosya.read()
+        if not icerik:
+            continue
+        d_hash = hashlib.md5(icerik).hexdigest()
+        if Entry.query.filter_by(user_id=current_user.id, dosya_hash=d_hash, is_active=True).first():
+            atlanan += 1
+            continue
+        fname = dosya.filename.lower()
+        mime  = 'image/png' if fname.endswith('.png') else ('image/jpeg' if fname.endswith(('.jpg','.jpeg')) else 'application/pdf')
+        islenecekler.append({'ad': dosya.filename, 'icerik': icerik,
+                             'b64': base64.standard_b64encode(icerik).decode(), 'mime': mime, 'hash': d_hash})
 
-        try:
-            icerik = dosya.read()
-            if len(icerik) == 0:
-                continue
+    if not islenecekler:
+        flash(f"Tum dosyalar zaten sistemde. ({atlanan} atlandi)", "info")
+        return redirect(url_for('dashboard'))
 
-            dosya_hash = hashlib.md5(icerik).hexdigest()
-            mevcut = Entry.query.filter_by(
-                user_id=current_user.id,
-                dosya_hash=dosya_hash,
-                is_active=True
-            ).first()
-            if mevcut:
-                print(f"Atlandi (zaten var): {dosya.filename}")
-                continue
+    print(f"Async basladi: {len(islenecekler)} PDF, paralel=20")
 
-            b64  = base64.standard_b64encode(icerik).decode('utf-8')
-            fname = dosya.filename.lower()
-            if fname.endswith('.pdf'):
-                mime = 'application/pdf'
-            elif fname.endswith('.png'):
-                mime = 'image/png'
-            else:
-                mime = 'image/jpeg'
+    try:
+        sonuclar = asyncio.run(toplu_pdf_isle(islenecekler, paralel_sayi=20))
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        sonuclar = loop.run_until_complete(toplu_pdf_isle(islenecekler, paralel_sayi=20))
+        loop.close()
 
-            prompt = (
-                "Bu belgeyi dikkatle incele ve asagidaki bilgileri cikar. "
-                "Sadece belgede ACIKCA yazan bilgileri yaz. "
-                "Goremediklerini null yaz.\n\n"
-                "Yaniti SADECE su JSON formatinda ver, baska hicbir sey yazma:\n"
-                '{\n'
-                '  "belge_turu": "Belgenin tam adi",\n'
-                '  "kategori": "Sadece: Arac, Personel, Tesis veya Urun",\n'
-                '  "ad_soyad": "Kisi adi (yoksa null)",\n'
-                '  "tc_no": "TC kimlik no (yoksa null)",\n'
-                '  "plaka": "Arac plakasi (yoksa null)",\n'
-                '  "firma_adi": "Firma adi (yoksa null)",\n'
-                '  "bitis_tarihi": "GG.AA.YYYY formatinda (yoksa null)"\n'
-                '}'
-            )
+    eklenen = 0
+    hatali  = 0
 
-            response = client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=[{
-                    "parts": [
-                        {"inline_data": {"mime_type": mime, "data": b64}},
-                        {"text": prompt}
-                    ]
-                }]
-            )
-
-            yanit = response.text.strip()
-            yanit = yanit.replace('```json', '').replace('```', '').strip()
-
-            try:
-                veri = json.loads(yanit)
-            except json.JSONDecodeError:
-                print(f"JSON parse hatasi ({dosya.filename}): {yanit[:200]}")
-                hatali += 1
-                continue
-
-            expiry = None
-            bitis  = veri.get('bitis_tarihi')
-            if bitis and bitis != 'null' and bitis is not None:
-                for fmt in ['%d.%m.%Y', '%Y-%m-%d', '%d/%m/%Y']:
-                    try:
-                        expiry = datetime.strptime(str(bitis), fmt).date()
-                        break
-                    except Exception:
-                        continue
-
-            if not expiry:
-                expiry = date.today() + timedelta(days=365)
-
-            kat = veri.get('kategori', 'Urun')
-            if kat not in ['Arac', 'Personel', 'Tesis', 'Urun']:
-                kat = akilli_analiz_motoru([veri.get('belge_turu', '')])
-
-            notlar = []
-            if veri.get('ad_soyad') and veri.get('ad_soyad') != 'null':
-                notlar.append(str(veri['ad_soyad']))
-            if veri.get('tc_no') and veri.get('tc_no') != 'null':
-                notlar.append(f"TC: {veri['tc_no']}")
-            if veri.get('plaka') and veri.get('plaka') != 'null':
-                notlar.append(f"Plaka: {veri['plaka']}")
-            not_str = ' | '.join(notlar) if notlar else dosya.filename
-
-            belge_url = None
-            try:
-                dosya.seek(0)
-                res = cloudinary.uploader.unsigned_upload(
-                    dosya,
-                    upload_preset='erhan_preset',
-                    resource_type='raw'
-                )
-                raw_url = res.get('secure_url', '')
-                belge_url = cloudinary_belge_url(raw_url) if raw_url else None
-            except Exception as ce:
-                print(f"Cloudinary hatasi ({dosya.filename}): {ce}")
-
-            db.session.add(Entry(
-                user_id     = current_user.id,
-                category    = kat,
-                title       = veri.get('belge_turu') or dosya.filename,
-                firma_adi   = veri.get('firma_adi') or '',
-                expiry_date = expiry,
-                note        = not_str,
-                belge_url   = belge_url,
-                dosya_hash  = dosya_hash,
-                is_active   = True
-            ))
-            eklenen += 1
-            time.sleep(1.5)
-
-        except Exception as e:
-            print(f"PDF isleme hatasi ({dosya.filename}): {e}")
+    for sonuc in sonuclar:
+        if isinstance(sonuc, Exception) or sonuc.get('hata'):
             hatali += 1
             continue
+        veri    = sonuc.get('veri', {})
+        icerik  = sonuc.get('icerik', b'')
+        d_hash  = sonuc.get('hash', '')
+        ad      = sonuc.get('ad', '')
+
+        kat = veri.get('kategori', 'Urun')
+        if kat not in ['Arac', 'Personel', 'Tesis', 'Urun']:
+            kat = akilli_analiz_motoru([veri.get('belge_turu', '')])
+
+        notlar = []
+        if veri.get('ad_soyad') and str(veri['ad_soyad']) != 'null':
+            notlar.append(str(veri['ad_soyad']))
+        if veri.get('tc_no') and str(veri['tc_no']) != 'null':
+            notlar.append(f"TC: {veri['tc_no']}")
+        if veri.get('plaka') and str(veri['plaka']) != 'null':
+            notlar.append(f"Plaka: {veri['plaka']}")
+
+        belge_url = None
+        try:
+            res = cloudinary.uploader.unsigned_upload(
+                BytesIO(icerik), upload_preset='erhan_preset',
+                resource_type='raw', public_id=f"belge_{d_hash[:8]}"
+            )
+            raw_url = res.get('secure_url', '')
+            belge_url = cloudinary_belge_url(raw_url) if raw_url else None
+        except Exception as ce:
+            print(f"Cloudinary hatasi ({ad}): {ce}")
+
+        db.session.add(Entry(
+            user_id=current_user.id, category=kat,
+            title=veri.get('belge_turu') or ad,
+            firma_adi=str(veri.get('firma_adi') or '').replace('null', ''),
+            expiry_date=tarih_parse(veri.get('bitis_tarihi')),
+            note=' | '.join(notlar) if notlar else ad,
+            belge_url=belge_url, dosya_hash=d_hash, is_active=True
+        ))
+        eklenen += 1
 
     try:
         db.session.commit()
@@ -664,15 +603,16 @@ def import_pdf():
         flash(f"Veritabani hatasi: {e}", "danger")
         return redirect(url_for('dashboard'))
 
-    if eklenen > 0 and hatali == 0:
-        flash(f"{eklenen} belge basariyla okundu ve sisteme eklendi!", "success")
-    elif eklenen > 0:
-        flash(f"{eklenen} belge eklendi, {hatali} belge okunamadi.", "warning")
-    elif hatali > 0:
-        flash("Hicbir belge okunamadi. PDF kalitesini kontrol edin.", "danger")
-    else:
-        flash("Tum dosyalar zaten sistemde mevcut.", "info")
+    parcalar = []
+    if eklenen > 0:
+        parcalar.append(f"{eklenen} belge eklendi")
+    if hatali > 0:
+        parcalar.append(f"{hatali} okunamadi")
+    if atlanan > 0:
+        parcalar.append(f"{atlanan} zaten mevcuttu")
 
+    seviye = "success" if eklenen > 0 and hatali == 0 else ("warning" if eklenen > 0 else "danger")
+    flash(" | ".join(parcalar) if parcalar else "Islem tamamlandi.", seviye)
     return redirect(url_for('dashboard'))
 
 
@@ -683,21 +623,11 @@ def import_pdf():
 @login_required
 def export_excel():
     try:
-        if current_user.email == 'erhanadea@gmail.com':
-            entries = Entry.query.filter_by(is_active=True).all()
-        else:
-            entries = Entry.query.filter_by(user_id=current_user.id, is_active=True).all()
-
-        data = [{
-            "Kategori":     e.category,
-            "Firma":        e.firma_adi,
-            "Belge Adi":    e.title,
-            "WhatsApp":     e.whatsapp_no,
-            "Not":          e.note,
-            "Bitis Tarihi": e.expiry_date.strftime('%d.%m.%Y') if e.expiry_date else "",
-            "Belge URL":    e.belge_url or ""
-        } for e in entries]
-
+        entries = Entry.query.filter_by(is_active=True).all() if current_user.email == 'erhanadea@gmail.com' \
+                  else Entry.query.filter_by(user_id=current_user.id, is_active=True).all()
+        data = [{"Kategori": e.category, "Firma": e.firma_adi, "Belge Adi": e.title,
+                 "Not": e.note, "Bitis Tarihi": e.expiry_date.strftime('%d.%m.%Y') if e.expiry_date else "",
+                 "Belge URL": e.belge_url or ""} for e in entries]
         df     = pd.DataFrame(data)
         output = BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
@@ -712,7 +642,7 @@ def export_excel():
 
 
 # ============================================================
-# ADMIN PANELI
+# ADMIN
 # ============================================================
 @app.route('/admin_panel')
 @login_required
@@ -722,21 +652,16 @@ def admin_panel():
     try:
         tum_kullanicilar  = User.query.all()
         odeme_yapmayanlar = User.query.filter_by(is_paid=False).all()
-        tum_belgeler      = Entry.query.filter_by(is_active=True)\
-                                 .order_by(Entry.expiry_date.asc()).all()
-        kullanici_belge   = {u.id: Entry.query.filter_by(user_id=u.id, is_active=True).count()
-                             for u in tum_kullanicilar}
+        tum_belgeler      = Entry.query.filter_by(is_active=True).order_by(Entry.expiry_date.asc()).all()
+        kullanici_belge   = {u.id: Entry.query.filter_by(user_id=u.id, is_active=True).count() for u in tum_kullanicilar}
     except Exception as e:
-        print(f"Admin sorgu hatasi: {e}")
+        print(f"Admin hatasi: {e}")
         tum_kullanicilar = odeme_yapmayanlar = tum_belgeler = []
         kullanici_belge = {}
-
     return render_template('admin.html',
-        users             = tum_kullanicilar,
-        all_entries       = tum_belgeler,
-        kullanici_belge   = kullanici_belge,
-        odeme_yapmayanlar = odeme_yapmayanlar,
-        bugun             = date.today()
+        users=tum_kullanicilar, all_entries=tum_belgeler,
+        kullanici_belge=kullanici_belge, odeme_yapmayanlar=odeme_yapmayanlar,
+        bugun=date.today()
     )
 
 
@@ -773,10 +698,9 @@ def delete_user(uid):
 
 
 # ============================================================
-# OTOMATIK HATIRLATMA (Cron)
-# cron-job.org ayarlari:
-#   - Job 1: https://sertifika-takip.onrender.com/ping        - 08:55 her gun
-#   - Job 2: https://sertifika-takip.onrender.com/cron/check_reminders - 09:00 her gun
+# CRON
+# Job 1: /ping                  - 08:55 her gun
+# Job 2: /cron/check_reminders  - 09:00 her gun
 # ============================================================
 @app.route('/ping')
 def ping():
@@ -791,54 +715,36 @@ def check_reminders():
         kayitlar = Entry.query.filter_by(is_active=True).all()
         gonderr  = 0
         hatalar  = 0
-
         for e in kayitlar:
             if not e.expiry_date:
                 continue
             kalan = (e.expiry_date - bugun).days
             if kalan not in [180, 90, 30, 15, 7, 1, 0]:
                 continue
-
             user = User.query.get(e.user_id)
             if not user:
                 continue
-
             if kalan == 0:
                 konu = f"BUGUN Suresi Doluyor: {e.title}"
             elif kalan <= 7:
-                konu = f"ACIL - {kalan} Gun Kaldi: {e.title}"
+                konu = f"ACIL {kalan} Gun Kaldi: {e.title}"
             elif kalan <= 30:
-                konu = f"UYARI - {kalan} Gun Kaldi: {e.title}"
+                konu = f"UYARI {kalan} Gun Kaldi: {e.title}"
             else:
                 konu = f"Hatirlatma: {e.title} ({kalan} Gun)"
-
             body = (
-                f"Sayın {user.company_name or user.email},\n\n"
-                f"Belge: {e.title}\n"
-                f"Firma: {e.firma_adi or '-'}\n"
-                f"Bitis Tarihi: {e.expiry_date.strftime('%d.%m.%Y')}\n"
-                f"Kalan Sure: {kalan} gun\n\n"
-                f"Panele erisim:\n"
-                f"https://sertifika-takip.onrender.com/dashboard\n\n"
-                f"EG Optimal Belge Takip Sistemi"
+                f"Sayin {user.company_name or user.email},\n\n"
+                f"Belge: {e.title}\nFirma: {e.firma_adi or '-'}\n"
+                f"Bitis: {e.expiry_date.strftime('%d.%m.%Y')}\nKalan: {kalan} gun\n\n"
+                f"Panel: https://sertifika-takip.onrender.com/dashboard\n\nEG Optimal"
             )
-
-            basari = send_mail(user.email, konu, body)
-            if basari:
+            if send_mail(user.email, konu, body):
                 gonderr += 1
             else:
                 hatalar += 1
-
-        return jsonify({
-            "durum": "OK",
-            "tarih": str(bugun),
-            "gonderilen": gonderr,
-            "hata": hatalar,
-            "toplam": len(kayitlar)
-        }), 200
-
+        return jsonify({"durum": "OK", "tarih": str(bugun),
+                        "gonderilen": gonderr, "hata": hatalar, "toplam": len(kayitlar)}), 200
     except Exception as e:
-        print(f"Cron hatasi: {e}")
         return jsonify({"durum": "HATA", "mesaj": str(e)}), 500
 
 
@@ -851,11 +757,12 @@ def kategori_guncelle(id, yeni_kat):
     item = Entry.query.get_or_404(id)
     item.category = yeni_kat
     db.session.commit()
-    flash(f'Belge basariyla {yeni_kat} kategorisine tasindi.', 'success')
+    flash(f'Belge {yeni_kat} kategorisine tasindi.', 'success')
     return redirect(url_for('dashboard'))
 
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
+
 
