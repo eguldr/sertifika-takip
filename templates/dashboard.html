@@ -361,10 +361,24 @@
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius:10px; font-size:0.85rem;">
                                         <li class="dropdown-header text-muted" style="font-size:0.7rem;">Kategoriye Taşı</li>
-                                        <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Arac') }}"><i class="fas fa-truck me-2 text-warning"></i>Araç & Filo</a></li>
-                                        <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Tesis') }}"><i class="fas fa-industry me-2 text-secondary"></i>Tesis & Mekan</a></li>
-                                        <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Urun') }}"><i class="fas fa-box me-2 text-primary"></i>Üretim & Ürün</a></li>
-                                        <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Personel') }}"><i class="fas fa-user me-2 text-info"></i>Personel</a></li>
+                                        {% set sek = current_user.sektor %}
+                                        {% if sek == 'lojistik' %}
+                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Arac') }}"><i class="fas fa-truck me-2 text-warning"></i>Araç & Filo</a></li>
+                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Personel') }}"><i class="fas fa-user me-2 text-info"></i>Personel</a></li>
+                                        {% elif sek == 'gida' %}
+                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Urun') }}"><i class="fas fa-box me-2 text-primary"></i>Üretim & Ürün</a></li>
+                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Tesis') }}"><i class="fas fa-industry me-2 text-secondary"></i>Tesis & Mekan</a></li>
+                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Personel') }}"><i class="fas fa-user me-2 text-info"></i>Personel</a></li>
+                                        {% elif sek == 'isg' %}
+                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Tesis') }}"><i class="fas fa-industry me-2 text-secondary"></i>Tesis & Mekan</a></li>
+                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Personel') }}"><i class="fas fa-user me-2 text-info"></i>Personel</a></li>
+                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Arac') }}"><i class="fas fa-truck me-2 text-warning"></i>Araç & Filo</a></li>
+                                        {% else %}
+                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Arac') }}"><i class="fas fa-truck me-2 text-warning"></i>Araç & Filo</a></li>
+                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Tesis') }}"><i class="fas fa-industry me-2 text-secondary"></i>Tesis & Mekan</a></li>
+                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Urun') }}"><i class="fas fa-box me-2 text-primary"></i>Üretim & Ürün</a></li>
+                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Personel') }}"><i class="fas fa-user me-2 text-info"></i>Personel</a></li>
+                                        {% endif %}
                                     </ul>
                                 </div>
                                 <a href="{{ url_for('sil', id=s.id, cat=current_cat) }}"
