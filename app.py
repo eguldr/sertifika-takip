@@ -1,21 +1,19 @@
 import os
 import time
-# YENİSİNİ YAZ
+import hashlib
 from google import genai
-import os
 client = genai.Client(api_key=os.environ.get('GEMINI_API_KEY'))
 import re
 import cloudinary
 import cloudinary.uploader
 import requests
 import pandas as pd
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta, date
 from io import BytesIO
-from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy import text
 
@@ -26,12 +24,6 @@ app = Flask(__name__)
 app.config.update(
     SECRET_KEY=os.environ.get('SECRET_KEY', 'eg_optimal_ultra_master_final_v2200_2026'),
     SECURITY_PASSWORD_SALT='eg_super_salt_secure_99_pro',
-    MAIL_SERVER=os.environ.get('MAIL_SERVER', 'smtp-relay.brevo.com'),
-    MAIL_PORT=int(os.environ.get('MAIL_PORT', 587)),
-    MAIL_USE_TLS=os.environ.get('MAIL_USE_TLS', 'True') == 'True',
-    MAIL_USERNAME=os.environ.get('MAIL_USERNAME', ''),
-    MAIL_PASSWORD=os.environ.get('MAIL_PASSWORD', ''),
-    MAIL_DEFAULT_SENDER=os.environ.get('MAIL_USERNAME', '')
 )
 
 uri = os.environ.get('DATABASE_URL', 'sqlite:///test.db')
@@ -41,32 +33,34 @@ app.config['SQLALCHEMY_DATABASE_URI'] = uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db            = SQLAlchemy(app)
-mail          = Mail(app)
 ts            = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# FIX: cloud_name 'dh2pefkko' → 'dh2pefkk' (sondaki hatalı 'o' kaldırıldı)
-# Cloud name sonuna 'o' harfini Geri ekle!
 cloudinary.config(
-    cloud_name='dh2pefkko',      # Görseldeki ile birebir aynı: dh2pefkko
-    api_key='626365126779241',   # Görseldeki ilk key ile aynı
-    api_secret='A1q12Oiih6Gc6PfKdPFextUsm-l', 
+    cloud_name='dh2pefkko',
+    api_key='626365126779241',
+    api_secret='A1q12Oiih6Gc6PfKdPFextUsm-l',
     secure=True
 )
 
+BREVO_API_KEY    = os.environ.get('BREVO_API_KEY', '')
+BREVO_SENDER_MAIL = os.environ.get('BREVO_SENDER_MAIL', 'eguldr@gmail.com')
+BREVO_SENDER_NAME = 'EG Optimal'
 
 # ============================================================
 # VERİTABANI MODELLERİ
 # ============================================================
 class User(UserMixin, db.Model):
-    id           = db.Column(db.Integer, primary_key=True)
-    email        = db.Column(db.String(100), unique=True, nullable=False)
-    password     = db.Column(db.String(256), nullable=False)
-    company_name = db.Column(db.String(100), default='')
-    is_confirmed = db.Column(db.Boolean, default=True)
-    is_paid      = db.Column(db.Boolean, default=False)
-    admin_note   = db.Column(db.Text, default='')
+    id              = db.Column(db.Integer, primary_key=True)
+    email           = db.Column(db.String(100), unique=True, nullable=False)
+    password        = db.Column(db.String(256), nullable=False)
+    company_name    = db.Column(db.String(100), default='')
+    is_confirmed    = db.Column(db.Boolean, default=False)   # E-posta doğrulama
+    is_paid         = db.Column(db.Boolean, default=False)
+    admin_note      = db.Column(db.Text, default='')
+    kvkk_onay       = db.Column(db.Boolean, default=False)
+    sektor          = db.Column(db.String(50), default='genel')  # lojistik / gida / danismanlik / genel
 
 
 class Entry(db.Model):
@@ -81,6 +75,7 @@ class Entry(db.Model):
     danisman_no = db.Column(db.String(20))
     note        = db.Column(db.Text)
     is_active   = db.Column(db.Boolean, default=True)
+    dosya_hash  = db.Column(db.String(64))  # Delta işleme için
 
 
 @login_manager.user_loader
@@ -100,10 +95,13 @@ def setup_db():
                 "ALTER TABLE entry ADD COLUMN IF NOT EXISTS note TEXT",
                 "ALTER TABLE entry ADD COLUMN IF NOT EXISTS belge_url VARCHAR(500)",
                 "ALTER TABLE entry ADD COLUMN IF NOT EXISTS firma_adi VARCHAR(100)",
+                "ALTER TABLE entry ADD COLUMN IF NOT EXISTS dosya_hash VARCHAR(64)",
                 'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS is_paid BOOLEAN DEFAULT FALSE',
-                'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS is_confirmed BOOLEAN DEFAULT TRUE',
+                'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS is_confirmed BOOLEAN DEFAULT FALSE',
                 'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS company_name VARCHAR(100) DEFAULT \'\'',
                 'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS admin_note TEXT DEFAULT \'\'',
+                'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS kvkk_onay BOOLEAN DEFAULT FALSE',
+                'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS sektor VARCHAR(50) DEFAULT \'genel\'',
             ]:
                 try:
                     db.session.execute(text(sql))
@@ -117,31 +115,44 @@ def setup_db():
 # YARDIMCI FONKSİYONLAR
 # ============================================================
 def send_mail(to, subject, body):
+    """Brevo HTTP API üzerinden mail gönder (SMTP port sorunu yok)"""
     try:
         response = requests.post(
             "https://api.brevo.com/v3/smtp/email",
             headers={
-                "api-key": os.environ.get("BREVO_API_KEY"),
+                "api-key": BREVO_API_KEY,
                 "Content-Type": "application/json"
             },
             json={
-                "sender": {"name": "EG Optimal", "email": "eguldr@gmail.com"},
+                "sender": {"name": BREVO_SENDER_NAME, "email": BREVO_SENDER_MAIL},
                 "to": [{"email": to}],
                 "subject": subject,
                 "textContent": body
-            }
+            },
+            timeout=15
         )
+        print(f"Brevo yanit: {response.status_code} - {response.text[:200]}")
         return response.status_code == 201
     except Exception as e:
         print(f"Mail hatasi: {e}")
         return False
 
 
+def send_verification_mail(email, token):
+    """E-posta doğrulama maili gönder"""
+    verify_url = url_for('verify_email', token=token, _external=True)
+    body = (
+        f"Merhaba,\n\n"
+        f"EG Optimal'e kayıt olduğunuz için teşekkürler!\n\n"
+        f"Hesabınızı aktifleştirmek için aşağıdaki bağlantıya tıklayın:\n\n"
+        f"{verify_url}\n\n"
+        f"Bu bağlantı 24 saat geçerlidir.\n\n"
+        f"Saygılarımızla,\nEG Optimal Ekibi"
+    )
+    return send_mail(email, "EG Optimal - E-posta Doğrulama", body)
+
+
 def cloudinary_belge_url(url):
-    """
-    PDF URL'lerine fl_inline ekleyerek tarayıcıda açılmasını sağlar.
-    Çift eklemeyi önlemek için mevcut flag kontrolü yapılır.
-    """
     if not url:
         return url
     if not url.lower().endswith(".pdf"):
@@ -151,17 +162,15 @@ def cloudinary_belge_url(url):
     return re.sub(r'(/upload/)', r'\1fl_inline/', url, count=1)
 
 
-# Jinja2 template'lerinde doğrudan kullanılabilsin
 app.jinja_env.globals['cloudinary_belge_url'] = cloudinary_belge_url
 
+
 def ai_ile_analiz_et(satir_metni):
-    # Google'ın ücretsiz limitine takılmamak için 2 saniye bekle
-    time.sleep(2) 
-    
+    time.sleep(2)
     prompt = f"Veri: {satir_metni}. Sadece şu kategorilerden birini yaz: Arac, Tesis, Urun, Personel."
     try:
         response = client.models.generate_content(
-            model="gemini-2.0-flash", 
+            model="gemini-2.0-flash",
             contents=prompt
         )
         cevap = response.text.strip().replace("'", "").replace('"', '')
@@ -170,44 +179,39 @@ def ai_ile_analiz_et(satir_metni):
     except Exception as e:
         print(f"AI LIMIT VEYA HATA: {e}")
         return 'Genel'
+
+
 def akilli_analiz_motoru(satir):
-    """
-    Excel satırından kategori tespiti.
-    Öncelik: Araç → Tesis → Ürün → Personel → AI Analiz
-    """
     txt = " ".join([str(v) for v in satir]).lower()
 
-    # ÖNCE PERSONEL KONTROLÜ (Daha spesifik olduğu için)
-    personel_kw = ['src', 'ehliyet', 'operator', 'operatör', 'sofor', 'şoför', 'personel', 'psikoteknik', 'isg', 'mesleki yeterlilik', 'yetki', 'kullanım', 'kullanim', 'belgesi', 'vinc', 'vinç']
+    personel_kw = ['src', 'ehliyet', 'operator', 'operatör', 'sofor', 'şoför',
+                   'personel', 'psikoteknik', 'isg', 'mesleki yeterlilik',
+                   'yetki', 'kullanım', 'kullanim', 'belgesi', 'vinc', 'vinç']
     if any(k in txt for k in personel_kw):
         return 'Personel'
 
-    # SONRA ARAÇ KONTROLÜ
-    if any(k in txt for k in ['plaka', 'scania', 'muayene', 'kamyon', 'ford', 'mercedes', 'volvo', 'tir', 'tır', 'araç', 'arac', 'kasko', 'egzoz', 'takograf', 'k belgesi', 'vdi 2700', 'emisyon', 'pul', 'lojistik']):
+    if any(k in txt for k in ['plaka', 'scania', 'muayene', 'kamyon', 'ford',
+                               'mercedes', 'volvo', 'tir', 'tır', 'araç', 'arac',
+                               'kasko', 'egzoz', 'takograf', 'k belgesi', 'vdi 2700',
+                               'emisyon', 'pul', 'lojistik']):
         return 'Arac'
 
-    if any(k in txt for k in [
-        'yangin', 'yangın', 'tüp', 'bina', 'fabrika', 'kapasite',
-        'tesis', 'itfaiye', 'ced', 'çed', 'sanayi sicil', 'ruhsat',
-        'atik', 'atık', 'tabs', 'cevre', 'çevre', 'asansor', 'asansör','söndürme', 'sondurme', 'gazlı', 'gazli', 'oda'
-    ]):
+    if any(k in txt for k in ['yangin', 'yangın', 'tüp', 'bina', 'fabrika', 'kapasite',
+                               'tesis', 'itfaiye', 'ced', 'çed', 'sanayi sicil', 'ruhsat',
+                               'atik', 'atık', 'tabs', 'cevre', 'çevre', 'asansor', 'asansör',
+                               'söndürme', 'sondurme', 'gazlı', 'gazli', 'oda']):
         return 'Tesis'
 
-    if any(k in txt for k in [
-        'sertifika', 'iso', 'kalite', 'ce belgesi', 'ce işareti',
-        'brc', 'fssc', 'atex', 'ukca', 'eac', 'gdp', 'gmp',
-        'kalibrasyon', 'basec', 'benor', 'acs', 'adr', 'vde',
-        'haccp', 'helal', 'organik', 'gida', 'gıda', 'hijyen', 'gıda', 'gida', 'helal'
-    ]):
+    if any(k in txt for k in ['sertifika', 'iso', 'kalite', 'ce belgesi', 'brc', 'fssc',
+                               'atex', 'ukca', 'eac', 'gdp', 'gmp', 'kalibrasyon',
+                               'haccp', 'helal', 'organik', 'gida', 'gıda', 'hijyen']):
         return 'Urun'
-
-   
 
     return ai_ile_analiz_et(txt)
 
 
 # ============================================================
-# AUTH
+# AUTH — KAYIT, GİRİŞ, DOĞRULAMA
 # ============================================================
 @app.route('/')
 def index():
@@ -221,6 +225,10 @@ def login():
     if request.method == 'POST':
         u = User.query.filter_by(email=request.form.get('email', '').strip()).first()
         if u and check_password_hash(u.password, request.form.get('password', '')):
+            # Admin her zaman girebilir
+            if not u.is_confirmed and u.email != 'erhanadea@gmail.com':
+                flash("Lütfen önce e-postanızı doğrulayın. Gelen kutunuzu kontrol edin.", "warning")
+                return redirect(url_for('login'))
             login_user(u)
             return redirect(url_for('dashboard'))
         flash("E-posta veya şifre hatalı.", "danger")
@@ -234,22 +242,26 @@ def logout():
     return redirect(url_for('login'))
 
 
-# FIX 1: Rota tamamen eşsiz yapıldı → /auth_register_new
-# Eski /register ve /kayit route'ları bu fonksiyona bağlandı
-# Belge ekleme route'u /kayit_ekle/<cat> olduğu için çakışma YOK
 @app.route('/auth_register_new', methods=['GET', 'POST'])
 @app.route('/register', methods=['GET', 'POST'])
 @app.route('/kayit', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        # FIX 2: Matematiksel robot kontrolü — cevap "5" olmalı (2+3)
+        # Robot kontrolü
         robot_cevap = request.form.get('robot_kontrol', '').strip()
         if robot_cevap != '5':
             flash("Robot kontrolü başarısız. 2 + 3 = 5 olmalıdır.", "danger")
             return redirect(url_for('register'))
 
+        # KVKK kontrolü
+        kvkk = request.form.get('kvkk_onay')
+        if not kvkk:
+            flash("Devam edebilmek için KVKK metnini onaylamanız gerekmektedir.", "danger")
+            return redirect(url_for('register'))
+
         email    = request.form.get('email', '').strip()
         password = request.form.get('password', '')
+        sektor   = request.form.get('sektor', 'genel')
 
         if User.query.filter_by(email=email).first():
             flash("Bu e-posta zaten kayıtlı.", "warning")
@@ -259,15 +271,55 @@ def register():
             email        = email,
             password     = generate_password_hash(password),
             company_name = request.form.get('company_name', ''),
-            is_confirmed = True,
-            is_paid      = False
+            is_confirmed = False,  # E-posta doğrulanana kadar False
+            is_paid      = False,
+            kvkk_onay    = True,
+            sektor       = sektor
         )
         db.session.add(u)
         db.session.commit()
-        flash("Kayıt başarılı! Giriş yapabilirsiniz.", "success")
+
+        # Doğrulama maili gönder
+        token = ts.dumps(email, salt='email-confirm-key')
+        mail_gitti = send_verification_mail(email, token)
+
+        if mail_gitti:
+            flash("Kayıt başarılı! E-postanıza doğrulama bağlantısı gönderdik. Lütfen gelen kutunuzu kontrol edin.", "success")
+        else:
+            flash("Kayıt başarılı ancak doğrulama maili gönderilemedi. Lütfen bizimle iletişime geçin.", "warning")
+
         return redirect(url_for('login'))
 
     return render_template('kayit.html')
+
+
+@app.route('/verify_email/<token>')
+def verify_email(token):
+    """E-posta doğrulama linki"""
+    try:
+        email = ts.loads(token, salt='email-confirm-key', max_age=86400)  # 24 saat
+    except Exception:
+        flash("Doğrulama linki geçersiz veya süresi dolmuş.", "danger")
+        return redirect(url_for('login'))
+
+    user = User.query.filter_by(email=email).first()
+    if user:
+        user.is_confirmed = True
+        db.session.commit()
+        flash("E-postanız doğrulandı! Artık giriş yapabilirsiniz.", "success")
+    return redirect(url_for('login'))
+
+
+@app.route('/resend_verification', methods=['POST'])
+def resend_verification():
+    """Doğrulama mailini tekrar gönder"""
+    email = request.form.get('email', '').strip()
+    user = User.query.filter_by(email=email).first()
+    if user and not user.is_confirmed:
+        token = ts.dumps(email, salt='email-confirm-key')
+        send_verification_mail(email, token)
+    flash("Doğrulama maili tekrar gönderildi.", "info")
+    return redirect(url_for('login'))
 
 
 @app.route('/forgot_password', methods=['GET', 'POST'])
@@ -279,7 +331,8 @@ def forgot_password():
             token       = ts.dumps(email, salt='recover-key')
             recover_url = url_for('reset_password', token=token, _external=True)
             send_mail(email, "Şifre Sıfırlama - EG Optimal",
-                      f"Şifrenizi sıfırlamak için:\n\n{recover_url}\n\n30 dakika geçerlidir.")
+                      f"Merhaba,\n\nŞifrenizi sıfırlamak için:\n\n{recover_url}\n\n"
+                      f"Bu link 30 dakika geçerlidir.\n\nEG Optimal Ekibi")
         flash("Kayıtlı e-postanıza sıfırlama bağlantısı gönderildi.", "info")
         return redirect(url_for('login'))
     return render_template('forgot_password.html')
@@ -553,6 +606,8 @@ def admin_panel():
         odeme_yapmayanlar = odeme_yapmayanlar,
         bugun             = date.today()
     )
+
+
 @app.route('/update_payment/<int:uid>', methods=['GET', 'POST'])
 @login_required
 def update_payment(uid):
@@ -587,41 +642,78 @@ def delete_user(uid):
 
 # ============================================================
 # OTOMATİK HATIRLATMA (Cron)
-# FIX: return döngünün DIŞINDA
+# ─────────────────────────────────────────────────────────────
+# cron-job.org'da SADECE BU endpoint'i çağırın:
+#   https://sertifika-takip.onrender.com/cron/check_reminders
+# Sıklık: Her gün sabah 09:00 (Türkiye = UTC+3, yani UTC 06:00)
 # ============================================================
 @app.route('/cron/check_reminders')
 @app.route('/cron/9am_check')
 def check_reminders():
+    # Güvenlik: Sadece cron-job.org'dan veya doğrudan çağrılabilir
+    # İsterseniz bir secret token ekleyebilirsiniz
     try:
         bugun    = date.today()
         kayitlar = Entry.query.filter_by(is_active=True).all()
         gonderr  = 0
+        hatalar  = 0
 
         for e in kayitlar:
             if not e.expiry_date:
                 continue
             kalan = (e.expiry_date - bugun).days
-            if kalan in [180, 90, 30, 15, 7, 1]:
+            if kalan in [180, 90, 30, 15, 7, 1, 0]:
                 user = User.query.get(e.user_id)
-                if user:
-                    basari = send_mail(
-                        user.email,
-                        f"EG Optimal Hatırlatma: {e.title} ({kalan} Gün)",
-                        f"'{e.title}' belgenizin bitmesine {kalan} gün kalmıştır.\n"
-                        f"Firma: {e.firma_adi}\n"
-                        f"Bitiş: {e.expiry_date.strftime('%d.%m.%Y')}\n\nEG Optimal"
-                    )
-                    if basari:
-                        gonderr += 1
+                if not user:
+                    continue
 
-        # FIX: döngünün DIŞINDA — tüm belgeler kontrol edildikten sonra çalışır
-        return f"OK - {gonderr} hatırlatma gönderildi.", 200
+                # Belge durumuna göre konu
+                if kalan == 0:
+                    konu = f"🚨 BUGÜN Süresi Doluyor: {e.title}"
+                    mesaj_on = "BU BELGE BUGÜN SONA ERIYOR"
+                elif kalan <= 7:
+                    konu = f"🔴 ACİL - {kalan} Gün Kaldı: {e.title}"
+                    mesaj_on = f"Acil! Sadece {kalan} gün kaldı"
+                elif kalan <= 30:
+                    konu = f"⚠️ {kalan} Gün Kaldı: {e.title}"
+                    mesaj_on = f"Dikkat: {kalan} gün kaldı"
+                else:
+                    konu = f"📋 Hatırlatma: {e.title} ({kalan} Gün)"
+                    mesaj_on = f"{kalan} gün kaldı"
+
+                body = (
+                    f"Sayın {user.company_name or user.email},\n\n"
+                    f"{mesaj_on}!\n\n"
+                    f"📄 Belge: {e.title}\n"
+                    f"🏢 Firma: {e.firma_adi or '-'}\n"
+                    f"📅 Bitiş Tarihi: {e.expiry_date.strftime('%d.%m.%Y')}\n"
+                    f"⏳ Kalan Süre: {kalan} gün\n\n"
+                    f"Panele erişmek için:\n"
+                    f"https://sertifika-takip.onrender.com/dashboard\n\n"
+                    f"Saygılarımızla,\nEG Optimal Belge Takip Sistemi"
+                )
+
+                basari = send_mail(user.email, konu, body)
+                if basari:
+                    gonderr += 1
+                else:
+                    hatalar += 1
+
+        return jsonify({
+            "durum": "OK",
+            "tarih": str(bugun),
+            "gonderilen": gonderr,
+            "hata": hatalar,
+            "toplam_kontrol": len(kayitlar)
+        }), 200
 
     except Exception as e:
         print(f"Cron hatasi: {e}")
-        return f"HATA: {str(e)}", 500
+        return jsonify({"durum": "HATA", "mesaj": str(e)}), 500
 
 
+# ============================================================
+# KATEGORİ GÜNCELLE / TAŞI
 # ============================================================
 @app.route('/kategori_guncelle/<int:id>/<string:yeni_kat>')
 @login_required
@@ -631,6 +723,16 @@ def kategori_guncelle(id, yeni_kat):
     db.session.commit()
     flash(f'Belge başarıyla {yeni_kat} kategorisine taşındı.', 'success')
     return redirect(url_for('dashboard'))
+
+
+# ============================================================
+# PING — Render'ı uyandırmak için (cron'dan önce çağrılır)
+# ============================================================
+@app.route('/ping')
+def ping():
+    return "pong", 200
+
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
