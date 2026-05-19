@@ -3,7 +3,7 @@
 <div class="container py-4">
     <div class="card shadow-lg border-0" style="border-radius: 15px;">
 
-        {# ─── KART BAŞLIĞI (kategoriye göre renk) ─── #}
+        {# ─── KART BAŞLIĞI ─── #}
         <div class="card-header p-4
             {% if cat == 'Arac' %}bg-warning text-dark
             {% elif cat == 'Personel' %}bg-info text-white
@@ -18,74 +18,107 @@
                     {% else %}fa-box-open{% endif %} me-2"></i>
                 Yeni Kayıt:
                 {% if cat == 'Arac' %}Araç & Filo
-                {% elif cat == 'Personel' %}Personel & SRC
+                {% elif cat == 'Personel' %}Personel
                 {% elif cat == 'Tesis' %}Tesis & Mekan
                 {% else %}Üretim & Ürün{% endif %}
             </h3>
         </div>
 
         <div class="card-body p-4 bg-white">
-            {#
-                ACTION: url_for('ekle', cat=cat)  →  aynı route, POST metodu
-                reCAPTCHA KALDIRILDI — site key ortam değişkenine bağlandığında
-                tekrar eklenebilir.
-            #}
             <form method="POST" action="{{ url_for('ekle', cat=cat) }}">
                 <input type="hidden" name="category" value="{{ cat }}">
 
-                {# ─── İLETİŞİM & FİRMA SATIRI ─── #}
+                {# ─── İLETİŞİM ALANLARI ─── #}
                 <div class="row mb-4">
+
+                    {# Alan 1: Belge Sahibi / Personel / Müşteri #}
                     <div class="col-md-4 mb-3">
-                        <label class="fw-bold text-success">
-                            <i class="fab fa-whatsapp"></i> Müşteri WhatsApp (905...)
+                        <label class="fw-bold text-success d-flex align-items-center gap-1">
+                            <i class="fab fa-whatsapp"></i>
+                            {% if cat == 'Arac' %}
+                                Araç Sorumlusu WhatsApp
+                            {% elif cat == 'Personel' %}
+                                Personel WhatsApp No
+                            {% else %}
+                                Müşteri / Firma WhatsApp
+                            {% endif %}
+                            <span class="tooltip-icon" data-bs-toggle="tooltip" data-bs-placement="top"
+                                title="{% if cat == 'Personel' %}Belge sahibi çalışanın (şoför, operatör vb.) WhatsApp numarası. Süre yaklaştığında bu kişiye otomatik hatırlatma gönderilir.{% elif cat == 'Arac' %}Aracın sorumlu şoförünün veya filo yöneticisinin numarası.{% else %}Belge sahibi müşteri firmanın yetkili kişisinin numarası.{% endif %}">
+                                <i class="fas fa-circle-info text-muted small"></i>
+                            </span>
                         </label>
                         <input type="text" name="whatsapp_no" class="form-control form-control-lg"
-                               placeholder="905321234567">
+                               placeholder="905xxxxxxxxx">
+                        <small class="text-muted">
+                            {% if cat == 'Personel' %}Çalışanın numarası (şoför, teknisyen vb.)
+                            {% elif cat == 'Arac' %}Araç sorumlusunun numarası
+                            {% else %}Müşteri firma yetkilisinin numarası{% endif %}
+                        </small>
                     </div>
+
+                    {# Alan 2: Amir / Danışman / Takipçi #}
                     <div class="col-md-4 mb-3">
-                        <label class="fw-bold text-primary">
-                            <i class="fas fa-user-shield"></i> Danışman / Takipçi No
+                        <label class="fw-bold text-primary d-flex align-items-center gap-1">
+                            <i class="fas fa-user-shield"></i>
+                            {% if cat == 'Personel' %}
+                                İdari Amir WhatsApp
+                            {% elif cat == 'Arac' %}
+                                Filo Yöneticisi WhatsApp
+                            {% else %}
+                                Danışman / Takipçi No
+                            {% endif %}
+                            <span class="tooltip-icon" data-bs-toggle="tooltip" data-bs-placement="top"
+                                title="{% if cat == 'Personel' %}Personelin bağlı olduğu amirin numarası. Süre yaklaştığında amir de bilgilendirilir.{% elif cat == 'Arac' %}Araç filosundan sorumlu yöneticinin numarası.{% else %}Bu belgeyi takip eden danışman veya yetkili kişinin numarası.{% endif %}">
+                                <i class="fas fa-circle-info text-muted small"></i>
+                            </span>
                         </label>
                         <input type="text" name="danisman_no" class="form-control form-control-lg"
-                               placeholder="905051234567">
+                               placeholder="905xxxxxxxxx">
+                        <small class="text-muted">
+                            {% if cat == 'Personel' %}Sorumlu amir / İK yöneticisi
+                            {% elif cat == 'Arac' %}Filo yöneticisi / operasyon müdürü
+                            {% else %}Takibi yapan danışman{% endif %}
+                        </small>
                     </div>
+
+                    {# Alan 3: Firma #}
                     <div class="col-md-4 mb-3">
                         <label class="fw-bold text-dark">Firma / Kurum Adı</label>
                         <input type="text" name="firma_adi" class="form-control form-control-lg"
-                               placeholder="Müşteri/Firma adını yazın" required>
+                               placeholder="{% if cat == 'Personel' %}Çalışanın bağlı olduğu firma{% else %}Müşteri/Firma adı{% endif %}" required>
                     </div>
                 </div>
 
-                {# ─── ARAÇ / PERSONEL / DİĞER NOTU ─── #}
+                {# ─── KATEGORİYE ÖZEL NOT ALANI ─── #}
                 <div class="row bg-light p-3 rounded mb-4 shadow-sm border">
                     <div class="col-md-12">
                         {% if cat == 'Arac' %}
                         <label class="fw-bold text-primary">
-                            Araç Detayları (Plaka / Marka / Model)
+                            <i class="fas fa-car me-1"></i> Araç Detayları (Plaka / Marka / Model)
                         </label>
                         <input type="text" name="note" class="form-control form-control-lg"
                                placeholder="Örn: 34 ABC 123 - Mercedes Axor" required>
                         {% elif cat == 'Personel' %}
                         <label class="fw-bold text-primary">
-                            Personel Bilgileri (Ad Soyad / TC No / Uyruk)
+                            <i class="fas fa-id-card me-1"></i> Personel Bilgileri (Ad Soyad / TC No)
                         </label>
                         <input type="text" name="note" class="form-control form-control-lg"
-                               placeholder="Örn: Erhan ADEA - 12345678901 - T.C." required>
+                               placeholder="Örn: Mehmet Yılmaz - 12345678901" required>
                         {% else %}
                         <label class="fw-bold text-primary">
-                            Tanımlayıcı Bilgi (Kapasite Rapor No / Belge Notu)
+                            <i class="fas fa-sticky-note me-1"></i> Tanımlayıcı Bilgi / Belge Notu
                         </label>
                         <input type="text" name="note" class="form-control form-control-lg"
-                               placeholder="Ayırt edici notu buraya yazın">
+                               placeholder="Ayırt edici bir not girin">
                         {% endif %}
                     </div>
                 </div>
 
-                {# ─── SERTİFİKA / BELGE TİPİ SEÇİMİ ─── #}
+                {# ─── BELGE TİPİ SEÇİMİ ─── #}
                 <div class="mb-4">
                     <label class="fw-bold text-dark">Sertifika / Belge Tipi Seçin</label>
                     <select name="title" class="form-control form-control-lg"
-                            required size="10" onchange="checkManual(this)">
+                            required size="8" onchange="checkManual(this)">
 
                         {% if cat == 'Arac' %}
                             <option value="">-- Seçiniz --</option>
@@ -93,23 +126,28 @@
                             <option value="Zorunlu Trafik Sigortası">🛡️ Zorunlu Trafik Sigortası</option>
                             <option value="Kasko Sigortası">📈 Kasko Sigortası</option>
                             <option value="Egzoz Emisyon Ölçümü">☁️ Egzoz Emisyon Ölçümü</option>
+                            <option value="Euro 6 Emisyon Pulu">🏷️ Euro 6 Emisyon Pulu</option>
                             <option value="K Belgesi (Yetki Belgesi)">📜 K Belgesi</option>
                             <option value="Takograf Muayenesi">⏱️ Takograf Muayenesi</option>
                             <option value="VDI 2700 (Yük Güvenliği)">📦 VDI 2700</option>
-                            <option value="Araç Yedek Parça Sertifikası">⚙️ Yedek Parça Sertifikası</option>
+                            <option value="ADR Güvenlik Danışmanlığı">⚠️ ADR Güvenlik Danışmanlığı</option>
                             <option value="LİSTEDE YOK / MANUEL YAZ">➕ LİSTEDE YOK / MANUEL YAZ</option>
 
                         {% elif cat == 'Personel' %}
                             <option value="">-- Seçiniz --</option>
                             <option value="SRC 1 (Uluslararası Yolcu)">🪪 SRC 1 Belgesi</option>
                             <option value="SRC 2 (Yurtiçi Yolcu)">🪪 SRC 2 Belgesi</option>
-                            <option value="SRC 3 (Uluslararası Eşya - 5 Yıllık)">🪪 SRC 3 (5 Yılda Bir Yenilenir)</option>
-                            <option value="SRC 4 (Yurtiçi Eşya - 5 Yıllık)">🪪 SRC 4 (5 Yılda Bir Yenilenir)</option>
-                            <option value="SRC 5 (Tehlikeli Madde - 5 Yıllık)">☢️ SRC 5 (Zorunlu Yenileme)</option>
+                            <option value="SRC 3 (Uluslararası Eşya)">🪪 SRC 3 Belgesi</option>
+                            <option value="SRC 4 (Yurtiçi Eşya)">🪪 SRC 4 Belgesi</option>
+                            <option value="SRC 5 (Tehlikeli Madde)">☢️ SRC 5 Belgesi</option>
                             <option value="Psikoteknik Değerlendirme">🧠 Psikoteknik Belgesi</option>
                             <option value="Dijital Ehliyet Kartı">💳 Dijital Ehliyet Kartı</option>
+                            <option value="Pasaport">🛂 Pasaport</option>
+                            <option value="Vize">📋 Vize</option>
                             <option value="İSG Eğitimi">👷 İSG Eğitimi</option>
                             <option value="Mesleki Yeterlilik Belgesi">🎓 Mesleki Yeterlilik</option>
+                            <option value="Operatör Yetki Belgesi">⚙️ Operatör Yetki Belgesi</option>
+                            <option value="Vinç Kullanım Yetki Belgesi">🏗️ Vinç Kullanım Belgesi</option>
                             <option value="LİSTEDE YOK / MANUEL YAZ">➕ LİSTEDE YOK / MANUEL YAZ</option>
 
                         {% elif cat == 'Tesis' %}
@@ -124,7 +162,9 @@
                             <option value="Sıfır Atık Belgesi">♻️ Sıfır Atık Belgesi</option>
                             <option value="Tehlikeli Atık Bildirimi (TABS)">☣️ TABS Bildirimi</option>
                             <option value="Yangın Sertifikası">🧯 Yangın Sertifikası</option>
-                            <option value="Asansör Bakımı">🛗 Asansör Bakımı</option>
+                            <option value="Asansör Periyodik Kontrolü">🛗 Asansör Periyodik Kontrolü</option>
+                            <option value="Forklift Periyodik Kontrolü">🏗️ Forklift Periyodik Kontrolü</option>
+                            <option value="Kompresör Periyodik Kontrolü">⚙️ Kompresör Periyodik Kontrolü</option>
                             <option value="LİSTEDE YOK / MANUEL YAZ">➕ LİSTEDE YOK / MANUEL YAZ</option>
 
                         {% else %}
@@ -132,64 +172,17 @@
                                 <option value="">-- Seçiniz --</option>
                                 <option>ACS (Sağlık Uygunluk Sertifikası)</option>
                                 <option>ADR Sertifikaları</option>
-                                <option>AD 2000 CODE</option>
-                                <option>AS/EN/JISQ 9100</option>
                                 <option>ATEX Sertifikası</option>
-                                <option>BASEC Sertifikası</option>
-                                <option>BENOR Sertifikası</option>
                                 <option>BRC Sertifikası</option>
-                                <option>Kalibrasyon Sertifikası</option>
-                                <option>CARB Sertifikası</option>
-                                <option>CB Sertifikası</option>
-                                <option>CCC Sertifikası</option>
                                 <option>CE İşareti</option>
-                                <option>CLASS Sertifikası</option>
-                                <option>CMIM Mark</option>
-                                <option>CMMI Dev</option>
-                                <option>COSMOS Sertifikaları</option>
-                                <option>Crash Test Certificate</option>
-                                <option>Cradle to Cradle</option>
-                                <option>CTUV İşareti</option>
-                                <option>DIN Belgeleri</option>
-                                <option>DOP Sertifikası</option>
                                 <option>EAC Sertifikası</option>
-                                <option>ECE Sertifikası</option>
-                                <option>EC Type Examination</option>
-                                <option>ECM Sertifikası</option>
-                                <option>Ecolabel</option>
-                                <option>Ecocert</option>
-                                <option>EHEDG</option>
-                                <option>EMC Sertifikası</option>
-                                <option>EN Belgeleri</option>
-                                <option>ENPLUS</option>
-                                <option>Ergonomic Product</option>
-                                <option>ETA</option>
-                                <option>EU Type Examination</option>
-                                <option>EUCERTPLAST</option>
-                                <option>Free Sales Certificate</option>
-                                <option>Eurovent</option>
-                                <option>F4 Star</option>
-                                <option>FAMI-QS</option>
-                                <option>FIBC Test</option>
-                                <option>Florida Product Approval</option>
-                                <option>FM Approvals</option>
                                 <option>FSSC 22000</option>
-                                <option>G Mark</option>
-                                <option>Gastec</option>
-                                <option>Blue Angel</option>
-                                <option>Global Security Report</option>
                                 <option>GMP</option>
-                                <option>GMP+</option>
                                 <option>GDP</option>
                                 <option>GS Sertifikası</option>
                                 <option>HACCP</option>
-                                <option>HAR</option>
                                 <option>Helal Belgesi</option>
                                 <option>Hijyen Sertifikası</option>
-                                <option>Indoor Air Quality</option>
-                                <option>Insta-Cert</option>
-                                <option>CSC Sertifikası</option>
-                                <option>ISCC</option>
                                 <option>ISO 9001</option>
                                 <option>ISO 14001</option>
                                 <option>ISO 22000</option>
@@ -197,71 +190,17 @@
                                 <option>ISO 45001</option>
                                 <option>ISO 13485</option>
                                 <option>ISO 50001</option>
-                                <option>ISO 22301</option>
-                                <option>ISO 10002</option>
-                                <option>ISO 37001</option>
-                                <option>İyi Tarım Uygulamaları</option>
-                                <option>JIS</option>
-                                <option>KEMA KEUR</option>
-                                <option>KEYMARK</option>
-                                <option>KITEMARK</option>
-                                <option>KTW-UBA</option>
-                                <option>KRAV</option>
-                                <option>Steel Forging Approval</option>
-                                <option>Master Certificate</option>
-                                <option>Marine Certificate</option>
-                                <option>MDR</option>
-                                <option>MDSAP</option>
-                                <option>Miami Dade NOA</option>
-                                <option>MIL-STD-461F</option>
-                                <option>MIL-STD-810G</option>
-                                <option>MSC Chain</option>
-                                <option>KOT Sertifikası</option>
-                                <option>NF Sertifikası</option>
-                                <option>Operation Clean Sweep</option>
-                                <option>Organik Tarım</option>
-                                <option>NON-GMO</option>
-                                <option>Nordic Swan</option>
-                                <option>OK Biobased</option>
-                                <option>Organik Ürün</option>
-                                <option>Q-Mark</option>
-                                <option>RAL</option>
-                                <option>RMP</option>
-                                <option>RecyClass</option>
-                                <option>Recycled Claim</option>
-                                <option>RTN</option>
-                                <option>SIL Sertifikası</option>
-                                <option>Screened Chemistry</option>
-                                <option>S-Mark</option>
-                                <option>Solar Certificate</option>
-                                <option>Solar Power Certificate</option>
-                                <option>Solar Keymark</option>
-                                <option>SERT Belgesi</option>
-                                <option>StandardsMark</option>
-                                <option>SRCCS</option>
-                                <option>Teknik Reglement</option>
-                                <option>Teknik Svidetelstvo</option>
-                                <option>Toxproof</option>
-                                <option>Transaction Certificate</option>
-                                <option>TQP</option>
-                                <option>TSI Sertifikası</option>
-                                <option>Type Approval</option>
-                                <option>Type Test</option>
+                                <option>Kalibrasyon Sertifikası</option>
+                                <option>Organik Tarım Sertifikası</option>
                                 <option>UKCA</option>
-                                <option>Ukrsepro</option>
-                                <option>Uygunluk Sertifikası</option>
                                 <option>VDE</option>
-                                <option>Verified Product</option>
-                                <option>VI-1</option>
-                                <option>WRAS</option>
-                                <option>Watermark</option>
                                 <option value="LİSTEDE YOK / MANUEL YAZ">➕ LİSTEDE YOK / MANUEL YAZ</option>
                             </optgroup>
                         {% endif %}
                     </select>
                 </div>
 
-                {# ─── MANUEL GİRİŞ (gizli, seçime göre açılır) ─── #}
+                {# ─── MANUEL GİRİŞ ─── #}
                 <div id="manualInputDiv" class="mb-4" style="display:none;">
                     <label class="fw-bold text-danger">Lütfen Belge Adını Manuel Yazın</label>
                     <input type="text" name="manual_title" id="manual_title"
@@ -278,13 +217,10 @@
                            class="form-control form-control-lg border-danger" required>
                 </div>
 
-                {# ─── KAYDET ─── #}
                 <button type="submit" class="btn btn-success w-100 btn-lg shadow-lg py-3">
                     <i class="fas fa-save me-2"></i> Verileri Kaydet ve Takibe Al
                 </button>
-
-                <a href="{{ url_for('dashboard') }}"
-                   class="btn btn-outline-secondary w-100 btn-lg mt-2">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary w-100 btn-lg mt-2">
                     <i class="fas fa-arrow-left me-2"></i> İptal / Geri Dön
                 </a>
             </form>
@@ -293,6 +229,14 @@
 </div>
 
 <script>
+// Tooltip başlat
+document.addEventListener('DOMContentLoaded', function () {
+    var tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltips.forEach(function(el) {
+        new bootstrap.Tooltip(el);
+    });
+});
+
 function checkManual(select) {
     const div   = document.getElementById('manualInputDiv');
     const input = document.getElementById('manual_title');
