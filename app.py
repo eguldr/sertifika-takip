@@ -588,7 +588,7 @@ def export_excel():
     }
     body { background: #f0f4f8; }
 
-    /* ── KRİTİK BANNER ── */
+    # KRITIK BANNER
     .critical-banner {
         background: linear-gradient(135deg, #fff 0%, #fff5f5 100%);
         border-left: 6px solid var(--danger);
