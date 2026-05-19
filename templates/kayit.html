@@ -3,49 +3,50 @@
 <div class="row justify-content-center mt-4 mb-5">
     <div class="col-md-5">
         <div class="text-center mb-4">
-            <i class="fas fa-certificate fa-3x text-primary shadow-sm p-3 bg-white rounded-circle"></i>
-            <h3 class="mt-2 fw-bold text-primary">EG Optimal</h3>
-            <p class="text-muted">Yeni Hesap Oluştur</p>
+            <div style="display:inline-block; background: linear-gradient(135deg,#1a1c4b,#2d3080); border-radius: 50%; padding: 18px 22px; box-shadow: 0 8px 24px rgba(26,28,75,0.3);">
+                <i class="fas fa-certificate fa-2x" style="color: #c5a059;"></i>
+            </div>
+            <h3 class="mt-3 fw-bold" style="color: #1a1c4b;">EG Optimal</h3>
+            <p class="text-muted small">Dijital Belge ve Risk Yönetimi</p>
         </div>
 
-        <div class="card border-0 shadow-lg" style="border-radius: 15px;">
-            <div class="card-body p-4">
-                <h5 class="mb-4 fw-bold text-dark">
-                    <i class="fas fa-user-plus me-2 text-primary"></i>Kayıt Ol
+        <div class="card border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+            <div style="background: linear-gradient(135deg,#1a1c4b,#2d3080); padding: 20px 24px;">
+                <h5 class="mb-0 text-white fw-bold">
+                    <i class="fas fa-user-plus me-2" style="color:#c5a059;"></i>Yeni Hesap Oluştur
                 </h5>
+                <p class="mb-0 small mt-1" style="color:rgba(255,255,255,0.5);">Bilgilerinizi doldurun, hemen başlayın.</p>
+            </div>
 
+            <div class="card-body p-4 bg-white">
                 <form method="POST" action="{{ url_for('register') }}">
 
-                    <!-- E-posta -->
                     <div class="mb-3">
-                        <label class="form-label fw-bold">E-posta Adresi</label>
+                        <label class="form-label fw-semibold small text-uppercase text-muted">E-posta Adresi</label>
                         <div class="input-group">
-                            <span class="input-group-text bg-light"><i class="fas fa-envelope text-muted"></i></span>
-                            <input type="email" name="email" class="form-control" placeholder="ornek@firma.com" required>
+                            <span class="input-group-text bg-light border-end-0"><i class="fas fa-envelope text-muted"></i></span>
+                            <input type="email" name="email" class="form-control border-start-0" placeholder="ornek@firma.com" required>
                         </div>
                     </div>
 
-                    <!-- Şifre -->
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Şifre</label>
+                        <label class="form-label fw-semibold small text-uppercase text-muted">Şifre</label>
                         <div class="input-group">
-                            <span class="input-group-text bg-light"><i class="fas fa-lock text-muted"></i></span>
-                            <input type="password" name="password" class="form-control" placeholder="En az 6 karakter" required minlength="6">
+                            <span class="input-group-text bg-light border-end-0"><i class="fas fa-lock text-muted"></i></span>
+                            <input type="password" name="password" class="form-control border-start-0" placeholder="En az 6 karakter" required minlength="6">
                         </div>
                     </div>
 
-                    <!-- Firma Adı -->
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Firma / Kurum Adı</label>
+                        <label class="form-label fw-semibold small text-uppercase text-muted">Firma / Kurum Adı</label>
                         <div class="input-group">
-                            <span class="input-group-text bg-light"><i class="fas fa-building text-muted"></i></span>
-                            <input type="text" name="company_name" class="form-control" placeholder="Firmanızın adı">
+                            <span class="input-group-text bg-light border-end-0"><i class="fas fa-building text-muted"></i></span>
+                            <input type="text" name="company_name" class="form-control border-start-0" placeholder="Firmanızın adı">
                         </div>
                     </div>
 
-                    <!-- Sektör Seçimi -->
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Sektörünüz</label>
+                        <label class="form-label fw-semibold small text-uppercase text-muted">Sektörünüz</label>
                         <select name="sektor" class="form-select" required>
                             <option value="">-- Seçiniz --</option>
                             <option value="lojistik">🚛 Lojistik & Taşımacılık</option>
@@ -54,54 +55,53 @@
                             <option value="isg">⚙️ İSG & Tesis Yönetimi</option>
                             <option value="genel">🏢 Diğer / Genel</option>
                         </select>
-                        <small class="text-muted">Sektörünüze göre panel size özel görünür.</small>
+                        <div class="form-text">Paneli size özel hale getirmek için kullanılır.</div>
                     </div>
 
-                    <!-- Robot Kontrolü -->
                     <div class="mb-3">
-                        <label class="form-label fw-bold">Robot Kontrolü</label>
+                        <label class="form-label fw-semibold small text-uppercase text-muted">Robot Kontrolü</label>
                         <div class="input-group">
-                            <span class="input-group-text bg-light fw-bold">2 + 3 = ?</span>
-                            <input type="text" name="robot_kontrol" class="form-control" placeholder="Cevap" required maxlength="2">
+                            <span class="input-group-text bg-light fw-bold" style="color:#1a1c4b;">2 + 3 = ?</span>
+                            <input type="text" name="robot_kontrol" class="form-control" placeholder="Cevabı yazın" required maxlength="2">
                         </div>
                     </div>
 
-                    <!-- KVKK Onayı -->
-                    <div class="mb-4 p-3 bg-light rounded border">
+                    <!-- KVKK — tıklanınca modal açılır -->
+                    <div class="mb-4 p-3 rounded-3" style="background:#f8f9ff; border: 1px solid #e0e4f0;">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" name="kvkk_onay" id="kvkk_onay" required>
                             <label class="form-check-label small" for="kvkk_onay">
-                                <strong>KVKK Aydınlatma Metni'ni</strong> okudum ve kabul ediyorum.
-                                Kişisel verilerimin EG Optimal tarafından
-                                6698 sayılı KVKK kapsamında işlenmesine onay veriyorum.
-                                <br><small class="text-muted">
-                                    Verileriniz yalnızca belge takip hizmeti amacıyla işlenecek,
-                                    üçüncü kişilerle paylaşılmayacaktır.
-                                </small>
+                                <a href="#" class="fw-bold text-decoration-none" style="color:#1a1c4b;"
+                                   data-bs-toggle="modal" data-bs-target="#kvkkModal"
+                                   onclick="event.preventDefault(); new bootstrap.Modal(document.getElementById('kvkkModal')).show();">
+                                    KVKK Aydınlatma Metni
+                                </a>'ni okudum, kişisel verilerimin işlenmesine onay veriyorum.
+                                <br>
+                                <span class="text-muted" style="font-size:0.78rem;">
+                                    Verileriniz yalnızca belge takip hizmeti için kullanılır, 3. kişilerle paylaşılmaz.
+                                </span>
                             </label>
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">
+                    <button type="submit" class="btn w-100 py-2 fw-bold text-white"
+                            style="background: linear-gradient(135deg,#1a1c4b,#2d3080); border:none; border-radius:10px; font-size:1rem;">
                         <i class="fas fa-user-check me-2"></i>Hesap Oluştur
                     </button>
                 </form>
 
                 <hr class="my-3">
                 <div class="text-center">
-                    <p class="mb-0 text-muted small">
-                        Zaten hesabınız var mı?
-                        <a href="{{ url_for('login') }}" class="text-primary fw-bold text-decoration-none">Giriş Yap</a>
-                    </p>
+                    <span class="text-muted small">Zaten hesabınız var mı?
+                        <a href="{{ url_for('login') }}" class="fw-bold text-decoration-none" style="color:#1a1c4b;">Giriş Yap</a>
+                    </span>
                 </div>
             </div>
         </div>
 
-        <!-- E-posta doğrulama bilgisi -->
-        <div class="alert alert-info mt-3 small">
+        <div class="alert alert-info mt-3 small border-0 shadow-sm" style="border-radius: 10px;">
             <i class="fas fa-envelope-circle-check me-2"></i>
             Kayıt sonrası e-postanıza <strong>doğrulama bağlantısı</strong> gönderilecektir.
-            Giriş yapabilmek için e-postanızı doğrulamanız gerekmektedir.
         </div>
 
         <div class="text-center mt-3 text-muted">
@@ -109,20 +109,4 @@
         </div>
     </div>
 </div>
-
-<style>
-    .form-control:focus, .form-select:focus {
-        border-color: #1a1c4b;
-        box-shadow: 0 0 0 0.25rem rgba(26, 28, 75, 0.1);
-    }
-    .btn-primary {
-        background-color: #1a1c4b;
-        border: none;
-        transition: 0.3s;
-    }
-    .btn-primary:hover {
-        background-color: #c5a059;
-        transform: translateY(-2px);
-    }
-</style>
 {% endblock %}
