@@ -8,27 +8,22 @@
         --danger-red: #c62828;
     }
     body { background-color: var(--silver-light); font-family: 'Inter', sans-serif; }
-
     .card { border: none; border-radius: 12px; transition: 0.3s; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
     .card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
-
     .table-container { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
     .table thead th { background-color: var(--navy-primary); color: white; border: none; font-size: 0.75rem; padding: 15px; text-transform: uppercase; letter-spacing: 1px; }
-
     .emergency-box {
         background: white; border-left: 10px solid var(--danger-red); border-radius: 12px;
         display: flex; align-items: center; justify-content: space-between;
         padding: 20px; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(198, 40, 40, 0.2);
     }
     .emergency-text { color: var(--danger-red); font-weight: 800; font-size: 1.1rem; }
-
     .animate-pulse { animation: pulse-red 2s infinite; }
     @keyframes pulse-red {
         0%   { box-shadow: 0 0 0 0   rgba(198, 40, 40, 0.7); }
         70%  { box-shadow: 0 0 0 10px rgba(198, 40, 40, 0);   }
         100% { box-shadow: 0 0 0 0   rgba(198, 40, 40, 0);   }
     }
-
     .btn-excel-import { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; font-weight: 600; }
     .btn-delete-row   { color: #cbd5e1; transition: 0.2s; border: none; background: none; }
     .btn-delete-row:hover { color: var(--danger-red); }
@@ -83,7 +78,7 @@
                     <li><a class="dropdown-item" href="{{ url_for('ekle', cat='Arac') }}">
                         <i class="fas fa-truck-fast me-2 text-warning"></i>Araç & Filo</a></li>
                     <li><a class="dropdown-item" href="{{ url_for('ekle', cat='Personel') }}">
-                        <i class="fas fa-user-gear me-2 text-info"></i>Personel & SRC</a></li>
+                        <i class="fas fa-user-gear me-2 text-info"></i>Personel</a></li>
                     <li><a class="dropdown-item" href="{{ url_for('ekle', cat='Tesis') }}">
                         <i class="fas fa-building-shield me-2 text-secondary"></i>Tesis & Mekan</a></li>
                 </ul>
@@ -160,63 +155,60 @@
                     {% set status = 'danger' if kalan <= 30 else ('warning' if kalan <= 90 else 'success') %}
                     <tr class="table-row" data-status="{{ status }}">
 
-                        {# Belge Adı + Kategori + Firma #}
                         <td class="ps-4 align-middle">
                             <span class="fw-bold d-block mb-1 text-navy">{{ s.title }}</span>
                             <small class="text-muted">
-                                <i class="fas fa-tag me-1"></i>{{ s.category }} |
-                                <i class="fas fa-building me-1"></i>{{ s.firma_adi or '-' }}
-                                {% if s.note %}
-                                    | <i class="fas fa-sticky-note me-1"></i>{{ s.note }}
-                                {% endif %}
+                                <i class="fas fa-tag me-1"></i>
+                                {# Kategori görünümü #}
+                                {% if s.category == 'Personel' %}Personel
+                                {% elif s.category == 'Arac' %}Araç & Filo
+                                {% elif s.category == 'Tesis' %}Tesis & Mekan
+                                {% else %}Üretim & Ürün{% endif %}
+                                | <i class="fas fa-building me-1"></i>{{ s.firma_adi or '-' }}
+                                {% if s.note %}| <i class="fas fa-sticky-note me-1"></i>{{ s.note }}{% endif %}
                             </small>
                         </td>
 
-                        {# Bitiş Tarihi #}
                         <td class="align-middle text-muted fw-bold">
                             {{ s.expiry_date.strftime('%d.%m.%Y') }}
                         </td>
 
-                        {# Kalan Gün Rozeti #}
                         <td class="align-middle">
                             <span class="badge bg-{{ status }} px-3 py-2 rounded-pill">
-                                {{ kalan }} Gün
+                                {% if kalan < 0 %}-{{ kalan|abs }} Gün (Geçti!)
+                                {% elif kalan == 0 %}BUGÜN!
+                                {% else %}{{ kalan }} Gün{% endif %}
                             </span>
                         </td>
 
-                        {# WhatsApp Hatırlat (Çift Butonlu Sistem) #}
-<td class="align-middle text-center">
-    {% if kalan <= 30 %}
-        <div class="d-flex justify-content-center gap-2">
-            {# 1. Buton: Personele (Zimmetli Sorumluya) - İmza: EG Optimal #}
-            {% if s.danisman_no %}
-            <a href="https://wa.me/{{ s.danisman_no }}?text=Merhaba, %0A%0ATakibindeki '{{ s.title }}' belgesinin süresi 30 günün altına düşmüştür. Lütfen süreci takip ederek gerekli aksiyonları tamamla. %0A%0ABilgi Sistemi: EG Optimal" 
-               target="_blank" class="btn btn-sm btn-outline-info rounded-pill px-2" title="Personele Hatırlat">
-               <i class="fas fa-user-clock"></i>
-            </a>
-            {% endif %}
+                        {# WhatsApp Hatırlatma #}
+                        <td class="align-middle text-center">
+                            {% if kalan <= 30 %}
+                                <div class="d-flex justify-content-center gap-2">
+                                    {% if s.danisman_no %}
+                                    <a href="https://wa.me/{{ s.danisman_no }}?text=Merhaba,%0A%0A'{{ s.title }}' belgesinin süresi 30 günün altına düşmüştür. Lütfen gerekli aksiyonu alın.%0A%0ABitiş: {{ s.expiry_date.strftime('%d.%m.%Y') }}%0A%0AEG Optimal Belge Sistemi"
+                                       target="_blank" class="btn btn-sm btn-outline-info rounded-pill px-2"
+                                       title="{% if s.category == 'Personel' %}Amire Hatırlat{% else %}Sorumluya Hatırlat{% endif %}">
+                                       <i class="fas fa-user-clock"></i>
+                                    </a>
+                                    {% endif %}
 
-            {# 2. Buton: Müşteriye (Firma Yetkilisine) - İmza: Danışmanlık Firması #}
-            {% if s.whatsapp_no %}
-            <a href="https://wa.me/{{ s.whatsapp_no }}?text=Sayın Müşterimiz, %0A%0A{{ s.firma_adi }} bünyesinde takip ettiğimiz '{{ s.title }}' belgenizin süresi dolmak üzeredir. Yenileme işlemleri için bizimle iletişime geçmenizi rica ederiz. %0A%0ASaygılarımızla, %0A{{ current_user.company_name if current_user.company_name else 'Hizmet Sağlayıcınız' }}" 
-               target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-2" title="Müşteriye Hatırlat">
-               <i class="fab fa-whatsapp"></i>
-            </a>
-            {% endif %}
-        </div>
-    {% else %}
-        <span class="text-muted small">-</span>
-    {% endif %}
-</td>
+                                    {% if s.whatsapp_no %}
+                                    <a href="https://wa.me/{{ s.whatsapp_no }}?text=Sayın ilgili,%0A%0A{{ s.firma_adi }} - '{{ s.title }}' belgenizin süresi dolmak üzeredir.%0ABitiş: {{ s.expiry_date.strftime('%d.%m.%Y') }}%0A%0ALütfen yenileme işlemlerini başlatınız.%0A%0A{{ current_user.company_name if current_user.company_name else 'EG Optimal' }}"
+                                       target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-2"
+                                       title="{% if s.category == 'Personel' %}Personele Hatırlat{% else %}Müşteriye Hatırlat{% endif %}">
+                                       <i class="fab fa-whatsapp"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted small">-</span>
+                            {% endif %}
+                        </td>
 
-                        {# Dijital Arşiv: Belge varsa Aç, yoksa Yükle #}
+                        {# Dijital Arşiv #}
                         <td class="align-middle text-center">
                             {% if s.belge_url %}
-                                {#
-                                    FIX: Cloudinary PDF'leri fl_attachment olmadan
-                                    tarayıcıda açılmıyor. cloudinary_belge_url() helper
-                                    bunu otomatik halleder.
-                                #}
                                 <a href="{{ cloudinary_belge_url(s.belge_url) }}"
                                    target="_blank"
                                    class="btn btn-sm btn-outline-primary rounded-pill px-3">
@@ -227,25 +219,27 @@
                                       method="POST" enctype="multipart/form-data" class="m-0">
                                     <label style="cursor:pointer;" title="Belge Yükle">
                                         <i class="fas fa-cloud-upload-alt fa-lg text-secondary"></i>
-                                        <input type="file" name="file"
-                                               onchange="this.form.submit()"
-                                               style="display:none;">
+                                        <input type="file" name="file" onchange="this.form.submit()" style="display:none;">
                                     </label>
                                 </form>
                             {% endif %}
                         </td>
 
-                        {# Sil #}
+                        {# İşlem #}
                         <td class="align-middle text-center">
                             <div class="btn-group me-2">
                                 <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
                                     <i class="fas fa-folder-open"></i> Taşı
                                 </button>
                                 <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Arac') }}">Araç & Filo</a></li>
-                                    <li><a class="dropdown-item" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Tesis') }}">Tesis & Mekan</a></li>
-                                    <li><a class="dropdown-item" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Urun') }}">Üretim & Ürün</a></li>
-                                    <li><a class="dropdown-item" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Personel') }}">Personel & SRC</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Arac') }}">
+                                        <i class="fas fa-truck me-2"></i>Araç & Filo</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Tesis') }}">
+                                        <i class="fas fa-industry me-2"></i>Tesis & Mekan</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Urun') }}">
+                                        <i class="fas fa-box me-2"></i>Üretim & Ürün</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Personel') }}">
+                                        <i class="fas fa-user me-2"></i>Personel</a></li>
                                 </ul>
                             </div>
                             <a href="{{ url_for('sil', id=s.id, cat=current_cat) }}"
