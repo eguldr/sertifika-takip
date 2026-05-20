@@ -56,12 +56,15 @@ PDF_PROMPT = (
     "Sadece belgede ACIKCA yazan bilgileri yaz. Goremediklerini null yaz.\n\n"
     "Yaniti SADECE su JSON formatinda ver, baska hicbir sey yazma:\n"
     "{\n"
-    '  "belge_turu": "Belgenin tam adi",\n'
+    '  "belge_turu": "Belgenin tam adi (orn: Arac Muayenesi, SRC 3 Belgesi, Kasko Sigortasi)",\n'
     '  "kategori": "Sadece: Arac, Personel, Tesis veya Urun",\n'
-    '  "ad_soyad": "Kisi adi soyadi (yoksa null)",\n'
+    '  "ad_soyad": "Belge sahibi kisi adi - SADECE belge sahibi, duzenleyen degil (yoksa null)",\n'
     '  "tc_no": "TC kimlik numarasi (yoksa null)",\n'
     '  "plaka": "Arac plakasi (yoksa null)",\n'
-    '  "firma_adi": "Firma veya kurum adi (yoksa null)",\n'
+    '  "arac_marka": "Arac markasi (yoksa null)",\n'
+    '  "arac_model": "Arac modeli (yoksa null)",\n'
+    '  "sase_no": "Sase/VIN numarasi (yoksa null)",\n'
+    '  "firma_adi": "Aracin veya belgenin bagli oldugu firma/kurum adi (yoksa null)",\n'
     '  "bitis_tarihi": "GG.AA.YYYY formatinda bitis tarihi (yoksa null)"\n'
     "}"
 )
@@ -83,7 +86,7 @@ class Entry(db.Model):
     id          = db.Column(db.Integer, primary_key=True)
     user_id     = db.Column(db.Integer, nullable=False)
     category    = db.Column(db.String(50))
-    title       = db.Column(db.String(100))
+    title       = db.Column(db.String(200))
     firma_adi   = db.Column(db.String(100))
     expiry_date = db.Column(db.Date)
     belge_url   = db.Column(db.String(500))
@@ -92,6 +95,7 @@ class Entry(db.Model):
     note        = db.Column(db.Text)
     is_active   = db.Column(db.Boolean, default=True)
     dosya_hash  = db.Column(db.String(64))
+    dosya_adi   = db.Column(db.String(200))
 
 
 @login_manager.user_loader
@@ -112,6 +116,7 @@ def setup_db():
                 "ALTER TABLE entry ADD COLUMN IF NOT EXISTS belge_url VARCHAR(500)",
                 "ALTER TABLE entry ADD COLUMN IF NOT EXISTS firma_adi VARCHAR(100)",
                 "ALTER TABLE entry ADD COLUMN IF NOT EXISTS dosya_hash VARCHAR(64)",
+                "ALTER TABLE entry ADD COLUMN IF NOT EXISTS dosya_adi VARCHAR(200)",
                 'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS is_paid BOOLEAN DEFAULT FALSE',
                 'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS is_confirmed BOOLEAN DEFAULT FALSE',
                 'ALTER TABLE "user" ADD COLUMN IF NOT EXISTS company_name VARCHAR(100) DEFAULT \'\'',
@@ -157,13 +162,20 @@ def send_verification_mail(email, token):
     return send_mail(email, "EG Optimal - E-posta Dogrulama", body)
 
 
-def cloudinary_belge_url(url):
+def cloudinary_belge_url(url, dosya_adi=None):
+    """PDF'leri tarayicida ac, Android icin dogru dosya adiyla indir"""
     if not url:
         return url
-    if not url.lower().endswith(".pdf"):
+    if not url.lower().endswith(".pdf") and 'raw/upload' not in url:
         return url
-    if "/fl_inline/" in url:
+    # fl_inline: tarayicide ac; fl_attachment: indir
+    # Hem acmak hem indirmek icin fl_inline kullan, dosya adini ekle
+    if "/fl_inline/" in url or "/fl_attachment/" in url:
         return url
+    if dosya_adi:
+        # Dosya adini URL-safe yap
+        temiz_ad = re.sub(r'[^a-zA-Z0-9._-]', '_', dosya_adi)
+        return re.sub(r'(/upload/)', r'\1fl_inline,fl_attachment:' + temiz_ad + '/', url, count=1)
     return re.sub(r'(/upload/)', r'\1fl_inline/', url, count=1)
 
 
@@ -172,11 +184,11 @@ app.jinja_env.globals['cloudinary_belge_url'] = cloudinary_belge_url
 
 def akilli_analiz_motoru(satir):
     txt = " ".join([str(v) for v in satir]).lower()
-    if any(k in txt for k in ['src', 'ehliyet', 'psikoteknik', 'sofor', 'personel', 'isg', 'vinc']):
+    if any(k in txt for k in ['src', 'ehliyet', 'psikoteknik', 'sofor', 'personel', 'isg', 'vinc', 'pasaport', 'vize', 'ikamet']):
         return 'Personel'
-    if any(k in txt for k in ['plaka', 'muayene', 'kamyon', 'arac', 'kasko', 'emisyon', 'takograf']):
+    if any(k in txt for k in ['plaka', 'muayene', 'kamyon', 'arac', 'kasko', 'emisyon', 'takograf', 'trafik sigorta', 'sase']):
         return 'Arac'
-    if any(k in txt for k in ['yangin', 'tesis', 'itfaiye', 'ruhsat', 'cevre', 'asansor']):
+    if any(k in txt for k in ['yangin', 'tesis', 'itfaiye', 'ruhsat', 'cevre', 'asansor', 'otel', 'konaklama']):
         return 'Tesis'
     return 'Urun'
 
@@ -215,14 +227,14 @@ async def tek_pdf_isle(semaphore, dosya_verisi):
                 return {"ad": ad, "hash": dosya_verisi['hash'],
                         "icerik": dosya_verisi['icerik'], "veri": veri, "hata": None}
             except json.JSONDecodeError:
-                print(f"JSON parse hatasi ({ad}): {yanit[:100]}")
                 return {"ad": ad, "hash": dosya_verisi['hash'],
                         "icerik": dosya_verisi['icerik'], "hata": "json_parse"}
         except Exception as e:
             hata = str(e)
-            print(f"Gemini hatasi ({ad}): {hata[:100]}")
             if '429' in hata or 'EXHAUSTED' in hata:
                 await asyncio.sleep(5)
+            elif '503' in hata or 'UNAVAILABLE' in hata:
+                await asyncio.sleep(10)
             return {"ad": ad, "hash": dosya_verisi['hash'],
                     "icerik": dosya_verisi['icerik'], "hata": hata}
 
@@ -275,31 +287,25 @@ def register():
         if not request.form.get('kvkk_onay'):
             flash("KVKK metnini onaylamaniz gerekmektedir.", "danger")
             return redirect(url_for('register'))
-
         email = request.form.get('email', '').strip()
         if User.query.filter_by(email=email).first():
             flash("Bu e-posta zaten kayitli.", "warning")
             return redirect(url_for('register'))
-
         u = User(
-            email        = email,
-            password     = generate_password_hash(request.form.get('password', '')),
-            company_name = request.form.get('company_name', ''),
-            is_confirmed = False,
-            is_paid      = False,
-            kvkk_onay    = True,
-            sektor       = request.form.get('sektor', 'genel')
+            email=email,
+            password=generate_password_hash(request.form.get('password', '')),
+            company_name=request.form.get('company_name', ''),
+            is_confirmed=False, is_paid=False, kvkk_onay=True,
+            sektor=request.form.get('sektor', 'genel')
         )
         db.session.add(u)
         db.session.commit()
-
         token = ts.dumps(email, salt='email-confirm-key')
         if send_verification_mail(email, token):
-            flash("Kayit basarili! E-postaniza dogrulama baglantisi gonderildi.", "success")
+            flash("Kayit basarili! Dogrulama maili gonderildi.", "success")
         else:
             flash("Kayit basarili ancak dogrulama maili gonderilemedi.", "warning")
         return redirect(url_for('login'))
-
     return render_template('kayit.html')
 
 
@@ -308,7 +314,7 @@ def verify_email(token):
     try:
         email = ts.loads(token, salt='email-confirm-key', max_age=86400)
     except Exception:
-        flash("Dogrulama linki gecersiz veya suresi dolmus.", "danger")
+        flash("Dogrulama linki gecersiz.", "danger")
         return redirect(url_for('login'))
     user = User.query.filter_by(email=email).first()
     if user:
@@ -338,7 +344,7 @@ def reset_password(token):
     try:
         email = ts.loads(token, salt='recover-key', max_age=1800)
     except Exception:
-        flash("Link gecersiz veya suresi dolmus.", "danger")
+        flash("Link gecersiz.", "danger")
         return redirect(url_for('forgot_password'))
     if request.method == 'POST':
         user = User.query.filter_by(email=email).first()
@@ -442,13 +448,17 @@ def upload_belge(entry_id):
     cat = request.args.get('cat', 'all')
     if f:
         try:
-            res = cloudinary.uploader.unsigned_upload(f, upload_preset='erhan_preset', resource_type='raw')
-            e   = Entry.query.get(entry_id)
+            dosya_adi_temiz = re.sub(r'[^a-zA-Z0-9._-]', '_', f.filename)
+            res = cloudinary.uploader.unsigned_upload(
+                f, upload_preset='erhan_preset', resource_type='raw'
+            )
+            e = Entry.query.get(entry_id)
             if e and (e.user_id == current_user.id or current_user.email == 'erhanadea@gmail.com'):
                 raw_url = res.get('secure_url')
                 if not raw_url:
                     raise Exception("URL alinamadi")
-                e.belge_url = cloudinary_belge_url(raw_url)
+                e.belge_url = cloudinary_belge_url(raw_url, dosya_adi_temiz)
+                e.dosya_adi = f.filename
                 db.session.commit()
                 flash("Belge yuklendi.", "success")
             else:
@@ -533,15 +543,18 @@ def import_pdf():
             atlanan += 1
             continue
         fname = dosya.filename.lower()
-        mime  = 'image/png' if fname.endswith('.png') else ('image/jpeg' if fname.endswith(('.jpg','.jpeg')) else 'application/pdf')
-        islenecekler.append({'ad': dosya.filename, 'icerik': icerik,
-                             'b64': base64.standard_b64encode(icerik).decode(), 'mime': mime, 'hash': d_hash})
+        mime  = 'image/png' if fname.endswith('.png') else ('image/jpeg' if fname.endswith(('.jpg', '.jpeg')) else 'application/pdf')
+        islenecekler.append({
+            'ad': dosya.filename, 'icerik': icerik,
+            'b64': base64.standard_b64encode(icerik).decode(),
+            'mime': mime, 'hash': d_hash
+        })
 
     if not islenecekler:
         flash(f"Tum dosyalar zaten sistemde. ({atlanan} atlandi)", "info")
         return redirect(url_for('dashboard'))
 
-    print(f"Async basladi: {len(islenecekler)} PDF, paralel=20")
+    print(f"Async basladi: {len(islenecekler)} PDF")
 
     try:
         sonuclar = asyncio.run(toplu_pdf_isle(islenecekler, paralel_sayi=20))
@@ -558,15 +571,16 @@ def import_pdf():
         if isinstance(sonuc, Exception) or sonuc.get('hata'):
             hatali += 1
             continue
-        veri    = sonuc.get('veri', {})
-        icerik  = sonuc.get('icerik', b'')
-        d_hash  = sonuc.get('hash', '')
-        ad      = sonuc.get('ad', '')
+        veri   = sonuc.get('veri', {})
+        icerik = sonuc.get('icerik', b'')
+        d_hash = sonuc.get('hash', '')
+        ad     = sonuc.get('ad', '')
 
         kat = veri.get('kategori', 'Urun')
         if kat not in ['Arac', 'Personel', 'Tesis', 'Urun']:
             kat = akilli_analiz_motoru([veri.get('belge_turu', '')])
 
+        # Not alani: kisi/plaka/marka/model/sase bilgileri
         notlar = []
         if veri.get('ad_soyad') and str(veri['ad_soyad']) != 'null':
             notlar.append(str(veri['ad_soyad']))
@@ -574,25 +588,36 @@ def import_pdf():
             notlar.append(f"TC: {veri['tc_no']}")
         if veri.get('plaka') and str(veri['plaka']) != 'null':
             notlar.append(f"Plaka: {veri['plaka']}")
+        if veri.get('arac_marka') and str(veri['arac_marka']) != 'null':
+            notlar.append(str(veri['arac_marka']))
+        if veri.get('arac_model') and str(veri['arac_model']) != 'null':
+            notlar.append(str(veri['arac_model']))
+        if veri.get('sase_no') and str(veri['sase_no']) != 'null':
+            notlar.append(f"Sase: {veri['sase_no']}")
 
+        # Cloudinary'ye yukle — dosya adi ile
         belge_url = None
+        dosya_adi_temiz = re.sub(r'[^a-zA-Z0-9._-]', '_', ad)
         try:
             res = cloudinary.uploader.unsigned_upload(
                 BytesIO(icerik), upload_preset='erhan_preset',
                 resource_type='raw', public_id=f"belge_{d_hash[:8]}"
             )
             raw_url = res.get('secure_url', '')
-            belge_url = cloudinary_belge_url(raw_url) if raw_url else None
+            belge_url = cloudinary_belge_url(raw_url, dosya_adi_temiz) if raw_url else None
         except Exception as ce:
             print(f"Cloudinary hatasi ({ad}): {ce}")
+
+        firma = str(veri.get('firma_adi') or '').replace('null', '').strip()
 
         db.session.add(Entry(
             user_id=current_user.id, category=kat,
             title=veri.get('belge_turu') or ad,
-            firma_adi=str(veri.get('firma_adi') or '').replace('null', ''),
+            firma_adi=firma,
             expiry_date=tarih_parse(veri.get('bitis_tarihi')),
             note=' | '.join(notlar) if notlar else ad,
-            belge_url=belge_url, dosya_hash=d_hash, is_active=True
+            belge_url=belge_url, dosya_hash=d_hash,
+            dosya_adi=ad, is_active=True
         ))
         eklenen += 1
 
@@ -699,8 +724,8 @@ def delete_user(uid):
 
 # ============================================================
 # CRON
-# Job 1: /ping                  - 08:55 her gun
-# Job 2: /cron/check_reminders  - 09:00 her gun
+# Job 1: https://sertifika-takip.onrender.com/ping         08:55
+# Job 2: https://sertifika-takip.onrender.com/cron/check_reminders  09:00
 # ============================================================
 @app.route('/ping')
 def ping():
@@ -734,7 +759,7 @@ def check_reminders():
                 konu = f"Hatirlatma: {e.title} ({kalan} Gun)"
             body = (
                 f"Sayin {user.company_name or user.email},\n\n"
-                f"Belge: {e.title}\nFirma: {e.firma_adi or '-'}\n"
+                f"Belge: {e.title}\nFirma/Arac: {e.firma_adi or '-'}\n"
                 f"Bitis: {e.expiry_date.strftime('%d.%m.%Y')}\nKalan: {kalan} gun\n\n"
                 f"Panel: https://sertifika-takip.onrender.com/dashboard\n\nEG Optimal"
             )
@@ -764,5 +789,3 @@ def kategori_guncelle(id, yeni_kat):
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
-
-
