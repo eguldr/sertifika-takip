@@ -246,7 +246,14 @@
                                                 {# WhatsApp Butonu #}
                                                 {% if e.whatsapp_no %}
                                                 <a href="https://wa.me/{{ e.whatsapp_no }}?text=Sayın İş Ortağımız, %0A%0AEG Optimal Global Radar üzerinden yapılan kontrolde, sistemdeki '{{ e.firma_adi }}' firmasına ait '{{ e.title }}' belgesinin vadesinin yaklaştığı tespit edilmiştir. %0A%0ALütfen gerekli aksiyonları alınız. %0A%0A Saygılarımızla, %0AEG Optimal" 
-                                                   target="_blank" class="text-success" title="WhatsApp ile Hatırlat"
+                                                {% if e.danisman_no %}
+                                                <a href="https://wa.me/{{ e.danisman_no }}?text=Sayin Sorumlu,%0A%0ASistemde '{{ e.firma_adi }}' firmasina ait '{{ e.title }}' belgesinin vadesi yaklasıyor.%0AVade: {{ e.expiry_date }}%0A%0AEG Optimal"
+                                                   target="_blank" class="text-info" title="Amire / Danismana Bildir">
+                                                   <i class="fas fa-user-clock fa-lg"></i>
+                                              </a>
+                                                
+                                                {% endif %}
+                                                target="_blank" class="text-success" title="WhatsApp ile Hatırlat"
                                                    onclick="document.getElementById('sent-{{ e.id }}').classList.remove('d-none'); localStorage.setItem('sent-{{ e.id }}', 'true');">
                                                    <i class="fab fa-whatsapp fa-lg"></i>
                                                 </a>
