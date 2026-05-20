@@ -1,450 +1,337 @@
 {% extends "base.html" %}
 {% block content %}
 <style>
-    :root {
-        --navy: #1a1c4b;
-        --accent: #c5a059;
-        --danger: #dc2626;
-        --warn: #d97706;
-        --success: #059669;
-    }
-    body { background: #f0f4f8; }
-
-    /* ── KRİTİK BANNER ── */
-    .critical-banner {
-        background: linear-gradient(135deg, #fff 0%, #fff5f5 100%);
-        border-left: 6px solid var(--danger);
-        border-radius: 12px;
-        padding: 16px 24px;
-        margin-bottom: 24px;
-        display: flex; align-items: center; justify-content: space-between;
-        box-shadow: 0 4px 20px rgba(220,38,38,0.12);
-        animation: pulse-border 2s infinite;
-    }
-    @keyframes pulse-border {
-        0%,100% { box-shadow: 0 4px 20px rgba(220,38,38,0.12); }
-        50%      { box-shadow: 0 4px 28px rgba(220,38,38,0.28); }
-    }
-    .critical-banner .c-text { color: var(--danger); font-weight: 700; font-size: 1rem; }
-
-    /* ── SAYFA BAŞLIĞI ── */
-    .page-header {
-        display: flex; justify-content: space-between; align-items: center;
-        margin-bottom: 24px; flex-wrap: wrap; gap: 12px;
-    }
-    .page-header h2 { color: var(--navy); font-weight: 800; font-size: 1.6rem; margin: 0; }
-    .page-header .sub { color: #94a3b8; font-size: 0.82rem; margin-top: 2px; }
-
-    /* ── KPI KARTLARI ── */
-    .kpi-card {
-        background: white; border-radius: 14px; padding: 20px 24px;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-        border-top: 4px solid transparent;
-        cursor: pointer; transition: all 0.25s;
-        position: relative; overflow: hidden;
-    }
-    .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
-    .kpi-card::after {
-        content: ''; position: absolute; right: -12px; top: -12px;
-        width: 70px; height: 70px; border-radius: 50%;
-        background: currentColor; opacity: 0.04;
-    }
-    .kpi-card.danger  { border-top-color: var(--danger); }
-    .kpi-card.warning { border-top-color: var(--warn); }
-    .kpi-card.primary { border-top-color: var(--navy); }
-    .kpi-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-    .kpi-value { font-size: 2.4rem; font-weight: 800; line-height: 1; }
-    .kpi-card.danger  .kpi-label, .kpi-card.danger  .kpi-value { color: var(--danger); }
-    .kpi-card.warning .kpi-label, .kpi-card.warning .kpi-value { color: var(--warn); }
-    .kpi-card.primary .kpi-label, .kpi-card.primary .kpi-value { color: var(--navy); }
-
-    /* ── TABLO ── */
-    .data-card {
-        background: white; border-radius: 14px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.07); overflow: hidden;
-    }
-    .data-card .table { margin: 0; }
-    .data-card .table thead th {
-        background: var(--navy); color: white; font-size: 0.68rem;
-        text-transform: uppercase; letter-spacing: 1.2px;
-        padding: 14px 16px; border: none; font-weight: 600;
-    }
-    .data-card .table tbody td { padding: 14px 16px; vertical-align: middle; border-color: #f1f5f9; }
-    .data-card .table tbody tr:hover { background: #f8fafc; }
-
-    .belge-title { font-weight: 700; color: var(--navy); font-size: 0.9rem; }
-    .belge-meta  { color: #94a3b8; font-size: 0.75rem; margin-top: 2px; }
-
-    .badge-days {
-        display: inline-block; padding: 5px 14px; border-radius: 20px;
-        font-size: 0.78rem; font-weight: 700;
-    }
-    .badge-days.danger  { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
-    .badge-days.warning { background: #fffbeb; color: var(--warn);   border: 1px solid #fde68a; }
-    .badge-days.success { background: #f0fdf4; color: var(--success); border: 1px solid #bbf7d0; }
-
-    .btn-action { border: none; background: none; padding: 6px 8px; border-radius: 8px; transition: 0.2s; }
-    .btn-action:hover { background: #f1f5f9; }
-    .btn-action.danger-hover:hover { background: #fef2f2; color: var(--danger); }
-
-    /* ── PDF YÜKLEME ALANI ── */
-    .upload-zone {
-        border: 2px dashed #cbd5e1; border-radius: 12px;
-        padding: 32px; text-align: center; cursor: pointer;
-        transition: all 0.2s; background: #f8fafc;
-    }
-    .upload-zone:hover, .upload-zone.dragover {
-        border-color: var(--navy); background: #f0f4ff;
-    }
-    .upload-zone i { font-size: 2.5rem; color: #94a3b8; margin-bottom: 12px; display: block; }
-
-    /* ── PROGRESS BAR ── */
-    .progress-overlay {
-        display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(15,16,53,0.7); z-index: 9999;
-        align-items: center; justify-content: center; flex-direction: column;
-    }
-    .progress-overlay.show { display: flex; }
-    .progress-box {
-        background: white; border-radius: 16px; padding: 40px 48px;
-        text-align: center; min-width: 320px; box-shadow: 0 24px 60px rgba(0,0,0,0.3);
-    }
+:root { --navy:#1a1c4b; --accent:#c5a059; --danger:#dc2626; --warn:#d97706; --success:#059669; }
+body { background:#f0f4f8; }
+.critical-banner { background:white; border-left:6px solid var(--danger); border-radius:12px; padding:16px 24px; margin-bottom:24px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 4px 20px rgba(220,38,38,0.12); animation:pulse-b 2s infinite; }
+@keyframes pulse-b { 0%,100%{box-shadow:0 4px 20px rgba(220,38,38,0.12);}50%{box-shadow:0 4px 28px rgba(220,38,38,0.28);} }
+.c-text { color:var(--danger); font-weight:700; font-size:1rem; }
+.page-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px; }
+.page-header h2 { color:var(--navy); font-weight:800; font-size:1.6rem; margin:0; }
+.page-header .sub { color:#94a3b8; font-size:0.82rem; margin-top:2px; }
+.kpi-card { background:white; border-radius:14px; padding:20px 24px; box-shadow:0 2px 12px rgba(0,0,0,0.06); border-top:4px solid transparent; cursor:pointer; transition:all 0.25s; }
+.kpi-card:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(0,0,0,0.1); }
+.kpi-card.danger  { border-top-color:var(--danger); }
+.kpi-card.warning { border-top-color:var(--warn); }
+.kpi-card.primary { border-top-color:var(--navy); }
+.kpi-label { font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; }
+.kpi-value { font-size:2.4rem; font-weight:800; line-height:1; }
+.kpi-card.danger  .kpi-label,.kpi-card.danger  .kpi-value { color:var(--danger); }
+.kpi-card.warning .kpi-label,.kpi-card.warning .kpi-value { color:var(--warn); }
+.kpi-card.primary .kpi-label,.kpi-card.primary .kpi-value { color:var(--navy); }
+.data-card { background:white; border-radius:14px; box-shadow:0 4px 20px rgba(0,0,0,0.07); overflow:hidden; }
+.data-card .table { margin:0; }
+.data-card .table thead th { background:var(--navy); color:white; font-size:0.68rem; text-transform:uppercase; letter-spacing:1.2px; padding:14px 16px; border:none; font-weight:600; }
+.data-card .table tbody td { padding:14px 16px; vertical-align:middle; border-color:#f1f5f9; }
+.data-card .table tbody tr:hover { background:#f8fafc; }
+.belge-title { font-weight:700; color:var(--navy); font-size:0.9rem; }
+.belge-meta  { color:#94a3b8; font-size:0.75rem; margin-top:2px; }
+.badge-days { display:inline-block; padding:5px 14px; border-radius:20px; font-size:0.78rem; font-weight:700; }
+.badge-days.danger  { background:#fef2f2; color:var(--danger); border:1px solid #fecaca; }
+.badge-days.warning { background:#fffbeb; color:var(--warn);   border:1px solid #fde68a; }
+.badge-days.success { background:#f0fdf4; color:var(--success); border:1px solid #bbf7d0; }
+.btn-action { border:none; background:none; padding:6px 8px; border-radius:8px; transition:0.2s; cursor:pointer; }
+.btn-action:hover { background:#f1f5f9; }
+.btn-action.danger-hover:hover { background:#fef2f2; color:var(--danger); }
+.progress-overlay { display:none; position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(15,16,53,0.7); z-index:9999; align-items:center; justify-content:center; flex-direction:column; }
+.progress-overlay.show { display:flex; }
+.progress-box { background:white; border-radius:16px; padding:40px 48px; text-align:center; min-width:320px; box-shadow:0 24px 60px rgba(0,0,0,0.3); }
 </style>
 
-<!-- ═══ PROGRESS OVERLAY ═══ -->
 <div class="progress-overlay" id="pdfProgress">
-    <div class="progress-box">
-        <div style="font-size: 2.5rem; margin-bottom: 16px;">🤖</div>
-        <h5 style="color:#1a1c4b; font-weight:800;" id="progressTitle">PDF'ler Analiz Ediliyor</h5>
-        <p class="text-muted small" id="progressSub">Gemini AI belgelerinizi okuyor, lütfen bekleyin...</p>
-        <div class="progress mt-3" style="height: 10px; border-radius: 10px;">
-            <div class="progress-bar progress-bar-striped progress-bar-animated"
-                 id="progressBar" style="width: 0%; background: #1a1c4b;"></div>
-        </div>
-        <p class="text-muted small mt-2" id="progressCount"></p>
+  <div class="progress-box">
+    <div style="font-size:2.5rem;margin-bottom:16px;">🤖</div>
+    <h5 style="color:#1a1c4b;font-weight:800;" id="progressTitle">PDF'ler Analiz Ediliyor</h5>
+    <p class="text-muted small" id="progressSub">Gemini AI belgelerinizi okuyor, lütfen bekleyin...</p>
+    <div class="progress mt-3" style="height:10px;border-radius:10px;">
+      <div class="progress-bar progress-bar-striped progress-bar-animated"
+           id="progressBar" style="width:0%;background:#1a1c4b;"></div>
     </div>
+    <p class="text-muted small mt-2" id="progressCount"></p>
+  </div>
 </div>
 
 <div class="container-fluid py-2">
 
-    {# ── KRİTİK UYARI ── #}
-    {% set bu_hafta = sertifikalar | selectattr('expiry_date', 'le', bugun + timedelta(days=7)) | list %}
-    {% if bu_hafta | length > 0 %}
-    <div class="critical-banner">
-        <div class="c-text">
-            <i class="fas fa-triangle-exclamation me-2"></i>
-            Bu hafta süresi dolacak <strong>{{ bu_hafta | length }}</strong> kritik belge var!
-        </div>
-        <button class="btn btn-danger btn-sm fw-bold px-4" onclick="filterTable('danger')">
-            Hemen İncele
+  {% set bu_hafta = sertifikalar | selectattr('expiry_date', 'le', bugun + timedelta(days=7)) | list %}
+  {% if bu_hafta | length > 0 %}
+  <div class="critical-banner">
+    <div class="c-text">
+      <i class="fas fa-triangle-exclamation me-2"></i>
+      Bu hafta süresi dolacak <strong>{{ bu_hafta | length }}</strong> kritik belge var!
+    </div>
+    <button class="btn btn-danger btn-sm fw-bold px-4" onclick="filterTable('danger')">Hemen İncele</button>
+  </div>
+  {% endif %}
+
+  <div class="page-header">
+    <div>
+      <h2>EG Optimal Dashboard
+        {% if current_user.email == 'erhanadea@gmail.com' %}
+        <span class="badge ms-2 align-middle" style="background:#c5a059;color:#1a1c4b;font-size:0.45em;letter-spacing:1px;">GLOBAL RADAR</span>
+        {% endif %}
+      </h2>
+      <div class="sub">Dijital Risk Yönetimi ve Mevzuat Uyumluluk Paneli</div>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+      {# PDF Toplu Yukle #}
+      <form action="{{ url_for('import_pdf') }}" method="POST" enctype="multipart/form-data" id="pdfForm" class="d-inline">
+        <input type="file" name="pdf_files" id="pdf_input" multiple accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="submitPdfForm()">
+        <button type="button" class="btn fw-bold px-3" style="background:#1a1c4b;color:white;border-radius:10px;" onclick="document.getElementById('pdf_input').click()">
+          <i class="fas fa-folder-open me-1"></i> PDF Toplu Yükle
         </button>
-    </div>
-    {% endif %}
+      </form>
 
-    {# ── SAYFA BAŞLIĞI ── #}
-    <div class="page-header">
-        <div>
-            <h2>
-                EG Optimal Dashboard
-                {% if current_user.email == 'erhanadea@gmail.com' %}
-                <span class="badge ms-2 align-middle"
-                      style="background:#c5a059; color:#1a1c4b; font-size:0.45em; letter-spacing:1px;">GLOBAL RADAR</span>
+      {# Excel Ice Aktar #}
+      <form action="{{ url_for('import_excel') }}" method="POST" enctype="multipart/form-data" class="d-inline">
+        <input type="file" name="excel_file" id="excel_input" style="display:none" onchange="this.form.submit()">
+        <button type="button" class="btn fw-bold px-3" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:10px;" onclick="document.getElementById('excel_input').click()">
+          <i class="fas fa-file-import me-1"></i> Excel İçe Aktar
+        </button>
+      </form>
+
+      {# Yeni Ekle - sektore gore #}
+      <div class="dropdown">
+        <button class="btn fw-bold px-3 dropdown-toggle" style="background:#c5a059;color:#1a1c4b;border:none;border-radius:10px;" data-bs-toggle="dropdown">
+          <i class="fas fa-plus me-1"></i> Yeni Ekle
+        </button>
+        <ul class="dropdown-menu shadow border-0" style="border-radius:12px;padding:8px;">
+          {% set s = current_user.sektor %}
+          {% if s == 'lojistik' %}
+            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Arac') }}"><i class="fas fa-truck-fast me-2 text-warning"></i>Araç & Filo</a></li>
+            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Personel') }}"><i class="fas fa-id-badge me-2 text-info"></i>Personel</a></li>
+          {% elif s == 'gida' %}
+            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Urun') }}"><i class="fas fa-leaf me-2 text-success"></i>Ürün & Gıda Sertifikaları</a></li>
+            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Tesis') }}"><i class="fas fa-industry me-2 text-secondary"></i>Tesis & Üretim</a></li>
+            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Personel') }}"><i class="fas fa-id-badge me-2 text-info"></i>Personel</a></li>
+          {% elif s == 'danismanlik' %}
+            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Urun') }}"><i class="fas fa-certificate me-2 text-primary"></i>Ürün Sertifikaları</a></li>
+            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Tesis') }}"><i class="fas fa-building-shield me-2 text-secondary"></i>Yönetim Sistemi</a></li>
+            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Personel') }}"><i class="fas fa-id-badge me-2 text-info"></i>Personel Belgeleri</a></li>
+          {% elif s == 'isg' %}
+            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Tesis') }}"><i class="fas fa-building-shield me-2 text-secondary"></i>Tesis & Mekan</a></li>
+            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Personel') }}"><i class="fas fa-id-badge me-2 text-info"></i>Personel</a></li>
+            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Arac') }}"><i class="fas fa-truck-fast me-2 text-warning"></i>Araç & Filo</a></li>
+          {% elif s == 'otel' %}
+            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Tesis') }}"><i class="fas fa-hotel me-2 text-secondary"></i>Tesis & Lisans</a></li>
+            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Personel') }}"><i class="fas fa-id-badge me-2 text-info"></i>Personel</a></li>
+            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Urun') }}"><i class="fas fa-star me-2 text-warning"></i>Kalite & Standart</a></li>
+          {% else %}
+            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Urun') }}"><i class="fas fa-box-archive me-2 text-primary"></i>Üretim & Ürün</a></li>
+            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Arac') }}"><i class="fas fa-truck-fast me-2 text-warning"></i>Araç & Filo</a></li>
+            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Personel') }}"><i class="fas fa-id-badge me-2 text-info"></i>Personel</a></li>
+            <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Tesis') }}"><i class="fas fa-building-shield me-2 text-secondary"></i>Tesis & Mekan</a></li>
+          {% endif %}
+        </ul>
+      </div>
+
+      <div class="d-flex border rounded-3 bg-white shadow-sm overflow-hidden">
+        <a href="{{ url_for('dashboard') }}" class="btn border-0 rounded-0 px-3 fw-bold" style="background:#1a1c4b;color:white;">
+          <i class="fas fa-sync me-1"></i> Yenile
+        </a>
+        <a href="{{ url_for('export_excel') }}" class="btn btn-light border-0 rounded-0 px-3 border-start" title="Excel Rapor İndir">
+          <i class="fas fa-file-excel text-success fa-lg"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mb-4 g-3">
+    <div class="col-md-4" onclick="filterTable('danger')" style="cursor:pointer;">
+      <div class="kpi-card danger">
+        <div class="kpi-label">Kritik (Son 30 Gün)</div>
+        <div class="kpi-value">{{ sertifikalar | selectattr('expiry_date', 'le', bugun + timedelta(days=30)) | list | length }}</div>
+      </div>
+    </div>
+    <div class="col-md-4" onclick="filterTable('warning')" style="cursor:pointer;">
+      <div class="kpi-card warning">
+        <div class="kpi-label">Yaklaşan (1–3 Ay)</div>
+        <div class="kpi-value">{{ sertifikalar | selectattr('expiry_date', 'gt', bugun + timedelta(days=30)) | selectattr('expiry_date', 'le', bugun + timedelta(days=90)) | list | length }}</div>
+      </div>
+    </div>
+    <div class="col-md-4" onclick="filterTable('all')" style="cursor:pointer;">
+      <div class="kpi-card primary">
+        <div class="kpi-label">Toplam Aktif Belge</div>
+        <div class="kpi-value">{{ sertifikalar | length }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="data-card">
+    <div class="table-responsive">
+      <table class="table table-hover" id="sertifikaTable">
+        <thead>
+          <tr>
+            <th class="ps-4" style="width:38%;">Belge / Tanım</th>
+            <th>Bitiş Tarihi</th>
+            <th>Kalan Gün</th>
+            <th class="text-center">Hızlı Aksiyon</th>
+            <th class="text-center">Dijital Arşiv</th>
+            <th class="text-center">İşlem</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in sertifikalar %}
+          {% if s.expiry_date %}
+          {% set kalan = (s.expiry_date - bugun).days %}
+          {% set status = 'danger' if kalan <= 30 else ('warning' if kalan <= 90 else 'success') %}
+          <tr class="table-row" data-status="{{ status }}">
+
+            <td class="ps-4">
+              <div class="belge-title">{{ s.title }}</div>
+              <div class="belge-meta">
+                <i class="fas fa-tag me-1"></i>
+                {% set sektor = current_user.sektor %}
+                {% if s.category == 'Personel' %}
+                  {% if sektor == 'danismanlik' or sektor == 'otel' %}Personel Belgeleri{% else %}Personel{% endif %}
+                {% elif s.category == 'Arac' %}Araç & Filo
+                {% elif s.category == 'Tesis' %}
+                  {% if sektor == 'danismanlik' %}Yönetim Sistemi
+                  {% elif sektor == 'otel' %}Tesis & Lisans
+                  {% else %}Tesis & Mekan{% endif %}
+                {% else %}
+                  {% if sektor == 'danismanlik' %}Ürün Sertifikaları
+                  {% elif sektor == 'otel' %}Kalite & Standart
+                  {% elif sektor == 'gida' %}Ürün & Gıda
+                  {% else %}Üretim & Ürün{% endif %}
                 {% endif %}
-            </h2>
-            <div class="sub">Dijital Risk Yönetimi ve Mevzuat Uyumluluk Paneli</div>
-        </div>
+                {% if s.firma_adi %} · <i class="fas fa-building me-1"></i>{{ s.firma_adi }}{% endif %}
+                {% if s.note %} · {{ s.note }}{% endif %}
+              </div>
+            </td>
 
-        <div class="d-flex gap-2 flex-wrap align-items-center">
+            <td style="color:#64748b;font-weight:600;font-size:0.88rem;">{{ s.expiry_date.strftime('%d.%m.%Y') }}</td>
 
-            {# ── PDF TOPLU YÜKLEME ── #}
-            <form action="{{ url_for('import_pdf') }}" method="POST" enctype="multipart/form-data"
-                  id="pdfForm" class="d-inline">
-                <input type="file" name="pdf_files" id="pdf_input" multiple accept=".pdf,.jpg,.jpeg,.png"
-                       style="display:none" onchange="submitPdfForm()">
-                <button type="button" class="btn fw-bold px-3"
-                        style="background:#1a1c4b; color:white; border-radius:10px;"
-                        onclick="document.getElementById('pdf_input').click()">
-                    <i class="fas fa-folder-open me-1"></i> PDF Toplu Yükle
-                </button>
-            </form>
+            <td>
+              <span class="badge-days {{ status }}">
+                {% if kalan < 0 %}{{ kalan|abs }} Gün Geçti
+                {% elif kalan == 0 %}BUGÜN!
+                {% else %}{{ kalan }} Gün{% endif %}
+              </span>
+            </td>
 
-            {# ── EXCEL İÇE AKTAR ── #}
-            <form action="{{ url_for('import_excel') }}" method="POST" enctype="multipart/form-data" class="d-inline">
-                <input type="file" name="excel_file" id="excel_input" style="display:none" onchange="this.form.submit()">
-                <button type="button" class="btn fw-bold px-3"
-                        style="background:#e8f5e9; color:#2e7d32; border:1px solid #a5d6a7; border-radius:10px;"
-                        onclick="document.getElementById('excel_input').click()">
-                    <i class="fas fa-file-import me-1"></i> Excel İçe Aktar
-                </button>
-            </form>
+            <td class="text-center">
+              {% if kalan <= 30 %}
+              <div class="d-flex justify-content-center gap-1">
+                {% if s.danisman_no %}
+                <a href="https://wa.me/{{ s.danisman_no }}?text=Merhaba,%0A%0A'{{ s.title }}' belgesinin suresi 30 gunun altina dusmustur. Lutfen gerekli aksiyonu alin.%0ABitis: {{ s.expiry_date.strftime('%d.%m.%Y') }}%0A%0AEG Optimal"
+                   target="_blank" class="btn-action" title="Amire / Sorumluya Hatırlat" style="color:#0891b2;">
+                  <i class="fas fa-user-clock"></i>
+                </a>
+                {% endif %}
+                {% if s.whatsapp_no %}
+                <a href="https://wa.me/{{ s.whatsapp_no }}?text=Sayın ilgili,%0A%0A'{{ s.title }}' belgenizin suresi dolmak uzeredir.%0ABitis: {{ s.expiry_date.strftime('%d.%m.%Y') }}%0A%0A{{ current_user.company_name or 'EG Optimal' }}"
+                   target="_blank" class="btn-action" title="Personele / Müşteriye Hatırlat" style="color:#16a34a;">
+                  <i class="fab fa-whatsapp"></i>
+                </a>
+                {% endif %}
+              </div>
+              {% else %}<span class="text-muted small">—</span>{% endif %}
+            </td>
 
-            {# ── YENİ EKLE (sektöre göre) ── #}
-            <div class="dropdown">
-                <button class="btn fw-bold px-3 dropdown-toggle"
-                        style="background:#c5a059; color:#1a1c4b; border:none; border-radius:10px;"
-                        data-bs-toggle="dropdown">
-                    <i class="fas fa-plus me-1"></i> Yeni Ekle
-                </button>
-                <ul class="dropdown-menu shadow border-0" style="border-radius:12px; padding:8px;">
-                    {% set s = current_user.sektor %}
-                    {% if s == 'lojistik' %}
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Arac') }}">
-                            <i class="fas fa-truck-fast me-2 text-warning"></i>Araç & Filo</a></li>
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Personel') }}">
-                            <i class="fas fa-id-badge me-2 text-info"></i>Personel</a></li>
-                    {% elif s == 'gida' %}
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Urun') }}">
-                            <i class="fas fa-box-archive me-2 text-primary"></i>Üretim & Ürün</a></li>
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Tesis') }}">
-                            <i class="fas fa-building-shield me-2 text-secondary"></i>Tesis & Mekan</a></li>
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Personel') }}">
-                            <i class="fas fa-id-badge me-2 text-info"></i>Personel</a></li>
-                    {% elif s == 'isg' %}
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Tesis') }}">
-                            <i class="fas fa-building-shield me-2 text-secondary"></i>Tesis & Mekan</a></li>
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Personel') }}">
-                            <i class="fas fa-id-badge me-2 text-info"></i>Personel</a></li>
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Arac') }}">
-                            <i class="fas fa-truck-fast me-2 text-warning"></i>Araç & Filo</a></li>
+            <td class="text-center">
+              {% if s.belge_url %}
+              <a href="{{ cloudinary_belge_url(s.belge_url, s.dosya_adi) }}" target="_blank"
+                 class="btn btn-sm fw-bold px-3"
+                 style="background:#f0f4ff;color:#1a1c4b;border:1px solid #c7d2fe;border-radius:8px;font-size:0.78rem;">
+                <i class="fas fa-file-pdf me-1 text-danger"></i> Aç
+              </a>
+              {% else %}
+              <form action="{{ url_for('upload_belge', entry_id=s.id, cat=current_cat) }}" method="POST" enctype="multipart/form-data" class="m-0">
+                <label style="cursor:pointer;" title="Belge Yükle"
+                       class="btn btn-sm px-3"
+                       style="background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;font-size:0.78rem;color:#94a3b8;">
+                  <i class="fas fa-cloud-upload-alt me-1"></i> Yükle
+                  <input type="file" name="file" onchange="this.form.submit()" style="display:none;">
+                </label>
+              </form>
+              {% endif %}
+            </td>
+
+            <td class="text-center">
+              <div class="d-flex justify-content-center gap-1">
+                <div class="dropdown">
+                  <button class="btn-action dropdown-toggle" style="color:#64748b;font-size:0.82rem;" data-bs-toggle="dropdown">
+                    <i class="fas fa-folder-open"></i>
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius:10px;font-size:0.85rem;">
+                    <li class="dropdown-header text-muted" style="font-size:0.7rem;">Kategoriye Taşı</li>
+                    {% set sek = current_user.sektor %}
+                    {% if sek == 'lojistik' %}
+                      <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Arac') }}"><i class="fas fa-truck me-2 text-warning"></i>Araç & Filo</a></li>
+                      <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Personel') }}"><i class="fas fa-user me-2 text-info"></i>Personel</a></li>
+                    {% elif sek == 'gida' %}
+                      <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Urun') }}"><i class="fas fa-leaf me-2 text-success"></i>Ürün & Gıda</a></li>
+                      <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Tesis') }}"><i class="fas fa-industry me-2 text-secondary"></i>Tesis & Üretim</a></li>
+                      <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Personel') }}"><i class="fas fa-user me-2 text-info"></i>Personel</a></li>
+                    {% elif sek == 'danismanlik' %}
+                      <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Urun') }}"><i class="fas fa-certificate me-2 text-primary"></i>Ürün Sertifikaları</a></li>
+                      <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Tesis') }}"><i class="fas fa-building-shield me-2 text-secondary"></i>Yönetim Sistemi</a></li>
+                      <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Personel') }}"><i class="fas fa-user me-2 text-info"></i>Personel Belgeleri</a></li>
+                    {% elif sek == 'isg' %}
+                      <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Tesis') }}"><i class="fas fa-building-shield me-2 text-secondary"></i>Tesis & Mekan</a></li>
+                      <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Personel') }}"><i class="fas fa-user me-2 text-info"></i>Personel</a></li>
+                      <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Arac') }}"><i class="fas fa-truck me-2 text-warning"></i>Araç & Filo</a></li>
+                    {% elif sek == 'otel' %}
+                      <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Tesis') }}"><i class="fas fa-hotel me-2 text-secondary"></i>Tesis & Lisans</a></li>
+                      <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Personel') }}"><i class="fas fa-user me-2 text-info"></i>Personel</a></li>
+                      <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Urun') }}"><i class="fas fa-star me-2 text-warning"></i>Kalite & Standart</a></li>
                     {% else %}
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Urun') }}">
-                            <i class="fas fa-box-archive me-2 text-primary"></i>Üretim & Ürün</a></li>
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Arac') }}">
-                            <i class="fas fa-truck-fast me-2 text-warning"></i>Araç & Filo</a></li>
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Personel') }}">
-                            <i class="fas fa-id-badge me-2 text-info"></i>Personel</a></li>
-                        <li><a class="dropdown-item rounded-2 py-2" href="{{ url_for('ekle', cat='Tesis') }}">
-                            <i class="fas fa-building-shield me-2 text-secondary"></i>Tesis & Mekan</a></li>
+                      <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Arac') }}"><i class="fas fa-truck me-2 text-warning"></i>Araç & Filo</a></li>
+                      <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Tesis') }}"><i class="fas fa-industry me-2 text-secondary"></i>Tesis & Mekan</a></li>
+                      <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Urun') }}"><i class="fas fa-box me-2 text-primary"></i>Üretim & Ürün</a></li>
+                      <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Personel') }}"><i class="fas fa-user me-2 text-info"></i>Personel</a></li>
                     {% endif %}
-                </ul>
-            </div>
-
-            {# ── YENİLE + EXCEL DIŞA ── #}
-            <div class="d-flex border rounded-3 bg-white shadow-sm overflow-hidden">
-                <a href="{{ url_for('dashboard') }}"
-                   class="btn border-0 rounded-0 px-3 fw-bold"
-                   style="background:#1a1c4b; color:white;">
-                    <i class="fas fa-sync me-1"></i> Yenile
-                </a>
-                <a href="{{ url_for('export_excel') }}"
-                   class="btn btn-light border-0 rounded-0 px-3 border-start" title="Excel Rapor İndir">
-                    <i class="fas fa-file-excel text-success fa-lg"></i>
-                </a>
-            </div>
-        </div>
-    </div>
-
-    {# ── KPI KARTLARI ── #}
-    <div class="row mb-4 g-3">
-        <div class="col-md-4" onclick="filterTable('danger')">
-            <div class="kpi-card danger">
-                <div class="kpi-label">Kritik (Son 30 Gün)</div>
-                <div class="kpi-value">
-                    {{ sertifikalar | selectattr('expiry_date', 'le', bugun + timedelta(days=30)) | list | length }}
+                  </ul>
                 </div>
-            </div>
-        </div>
-        <div class="col-md-4" onclick="filterTable('warning')">
-            <div class="kpi-card warning">
-                <div class="kpi-label">Yaklaşan (1–3 Ay)</div>
-                <div class="kpi-value">
-                    {{ sertifikalar
-                        | selectattr('expiry_date', 'gt', bugun + timedelta(days=30))
-                        | selectattr('expiry_date', 'le', bugun + timedelta(days=90))
-                        | list | length }}
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4" onclick="filterTable('all')">
-            <div class="kpi-card primary">
-                <div class="kpi-label">Toplam Aktif Belge</div>
-                <div class="kpi-value">{{ sertifikalar | length }}</div>
-            </div>
-        </div>
+                <a href="{{ url_for('sil', id=s.id, cat=current_cat) }}"
+                   class="btn-action danger-hover" style="color:#cbd5e1;"
+                   onclick="return confirm('Bu belgeyi silmek istediginize emin misiniz?')">
+                  <i class="fas fa-trash-alt"></i>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+
+          {% if sertifikalar | length == 0 %}
+          <tr>
+            <td colspan="6" class="text-center py-5">
+              <i class="fas fa-inbox fa-3x mb-3 d-block" style="color:#e2e8f0;"></i>
+              <span class="text-muted">Henüz kayıt yok. PDF yükleyerek veya manuel ekleyerek başlayın.</span>
+            </td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
     </div>
-
-    {# ── ANA TABLO ── #}
-    <div class="data-card">
-        <div class="table-responsive">
-            <table class="table table-hover" id="sertifikaTable">
-                <thead>
-                    <tr>
-                        <th class="ps-4" style="width:35%;">Belge / Tanım</th>
-                        <th>Bitiş Tarihi</th>
-                        <th>Kalan Gün</th>
-                        <th class="text-center">Hızlı Aksiyon</th>
-                        <th class="text-center">Dijital Arşiv</th>
-                        <th class="text-center">İşlem</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in sertifikalar %}
-                    {% if s.expiry_date %}
-                    {% set kalan = (s.expiry_date - bugun).days %}
-                    {% set status = 'danger' if kalan <= 30 else ('warning' if kalan <= 90 else 'success') %}
-                    <tr class="table-row" data-status="{{ status }}">
-
-                        <td class="ps-4">
-                            <div class="belge-title">{{ s.title }}</div>
-                            <div class="belge-meta">
-                                <i class="fas fa-tag me-1"></i>
-                                {% if s.category == 'Personel' %}Personel
-                                {% elif s.category == 'Arac' %}Araç & Filo
-                                {% elif s.category == 'Tesis' %}Tesis & Mekan
-                                {% else %}Üretim & Ürün{% endif %}
-                                {% if s.firma_adi %} · <i class="fas fa-building me-1"></i>{{ s.firma_adi }}{% endif %}
-                                {% if s.note %} · {{ s.note }}{% endif %}
-                            </div>
-                        </td>
-
-                        <td style="color:#64748b; font-weight:600; font-size:0.88rem;">
-                            {{ s.expiry_date.strftime('%d.%m.%Y') }}
-                        </td>
-
-                        <td>
-                            <span class="badge-days {{ status }}">
-                                {% if kalan < 0 %}{{ kalan|abs }} Gün Geçti
-                                {% elif kalan == 0 %}BUGÜN!
-                                {% else %}{{ kalan }} Gün{% endif %}
-                            </span>
-                        </td>
-
-                        <td class="text-center">
-                            {% if kalan <= 30 %}
-                            <div class="d-flex justify-content-center gap-1">
-                                {% if s.danisman_no %}
-                                <a href="https://wa.me/{{ s.danisman_no }}?text=Merhaba,%0A%0A'{{ s.title }}' belgesinin süresi 30 günün altına düşmüştür. Lütfen gerekli aksiyonu alın.%0ABitiş: {{ s.expiry_date.strftime('%d.%m.%Y') }}%0A%0AEG Optimal"
-                                   target="_blank" class="btn-action" title="{% if s.category == 'Personel' %}Amire Hatırlat{% else %}Sorumluya Hatırlat{% endif %}"
-                                   style="color:#0891b2;">
-                                    <i class="fas fa-user-clock"></i>
-                                </a>
-                                {% endif %}
-                                {% if s.whatsapp_no %}
-                                <a href="https://wa.me/{{ s.whatsapp_no }}?text=Sayın ilgili,%0A%0A'{{ s.title }}' belgenizin süresi dolmak üzeredir.%0ABitiş: {{ s.expiry_date.strftime('%d.%m.%Y') }}%0A%0A{{ current_user.company_name or 'EG Optimal' }}"
-                                   target="_blank" class="btn-action" title="{% if s.category == 'Personel' %}Personele Hatırlat{% else %}Müşteriye Hatırlat{% endif %}"
-                                   style="color:#16a34a;">
-                                    <i class="fab fa-whatsapp"></i>
-                                </a>
-                                {% endif %}
-                            </div>
-                            {% else %}
-                            <span class="text-muted small">—</span>
-                            {% endif %}
-                        </td>
-
-                        <td class="text-center">
-                            {% if s.belge_url %}
-                            <a href="{{ cloudinary_belge_url(s.belge_url) }}" target="_blank"
-                               class="btn btn-sm fw-bold px-3"
-                               style="background:#f0f4ff; color:#1a1c4b; border:1px solid #c7d2fe; border-radius:8px; font-size:0.78rem;">
-                                <i class="fas fa-file-pdf me-1 text-danger"></i> Aç
-                            </a>
-                            {% else %}
-                            <form action="{{ url_for('upload_belge', entry_id=s.id, cat=current_cat) }}"
-                                  method="POST" enctype="multipart/form-data" class="m-0">
-                                <label style="cursor:pointer;" title="Belge Yükle"
-                                       class="btn btn-sm px-3"
-                                       style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; font-size:0.78rem; color:#94a3b8;">
-                                    <i class="fas fa-cloud-upload-alt me-1"></i> Yükle
-                                    <input type="file" name="file" onchange="this.form.submit()" style="display:none;">
-                                </label>
-                            </form>
-                            {% endif %}
-                        </td>
-
-                        <td class="text-center">
-                            <div class="d-flex justify-content-center gap-1">
-                                <div class="dropdown">
-                                    <button class="btn-action dropdown-toggle" style="color:#64748b; font-size:0.82rem;"
-                                            data-bs-toggle="dropdown">
-                                        <i class="fas fa-folder-open"></i>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end shadow border-0" style="border-radius:10px; font-size:0.85rem;">
-                                        <li class="dropdown-header text-muted" style="font-size:0.7rem;">Kategoriye Taşı</li>
-                                        {% set sek = current_user.sektor %}
-                                        {% if sek == 'lojistik' %}
-                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Arac') }}"><i class="fas fa-truck me-2 text-warning"></i>Araç & Filo</a></li>
-                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Personel') }}"><i class="fas fa-user me-2 text-info"></i>Personel</a></li>
-                                        {% elif sek == 'gida' %}
-                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Urun') }}"><i class="fas fa-box me-2 text-primary"></i>Üretim & Ürün</a></li>
-                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Tesis') }}"><i class="fas fa-industry me-2 text-secondary"></i>Tesis & Mekan</a></li>
-                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Personel') }}"><i class="fas fa-user me-2 text-info"></i>Personel</a></li>
-                                        {% elif sek == 'isg' %}
-                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Tesis') }}"><i class="fas fa-industry me-2 text-secondary"></i>Tesis & Mekan</a></li>
-                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Personel') }}"><i class="fas fa-user me-2 text-info"></i>Personel</a></li>
-                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Arac') }}"><i class="fas fa-truck me-2 text-warning"></i>Araç & Filo</a></li>
-                                        {% else %}
-                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Arac') }}"><i class="fas fa-truck me-2 text-warning"></i>Araç & Filo</a></li>
-                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Tesis') }}"><i class="fas fa-industry me-2 text-secondary"></i>Tesis & Mekan</a></li>
-                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Urun') }}"><i class="fas fa-box me-2 text-primary"></i>Üretim & Ürün</a></li>
-                                            <li><a class="dropdown-item py-2" href="{{ url_for('kategori_guncelle', id=s.id, yeni_kat='Personel') }}"><i class="fas fa-user me-2 text-info"></i>Personel</a></li>
-                                        {% endif %}
-                                    </ul>
-                                </div>
-                                <a href="{{ url_for('sil', id=s.id, cat=current_cat) }}"
-                                   class="btn-action danger-hover" style="color:#cbd5e1;"
-                                   onclick="return confirm('Bu belgeyi silmek istediğinize emin misiniz?')">
-                                    <i class="fas fa-trash-alt"></i>
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endif %}
-                    {% endfor %}
-
-                    {% if sertifikalar | length == 0 %}
-                    <tr>
-                        <td colspan="6" class="text-center py-5">
-                            <i class="fas fa-inbox fa-3x mb-3 d-block" style="color:#e2e8f0;"></i>
-                            <span class="text-muted">Henüz kayıt yok. PDF yükleyerek veya manuel ekleyerek başlayın.</span>
-                        </td>
-                    </tr>
-                    {% endif %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
+  </div>
 </div>
 
 <script>
 function filterTable(status) {
-    document.querySelectorAll('.table-row').forEach(row => {
-        row.style.display =
-            (status === 'all' || row.dataset.status === status) ? '' : 'none';
+    document.querySelectorAll('.table-row').forEach(function(row) {
+        row.style.display = (status === 'all' || row.dataset.status === status) ? '' : 'none';
     });
 }
-
 function submitPdfForm() {
-    const input = document.getElementById('pdf_input');
+    var input = document.getElementById('pdf_input');
     if (!input.files.length) return;
-
-    const total = input.files.length;
-    const overlay = document.getElementById('pdfProgress');
-    const bar = document.getElementById('progressBar');
-    const countEl = document.getElementById('progressCount');
-    const titleEl = document.getElementById('progressTitle');
-    const subEl = document.getElementById('progressSub');
-
+    var total   = input.files.length;
+    var overlay = document.getElementById('pdfProgress');
+    var bar     = document.getElementById('progressBar');
+    var countEl = document.getElementById('progressCount');
     overlay.classList.add('show');
-    titleEl.textContent = total + ' PDF Analiz Ediliyor';
-    subEl.textContent = 'Gemini AI belgelerinizi okuyor, lütfen bekleyin...';
-
-    // Sahte ilerleme göster (gerçek işlem sunucuda)
-    let pct = 0;
-    const interval = setInterval(() => {
+    document.getElementById('progressTitle').textContent = total + ' PDF Analiz Ediliyor';
+    var pct = 0;
+    var interval = setInterval(function() {
         pct = Math.min(pct + Math.random() * 8, 90);
         bar.style.width = pct + '%';
         countEl.textContent = Math.floor(pct / 100 * total) + ' / ' + total + ' belge işlendi';
     }, 600);
-
-    // Formu gönder
     document.getElementById('pdfForm').submit();
 }
-
-// Drag & drop (opsiyonel görsel destek)
-document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
-});
 </script>
 {% endblock %}
