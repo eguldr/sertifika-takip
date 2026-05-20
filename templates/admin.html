@@ -222,9 +222,9 @@
                                         {# Hangi kullanıcıya ait olduğunu göster #}
                                         {% for u in users %}
                                             {% if u.id == e.user_id %}
-                                                <small class="text-muted">
-                                                    {{ u.company_name or u.email }}
-                                                </small>
+                                                <small class="text-muted d-block">{{ u.email }}</small>
+                                                {% if u.company_name %}
+                                                <small class="text-muted d-block" style="font-size:0.7rem;">{{ u.company_name }}</small>
                                             {% endif %}
                                         {% endfor %}
                                     </td>
