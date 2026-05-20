@@ -1,3 +1,7 @@
+
+
+
+
 import os
 import re
 import time
@@ -553,6 +557,8 @@ def import_pdf():
             continue
         fname = dosya.filename.lower()
         mime  = 'image/png' if fname.endswith('.png') else ('image/jpeg' if fname.endswith(('.jpg', '.jpeg')) else 'application/pdf')
+    if len(icerik) > 5 * 1024 * 1024:
+        print(f"BUYUK DOSYA: {dosya.filename} - {len(icerik)/1024/1024:.1f} MB")
         islenecekler.append({
             'ad': dosya.filename, 'icerik': icerik,
             'b64': base64.standard_b64encode(icerik).decode(),
