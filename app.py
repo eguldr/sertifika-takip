@@ -719,6 +719,7 @@ def update_payment(uid):
     if u:
         if request.method == 'POST':
             u.company_name = request.form.get('company_name', '')
+            u.sektor = request.form.get('sektor', 'genel')
             u.is_paid      = request.form.get('is_paid') in ['true', 'True', 'Odendi']
             u.admin_note   = request.form.get('admin_note', '')
         else:
