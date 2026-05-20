@@ -128,7 +128,7 @@ def setup_db():
                     db.session.execute(text(sql))
                     db.session.commit()
                 except Exception:
-            db.session.rollback()
+                    db.session.rollback()
 
         # Bozuk Cloudinary URL'leri temizle (bir kez calisir)
         try:
