@@ -128,7 +128,25 @@ def setup_db():
                     db.session.execute(text(sql))
                     db.session.commit()
                 except Exception:
-                    db.session.rollback()
+            db.session.rollback()
+
+        # Bozuk Cloudinary URL'leri temizle (bir kez calisir)
+        try:
+            import re as re2
+            bozuk = Entry.query.filter(Entry.belge_url.isnot(None)).all()
+            for e in bozuk:
+                if e.belge_url and ('fl_attachment' in e.belge_url or e.belge_url.count('fl_inline') > 1):
+                    url = e.belge_url
+                    url = re2.sub(r'/fl_inline,fl_attachment[^/]*/', '/fl_inline/', url)
+                    url = re2.sub(r'(/fl_inline/)+', '/fl_inline/', url)
+                    e.belge_url = url
+            db.session.commit()
+            print("URL temizligi tamamlandi")
+        except Exception as url_err:
+            db.session.rollback()
+            print(f"URL temizlik hatasi: {url_err}")
+
+        
         app._db_init = True
 
 
