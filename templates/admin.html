@@ -219,14 +219,13 @@
                                         <small class="text-muted">{{ e.category }}</small>
                                     </td>
                                     <td>
-                                        {# Hangi kullanıcıya ait olduğunu göster #}
-                                        {% for u in users %}
-                                            {% if u.id == e.user_id %}
-                                                <small class="text-muted d-block">{{ u.email }}</small>
-                                                {% if u.company_name %}
-                                                <small class="text-muted d-block" style="font-size:0.7rem;">{{ u.company_name }}</small>
+                                        {% set entry_user = users | selectattr('id', 'equalto', e.user_id) | first %}
+                                        {% if entry_user %}
+                                            <small class="text-muted d-block">{{ entry_user.email }}</small>
+                                            {% if entry_user.company_name %}
+                                            <small class="text-muted d-block" style="font-size:0.7rem;">{{ entry_user.company_name }}</small>
                                             {% endif %}
-                                        {% endfor %}
+                                        {% endif %}
                                     </td>
                                     <td>{{ e.title }}</td>
                                     <td>
