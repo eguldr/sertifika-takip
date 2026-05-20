@@ -588,6 +588,17 @@ def import_pdf():
         kat = veri.get('kategori', 'Urun')
         if kat not in ['Arac', 'Personel', 'Tesis', 'Urun']:
             kat = akilli_analiz_motoru([veri.get('belge_turu', '')])
+            # Guven skoru hesapla
+        guven = 0
+        if veri.get('belge_turu') and str(veri.get('belge_turu')) != 'null': guven += 25
+        if veri.get('bitis_tarihi') and str(veri.get('bitis_tarihi')) != 'null': guven += 35
+        if kat in ['Arac', 'Personel', 'Tesis', 'Urun']: guven += 20
+        if veri.get('firma_adi') and str(veri.get('firma_adi')) != 'null': guven += 10
+        if veri.get('ad_soyad') or veri.get('plaka'): guven += 10
+        
+        if guven < 60:
+            print(f"DUSUK GUVEN ({guven}%): {dosya.filename}")
+            veri['belge_turu'] = f"[KONTROL ET] {veri.get('belge_turu') or dosya.filename}"
 
         # Not alani: kisi/plaka/marka/model/sase bilgileri
         notlar = []
