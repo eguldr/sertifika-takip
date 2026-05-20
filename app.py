@@ -548,9 +548,9 @@ def import_pdf():
         if not icerik:
             continue
         d_hash = hashlib.md5(icerik).hexdigest()
-        if Entry.query.filter_by(user_id=current_user.id, dosya_hash=d_hash, is_active=True).first():
-            atlanan += 1
-            continue
+        #if Entry.query.filter_by(user_id=current_user.id, dosya_hash=d_hash, is_active=True).first():
+        #    atlanan += 1
+        #    continue
         fname = dosya.filename.lower()
         mime  = 'image/png' if fname.endswith('.png') else ('image/jpeg' if fname.endswith(('.jpg', '.jpeg')) else 'application/pdf')
     if len(icerik) > 5 * 1024 * 1024:
