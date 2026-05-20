@@ -239,6 +239,7 @@ async def tek_pdf_isle(semaphore, dosya_verisi):
                 return {"ad": ad, "hash": dosya_verisi['hash'],
                         "icerik": dosya_verisi['icerik'], "hata": "json_parse"}
         except Exception as e:
+            print(f"GEMINI HATA ({ad}): {str(e)}")
             hata = str(e)
             if '429' in hata or 'EXHAUSTED' in hata:
                 await asyncio.sleep(5)
