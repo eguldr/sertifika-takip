@@ -597,9 +597,8 @@ def import_pdf():
         if veri.get('ad_soyad') or veri.get('plaka'): guven += 10
         
         if guven < 60:
-            print(f"DUSUK GUVEN ({guven}%): {dosya.filename}")
-            veri['belge_turu'] = f"[KONTROL ET] {veri.get('belge_turu') or dosya.filename}"
-
+            print(f"DUSUK GUVEN ({guven}%): {ad}")
+            veri['belge_turu'] = f"[KONTROL ET] {veri.get('belge_turu') or ad}"
         # Not alani: kisi/plaka/marka/model/sase bilgileri
         notlar = []
         if veri.get('ad_soyad') and str(veri['ad_soyad']) != 'null':
