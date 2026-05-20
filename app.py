@@ -183,9 +183,9 @@ def send_verification_mail(email, token):
 def cloudinary_belge_url(url, dosya_adi=None):
     if not url:
         return url
-    if "/fl_inline/" in url or "/fl_attachment/" in url:
-        return url
-    return re.sub(r'(/upload/)', r'\1fl_inline/', url, count=1)
+    # Tum transformation flaglari kaldir, sade URL don
+    url = re.sub(r'/fl_[^/]+/', '/', url)
+    return url
 
 
 app.jinja_env.globals['cloudinary_belge_url'] = cloudinary_belge_url
