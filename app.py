@@ -555,11 +555,13 @@ def import_pdf():
         mime  = 'image/png' if fname.endswith('.png') else ('image/jpeg' if fname.endswith(('.jpg', '.jpeg')) else 'application/pdf')
     if len(icerik) > 5 * 1024 * 1024:
         print(f"BUYUK DOSYA: {dosya.filename} - {len(icerik)/1024/1024:.1f} MB")
-islenecekler.append({
-        'ad': dosya.filename, 'icerik': icerik,
-        'b64': base64.standard_b64encode(icerik).decode(),
-        'mime': mime, 'hash': d_hash
-    })
+    if len(icerik) > 5 * 1024 * 1024:
+            print(f"BUYUK DOSYA: {dosya.filename} - {len(icerik)/1024/1024:.1f} MB")
+        islenecekler.append({
+            'ad': dosya.filename, 'icerik': icerik,
+            'b64': base64.standard_b64encode(icerik).decode(),
+            'mime': mime, 'hash': d_hash
+        })
 
     if not islenecekler:
         flash(f"Tum dosyalar zaten sistemde. ({atlanan} atlandi)", "info")
