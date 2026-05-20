@@ -553,27 +553,24 @@ def import_pdf():
         #    continue
         fname = dosya.filename.lower()
         mime  = 'image/png' if fname.endswith('.png') else ('image/jpeg' if fname.endswith(('.jpg', '.jpeg')) else 'application/pdf')
-    if len(icerik) > 5 * 1024 * 1024:
-        print(f"BUYUK DOSYA: {dosya.filename} - {len(icerik)/1024/1024:.1f} MB")
-    islenecekler.append({
-        'ad': dosya.filename, 'icerik': icerik,
-        'b64': base64.standard_b64encode(icerik).decode(),
-        'mime': mime, 'hash': d_hash
-    })
+        if len(icerik) > 5 * 1024 * 1024:
+            print(f"BUYUK DOSYA: {dosya.filename} - {len(icerik)/1024/1024:.1f} MB")
+        islenecekler.append({
+            'ad': dosya.filename, 'icerik': icerik,
+            'b64': base64.standard_b64encode(icerik).decode(),
+            'mime': mime, 'hash': d_hash
+        })
 
     if not islenecekler:
         flash(f"Tum dosyalar zaten sistemde. ({atlanan} atlandi)", "info")
         return redirect(url_for('dashboard'))
-
     print(f"Async basladi: {len(islenecekler)} PDF")
 
     try:
         sonuclar = asyncio.run(toplu_pdf_isle(islenecekler, paralel_sayi=20))
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        sonuclar = loop.run_until_complete(toplu_pdf_isle(islenecekler, paralel_sayi=20))
-        loop.close()
+    except Exception as e:
+        print(f"ASYNC HATA: {e}")
+        sonuclar = []
 
     eklenen = 0
     hatali  = 0
