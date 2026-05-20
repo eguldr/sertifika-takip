@@ -243,7 +243,7 @@ async def tek_pdf_isle(semaphore, dosya_verisi):
             if '429' in hata or 'EXHAUSTED' in hata:
                 await asyncio.sleep(5)
             elif '503' in hata or 'UNAVAILABLE' in hata:
-                await asyncio.sleep(10)
+                await asyncio.sleep(15)
             return {"ad": ad, "hash": dosya_verisi['hash'],
                     "icerik": dosya_verisi['icerik'], "hata": hata}
 
