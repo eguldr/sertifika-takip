@@ -86,6 +86,17 @@
                                                 </div>
                                                 <div class="modal-body p-4">
                                                     <div class="mb-3">
+                                                        <label class="form-label fw-bold">Sektör</label>
+                                                        <select name="sektor" class="form-select border-primary">
+                                                            <option value="genel" {% if u.sektor == 'genel' %}selected{% endif %}>🏢 Genel</option>
+                                                            <option value="lojistik" {% if u.sektor == 'lojistik' %}selected{% endif %}>🚛 Lojistik</option>
+                                                            <option value="gida" {% if u.sektor == 'gida' %}selected{% endif %}>🍽️ Gıda & Üretim</option>
+                                                            <option value="danismanlik" {% if u.sektor == 'danismanlik' %}selected{% endif %}>📋 Danışmanlık</option>
+                                                            <option value="isg" {% if u.sektor == 'isg' %}selected{% endif %}>⚙️ İSG & Tesis</option>
+                                                            <option value="otel" {% if u.sektor == 'otel' %}selected{% endif %}>🏨 Otel</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="mb-3">
                                                         <label class="form-label fw-bold">
                                                             Kurum / Firma Adı
                                                         </label>
