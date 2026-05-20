@@ -11,26 +11,12 @@
     {% else %}bg-primary text-white{% endif %}"
     style="border-radius:15px 15px 0 0;">
     <h3 class="mb-0">
-      <i class="fas
-        {% if cat == 'Arac' %}fa-truck
-        {% elif cat == 'Personel' %}fa-user-tie
-        {% elif cat == 'Tesis' %}fa-industry
-        {% else %}fa-box-open{% endif %} me-2"></i>
-      Yeni Kayıt:
-      {% if cat == 'Arac' %}Araç & Filo
-      {% elif cat == 'Personel' %}
-        {% if sektor == 'danismanlik' %}Personel Belgeleri
-        {% elif sektor == 'otel' %}Personel Belgeleri
-        {% else %}Personel{% endif %}
-      {% elif cat == 'Tesis' %}
-        {% if sektor == 'danismanlik' %}Yönetim Sistemi
-        {% elif sektor == 'otel' %}Tesis & Lisans Belgeleri
-        {% else %}Tesis & Mekan{% endif %}
-      {% elif cat == 'Urun' %}
-        {% if sektor == 'danismanlik' %}Ürün Sertifikaları
-        {% elif sektor == 'otel' %}Kalite & Standart Sertifikaları
-        {% elif sektor == 'gida' %}Ürün & Gıda Sertifikaları
-        {% else %}Üretim & Ürün{% endif %}
+      <i class="fas {% if cat == 'Arac' %}fa-truck{% elif cat == 'Personel' %}fa-user-tie{% elif cat == 'Tesis' %}fa-industry{% else %}fa-box-open{% endif %} me-2"></i>
+      Yeni Kayit:
+      {% if cat == 'Arac' %}Arac & Filo
+      {% elif cat == 'Personel' %}{% if sektor in ['danismanlik','otel'] %}Personel Belgeleri{% else %}Personel{% endif %}
+      {% elif cat == 'Tesis' %}{% if sektor == 'danismanlik' %}Yonetim Sistemi{% elif sektor == 'otel' %}Tesis & Lisans{% else %}Tesis & Mekan{% endif %}
+      {% elif cat == 'Urun' %}{% if sektor == 'danismanlik' %}Urun Sertifikalari{% elif sektor == 'otel' %}Kalite & Standart{% elif sektor == 'gida' %}Urun & Gida Sertifikalari{% else %}Uretim & Urun{% endif %}
       {% endif %}
     </h3>
   </div>
@@ -39,267 +25,476 @@
     <form method="POST" action="{{ url_for('ekle', cat=cat) }}">
       <input type="hidden" name="category" value="{{ cat }}">
 
-      {# ILETISIM ALANLARI - sektore gore etiket #}
       <div class="row mb-4">
-
-        {# Alan 1: Birinci iletisim - belge sahibi / sorumlu kisi #}
         <div class="col-md-4 mb-3">
-          <label class="fw-bold text-success d-flex align-items-center gap-1">
+          <label class="fw-bold text-success">
             <i class="fab fa-whatsapp"></i>
-            {% if cat == 'Personel' %}
-              Personel WhatsApp No
-            {% elif cat == 'Arac' %}
-              Araç Sorumlusu WhatsApp
-            {% elif sektor in ['danismanlik', 'isg'] %}
-              Müşteri / Yetkili WhatsApp
-            {% elif sektor == 'otel' %}
-              İlgili Personel WhatsApp
-            {% else %}
-              Sorumlu WhatsApp
-            {% endif %}
-            <span data-bs-toggle="tooltip" data-bs-placement="top"
-              title="{% if cat == 'Personel' %}Belge sahibi çalışanın numarası. Süre yaklaşınca bu kişiye bildirim gönderilir.{% elif cat == 'Arac' %}Aracın sorumlu şoförü veya sürücüsünün numarası.{% else %}Belge sorumlusunun numarası.{% endif %}">
-              <i class="fas fa-circle-info text-muted small"></i>
-            </span>
+            {% if cat == 'Personel' %}Personel WhatsApp No
+            {% elif cat == 'Arac' %}Arac Sorumlusu WhatsApp
+            {% elif sektor in ['danismanlik','isg'] %}Musteri / Yetkili WhatsApp
+            {% elif sektor == 'otel' %}Ilgili Personel WhatsApp
+            {% else %}Sorumlu WhatsApp{% endif %}
           </label>
           <input type="text" name="whatsapp_no" class="form-control form-control-lg" placeholder="905xxxxxxxxx">
-          <small class="text-muted">
-            {% if cat == 'Personel' %}Çalışanın numarası
-            {% elif cat == 'Arac' %}Araç sürücüsünün numarası
-            {% else %}Birinci sorumlu numarası{% endif %}
-          </small>
+          <small class="text-muted">{% if cat == 'Personel' %}Calisanin numarasi{% elif cat == 'Arac' %}Surucu / Sorumlu numarasi{% else %}Birinci sorumlu numarasi{% endif %}</small>
         </div>
 
-        {# Alan 2: Ikinci iletisim - amir / yonetici #}
         <div class="col-md-4 mb-3">
-          <label class="fw-bold text-primary d-flex align-items-center gap-1">
+          <label class="fw-bold text-primary">
             <i class="fas fa-user-shield"></i>
-            {% if cat == 'Personel' %}
-              İdari Amir WhatsApp
-            {% elif cat == 'Arac' %}
-              Filo Yöneticisi WhatsApp
-            {% elif sektor == 'danismanlik' %}
-              Danışman / Takipçi No
-            {% elif sektor == 'isg' %}
-              İSG Uzmanı / Takipçi No
-            {% elif sektor == 'otel' %}
-              Bölüm Yöneticisi WhatsApp
-            {% else %}
-              Sorumlu Amir / Takipçi No
-            {% endif %}
-            <span data-bs-toggle="tooltip" data-bs-placement="top"
-              title="{% if cat == 'Personel' %}Personelin bağlı olduğu amirin numarası. Süre yaklaşınca bilgilendirilir.{% elif cat == 'Arac' %}Araç filosunu yöneten müdürün numarası.{% else %}Bu belgeyi takip eden kişinin numarası.{% endif %}">
-              <i class="fas fa-circle-info text-muted small"></i>
-            </span>
+            {% if cat == 'Personel' %}Idari Amir WhatsApp
+            {% elif cat == 'Arac' %}Filo Yoneticisi WhatsApp
+            {% elif sektor == 'danismanlik' %}Danisман / Takipci No
+            {% elif sektor == 'isg' %}ISG Uzmani No
+            {% elif sektor == 'otel' %}Bolum Yoneticisi WhatsApp
+            {% else %}Sorumlu Amir No{% endif %}
           </label>
           <input type="text" name="danisman_no" class="form-control form-control-lg" placeholder="905xxxxxxxxx">
-          <small class="text-muted">
-            {% if cat == 'Personel' %}Sorumlu amir numarası
-            {% elif cat == 'Arac' %}Filo yöneticisi numarası
-            {% else %}Takip eden kişinin numarası{% endif %}
-          </small>
+          <small class="text-muted">{% if cat == 'Personel' %}Amirin numarasi{% elif cat == 'Arac' %}Filo yoneticisi{% else %}Takip eden kisinin numarasi{% endif %}</small>
         </div>
 
-        {# Alan 3: Firma - sektore gore gizle veya etiket degistir #}
-        {% if sektor not in ['lojistik', 'otel'] %}
+        {% if sektor not in ['lojistik','otel'] %}
         <div class="col-md-4 mb-3">
           <label class="fw-bold text-dark">
-            {% if sektor == 'danismanlik' %}Müşteri Firma Adı
+            {% if sektor == 'danismanlik' %}Musteri Firma Adi
             {% elif sektor == 'isg' %}Hizmet Verilen Firma
-            {% elif sektor == 'gida' %}Firma / Tesis Adı
-            {% else %}Firma / Kurum Adı{% endif %}
+            {% elif sektor == 'gida' %}Firma / Tesis Adi
+            {% else %}Firma / Kurum Adi{% endif %}
           </label>
-          <input type="text" name="firma_adi" class="form-control form-control-lg"
-            placeholder="{% if sektor == 'danismanlik' %}Sertifika alacak firma adı{% elif sektor == 'isg' %}Hizmet verilen firma{% else %}Firma adını yazın{% endif %}"
-            required>
+          <input type="text" name="firma_adi" class="form-control form-control-lg" placeholder="Firma adini yazin" required>
         </div>
         {% else %}
-        {# Lojistik ve Otel icin firma alani gizli ama deger gonder #}
         <input type="hidden" name="firma_adi" value="{{ current_user.company_name }}">
         {% endif %}
       </div>
 
-      {# KATEGORIYE OZEL NOT ALANI #}
       <div class="row bg-light p-3 rounded mb-4 shadow-sm border">
         <div class="col-md-12">
           {% if cat == 'Arac' %}
-          <label class="fw-bold text-primary"><i class="fas fa-car me-1"></i>Araç Detayları (Plaka / Marka / Model)</label>
-          <input type="text" name="note" class="form-control form-control-lg" placeholder="Örn: 34 ABC 123 - Mercedes Axor" required>
+          <label class="fw-bold text-primary"><i class="fas fa-car me-1"></i>Arac Detaylari (Plaka / Marka / Model)</label>
+          <input type="text" name="note" class="form-control form-control-lg" placeholder="Orn: 34 ABC 123 - Mercedes Axor" required>
           {% elif cat == 'Personel' %}
           <label class="fw-bold text-primary"><i class="fas fa-id-card me-1"></i>Personel Bilgileri (Ad Soyad / TC No)</label>
-          <input type="text" name="note" class="form-control form-control-lg" placeholder="Örn: Mehmet Yılmaz - 12345678901" required>
+          <input type="text" name="note" class="form-control form-control-lg" placeholder="Orn: Mehmet Yilmaz - 12345678901" required>
           {% elif cat == 'Tesis' and sektor == 'otel' %}
-          <label class="fw-bold text-primary"><i class="fas fa-hotel me-1"></i>Tesis / Bölüm Bilgisi</label>
-          <input type="text" name="note" class="form-control form-control-lg" placeholder="Örn: Ana Bina - Havuz Alanı">
+          <label class="fw-bold text-primary"><i class="fas fa-hotel me-1"></i>Tesis / Bolum Bilgisi</label>
+          <input type="text" name="note" class="form-control form-control-lg" placeholder="Orn: Ana Bina - Havuz Alani">
           {% else %}
-          <label class="fw-bold text-primary"><i class="fas fa-sticky-note me-1"></i>Tanımlayıcı Bilgi / Belge Notu</label>
-          <input type="text" name="note" class="form-control form-control-lg" placeholder="Ayırt edici bir not girin">
+          <label class="fw-bold text-primary"><i class="fas fa-sticky-note me-1"></i>Tanimlayici Bilgi / Belge Notu</label>
+          <input type="text" name="note" class="form-control form-control-lg" placeholder="Ayirt edici bir not girin">
           {% endif %}
         </div>
       </div>
 
-      {# BELGE TIPI SECIMI #}
       <div class="mb-4">
-        <label class="fw-bold text-dark">Sertifika / Belge Tipi Seçin</label>
-        <select name="title" class="form-control form-control-lg" required size="8" onchange="checkManual(this)">
+        <label class="fw-bold text-dark">Sertifika / Belge Tipi Secin</label>
+        <select name="title" class="form-control form-control-lg" required size="10" onchange="checkManual(this)">
 
           {% if cat == 'Arac' %}
-            <option value="">-- Seçiniz --</option>
-            <option>Araç Muayenesi (TÜVTÜRK)</option>
-            <option>Zorunlu Trafik Sigortası</option>
-            <option>Kasko Sigortası</option>
-            <option>Egzoz Emisyon Ölçümü</option>
+          {# ARAC & FILO - Lojistik icin kapsamli liste #}
+          <option value="">-- Seciniz --</option>
+          <optgroup label="Temel Arac Belgeleri">
+            <option>Arac Muayenesi (TUVTURK)</option>
+            <option>Zorunlu Trafik Sigortasi</option>
+            <option>Kasko Sigortasi</option>
+            <option>Egzoz Emisyon Olcumu</option>
             <option>Euro 6 Emisyon Pulu</option>
-            <option>K Belgesi (Yetki Belgesi)</option>
+            <option>Arac Tescil Belgesi</option>
+          </optgroup>
+          <optgroup label="Tasima Yetki Belgeleri">
+            <option>K1 Belgesi (Uluslararasi Yolcu)</option>
+            <option>K2 Belgesi (Yurtici Yolcu)</option>
+            <option>K3 Belgesi (Uluslararasi Esya)</option>
+            <option>K4 Belgesi (Yurtici Esya)</option>
+            <option>ADR Tasima Belgesi (Tehlikeli Madde)</option>
+            <option>Yetki Belgesi</option>
+          </optgroup>
+          <optgroup label="Periyodik Kontrol">
             <option>Takograf Muayenesi</option>
-            <option>VDI 2700 (Yük Güvenliği)</option>
-            <option>ADR Güvenlik Danışmanlığı</option>
-            <option value="LISTEDE YOK / MANUEL YAZ">➕ LİSTEDE YOK / MANUEL YAZ</option>
+            <option>Takograf Kalibrasyon Belgesi</option>
+            <option>VDI 2700 (Yuk Guvenligi)</option>
+            <option>Fren Test Belgesi</option>
+            <option>Periyodik Bakim Kaydi</option>
+          </optgroup>
+          <optgroup label="Uluslararasi Tasima">
+            <option>CMR Belgesi</option>
+            <option>TIR Karnesi</option>
+            <option>Transit Gecis Belgesi</option>
+            <option>Yesil Sigorta (Uluslararasi)</option>
+            <option>ATP Belgesi (Soguk Zincir)</option>
+            <option>Frigo Bakim Belgesi</option>
+            <option>Sicaklik Kalibrasyon Sertifikasi</option>
+          </optgroup>
+          <option value="LISTEDE YOK / MANUEL YAZ">Listede Yok / Manuel Yaz</option>
 
           {% elif cat == 'Personel' %}
-            <option value="">-- Seçiniz --</option>
-            <option>SRC 1 (Uluslararası Yolcu)</option>
-            <option>SRC 2 (Yurtiçi Yolcu)</option>
-            <option>SRC 3 (Uluslararası Eşya)</option>
-            <option>SRC 4 (Yurtiçi Eşya)</option>
+          {# PERSONEL - Sektore gore liste #}
+          <option value="">-- Seciniz --</option>
+
+          {% if sektor == 'lojistik' %}
+          <optgroup label="Sofor & Operasyon Belgeleri">
+            <option>SRC 1 (Uluslararasi Yolcu)</option>
+            <option>SRC 2 (Yurtici Yolcu)</option>
+            <option>SRC 3 (Uluslararasi Esya)</option>
+            <option>SRC 4 (Yurtici Esya)</option>
             <option>SRC 5 (Tehlikeli Madde)</option>
-            <option>Psikoteknik Değerlendirme</option>
-            <option>Dijital Ehliyet Kartı</option>
+            <option>Psikoteknik Degerlendirme</option>
+            <option>Dijital Ehliyet Karti</option>
+            <option>Dijital Surucu Karti</option>
+            <option>Operatör Yetki Belgesi</option>
+          </optgroup>
+          <optgroup label="Yabanci Personel Belgeleri">
             <option>Pasaport</option>
             <option>Vize</option>
-            <option>İkamet İzni Belgesi</option>
-            <option>İSG Eğitimi</option>
+            <option>Calisma Izni</option>
+            <option>Ikamet Izni</option>
+            <option>Sinir Gecis Belgesi</option>
+            <option>Yurtdisi Saglik Sigortasi</option>
+          </optgroup>
+          <optgroup label="ISG & Egitim">
+            <option>ISG Egitimi</option>
+            <option>Ilk Yardim Sertifikasi</option>
+            <option>Tehlikeli Madde Egitimi (ADR)</option>
             <option>Mesleki Yeterlilik Belgesi</option>
-            <option>Operatör Yetki Belgesi</option>
-            <option>Vinç Kullanım Yetki Belgesi</option>
-            {% if sektor == 'otel' %}
-            <option>Hijyen Eğitim Sertifikası</option>
-            <option>İlk Yardım Sertifikası</option>
-            <option>Yangın Eğitim Sertifikası</option>
-            <option>Güvenlik Personel Sertifikası</option>
-            {% endif %}
-            <option value="LISTEDE YOK / MANUEL YAZ">➕ LİSTEDE YOK / MANUEL YAZ</option>
+            <option>Saglik Raporu</option>
+          </optgroup>
 
-          {% elif cat == 'Tesis' %}
-            <option value="">-- Seçiniz --</option>
-            {% if sektor == 'otel' %}
-            <option>Turizm İşletme Belgesi</option>
-            <option>İşyeri Açma ve Çalışma Ruhsatı</option>
-            <option>İtfaiye Uygunluk Raporu</option>
-            <option>Yangın Sertifikası</option>
-            <option>Asansör Periyodik Kontrolü</option>
-            <option>Havuz Su Analiz Raporu</option>
-            <option>Klima Bakım Sertifikası</option>
-            <option>Jeneratör Periyodik Kontrolü</option>
-            <option>Hijyen Denetim Raporu</option>
-            {% else %}
-            <option>Kapasite Raporu</option>
-            <option>İtfaiye Uygunluk Raporu</option>
-            <option>Sanayi Sicil Belgesi</option>
-            <option>İşyeri Açma ve Çalışma Ruhsatı</option>
-            <option>ÇED Raporu</option>
-            <option>Çevre İzin ve Lisans Belgesi</option>
-            <option>Sıfır Atık Belgesi</option>
-            <option>Yangın Sertifikası</option>
-            <option>Asansör Periyodik Kontrolü</option>
-            <option>Forklift Periyodik Kontrolü</option>
-            {% if sektor == 'danismanlik' %}
-            <option>ISO 9001 Yönetim Sistemi</option>
-            <option>ISO 14001 Çevre Yönetim Sistemi</option>
-            <option>ISO 45001 İSG Yönetim Sistemi</option>
-            <option>GMP (İyi Üretim Uygulamaları)</option>
-            {% endif %}
-            {% endif %}
-            <option value="LISTEDE YOK / MANUEL YAZ">➕ LİSTEDE YOK / MANUEL YAZ</option>
+          {% elif sektor == 'otel' %}
+          <optgroup label="Genel Personel Evraklari">
+            <option>Kimlik / Pasaport</option>
+            <option>Ikamet Izni</option>
+            <option>Calisma Izni</option>
+            <option>Saglik Raporu</option>
+            <option>Adli Sicil Kaydi</option>
+            <option>SGK Ise Giris Bildirimi</option>
+          </optgroup>
+          <optgroup label="Hijyen & Gida Personeli">
+            <option>Hijyen Sertifikasi</option>
+            <option>Portor Muayenesi</option>
+            <option>Gida Guvenligi Egitimi</option>
+            <option>HACCP Egitimi</option>
+            <option>Mesleki Yeterlilik Belgesi</option>
+          </optgroup>
+          <optgroup label="Teknik Personel">
+            <option>Elektrik Yetki Belgesi</option>
+            <option>Kazan Operatoru Sertifikasi</option>
+            <option>Havuz Operatoru Sertifikasi</option>
+            <option>Ilk Yardim Sertifikasi</option>
+            <option>Yangin Egitimi Sertifikasi</option>
+            <option>Guvenlik Personel Sertifikasi</option>
+          </optgroup>
+          <optgroup label="Yabanci Personel">
+            <option>Pasaport</option>
+            <option>Vize</option>
+            <option>Calisma Izni</option>
+            <option>Oturma Izni</option>
+            <option>Sigorta Belgesi</option>
+          </optgroup>
+
+          {% elif sektor == 'danismanlik' %}
+          <optgroup label="Personel Belgeleri">
+            <option>Mesleki Yeterlilik Belgesi</option>
+            <option>Egitim Sertifikasi</option>
+            <option>Yetki Belgesi</option>
+            <option>Imza Sirkuteri</option>
+            <option>Saglik Raporu</option>
+          </optgroup>
+
+          {% elif sektor == 'isg' %}
+          <optgroup label="ISG Personel Belgeleri">
+            <option>ISG Uzmanligi Belgesi</option>
+            <option>Ise Giris Muayenesi</option>
+            <option>Periyodik Saglik Muayenesi</option>
+            <option>ISG Egitimi</option>
+            <option>Ilk Yardim Sertifikasi</option>
+            <option>Yuksekte Calisma Sertifikasi</option>
+            <option>Tehlikeli Madde Egitimi</option>
+            <option>Operatör Yetki Belgesi</option>
+            <option>Vinc Kullanim Yetki Belgesi</option>
+            <option>Mesleki Yeterlilik Belgesi</option>
+          </optgroup>
+
+          {% elif sektor == 'gida' %}
+          <optgroup label="Gida Personel Belgeleri">
+            <option>Hijyen Sertifikasi</option>
+            <option>Portor Muayenesi</option>
+            <option>Gida Guvenligi Egitimi</option>
+            <option>Saglik Raporu</option>
+            <option>Mesleki Yeterlilik Belgesi</option>
+          </optgroup>
 
           {% else %}
-            {# URUN - sektore gore liste #}
-            {% if sektor == 'otel' %}
-            <optgroup label="🌟 KALİTE & STANDART SERTİFİKALARI">
-              <option value="">-- Seçiniz --</option>
-              <option>ISO 9001 Kalite Yönetim Sistemi</option>
-              <option>ISO 22000 Gıda Güvenliği</option>
-              <option>HACCP Sertifikası</option>
-              <option>Helal Belgesi</option>
-              <option>Turizm Kalite Belgesi</option>
-              <option>Green Key Sertifikası</option>
-              <option value="LISTEDE YOK / MANUEL YAZ">➕ LİSTEDE YOK / MANUEL YAZ</option>
-            </optgroup>
-            {% elif sektor == 'gida' %}
-            <optgroup label="🍽️ ÜRÜN & GIDA SERTİFİKALARI">
-              <option value="">-- Seçiniz --</option>
-              <option>HACCP Sertifikası</option>
-              <option>ISO 22000</option>
-              <option>FSSC 22000</option>
-              <option>BRC Sertifikası</option>
-              <option>Helal Belgesi</option>
-              <option>Organik Tarım Sertifikası</option>
-              <option>ACS (Sağlık Uygunluk Sertifikası)</option>
-              <option>CE İşareti</option>
-              <option>ISO 9001</option>
-              <option value="LISTEDE YOK / MANUEL YAZ">➕ LİSTEDE YOK / MANUEL YAZ</option>
-            </optgroup>
-            {% elif sektor == 'danismanlik' %}
-            <optgroup label="📜 ÜRÜN SERTİFİKALARI">
-              <option value="">-- Seçiniz --</option>
-              <option>CE İşareti</option>
-              <option>TSE Belgesi</option>
-              <option>G İşareti</option>
-              <option>UKCA</option>
-              <option>EAC Sertifikası</option>
-              <option>ISO 9001</option>
-              <option>ISO 14001</option>
-              <option>ISO 45001</option>
-              <option>ISO 22000</option>
-              <option>ISO 27001</option>
-              <option>ISO 13485</option>
-              <option>ISO 50001</option>
-              <option>HACCP</option>
-              <option>BRC Sertifikası</option>
-              <option>FSSC 22000</option>
-              <option>Helal Belgesi</option>
-              <option>GMP</option>
-              <option>GDP</option>
-              <option>ATEX Sertifikası</option>
-              <option>Kalibrasyon Sertifikası</option>
-              <option>ACS (Sağlık Uygunluk Sertifikası)</option>
-              <option value="LISTEDE YOK / MANUEL YAZ">➕ LİSTEDE YOK / MANUEL YAZ</option>
-            </optgroup>
-            {% else %}
-            <optgroup label="📦 ÜRETİM & ÜRÜN KÜTÜPHANESİ">
-              <option value="">-- Seçiniz --</option>
-              <option>CE İşareti</option>
-              <option>TSE Belgesi</option>
-              <option>ISO 9001</option>
-              <option>ISO 14001</option>
-              <option>ISO 22000</option>
-              <option>ISO 45001</option>
-              <option>ISO 27001</option>
-              <option>HACCP</option>
-              <option>BRC Sertifikası</option>
-              <option>Helal Belgesi</option>
-              <option>GMP</option>
-              <option>ATEX Sertifikası</option>
-              <option>Kalibrasyon Sertifikası</option>
-              <option>ACS (Sağlık Uygunluk Sertifikası)</option>
-              <option>UKCA</option>
-              <option>EAC Sertifikası</option>
-              <option value="LISTEDE YOK / MANUEL YAZ">➕ LİSTEDE YOK / MANUEL YAZ</option>
-            </optgroup>
-            {% endif %}
+          <optgroup label="Genel Personel Belgeleri">
+            <option>SRC 1 (Uluslararasi Yolcu)</option>
+            <option>SRC 2 (Yurtici Yolcu)</option>
+            <option>SRC 3 (Uluslararasi Esya)</option>
+            <option>SRC 4 (Yurtici Esya)</option>
+            <option>SRC 5 (Tehlikeli Madde)</option>
+            <option>Psikoteknik Degerlendirme</option>
+            <option>Dijital Ehliyet Karti</option>
+            <option>Pasaport</option>
+            <option>Vize</option>
+            <option>Ikamet Izni</option>
+            <option>Calisma Izni</option>
+            <option>ISG Egitimi</option>
+            <option>Ilk Yardim Sertifikasi</option>
+            <option>Mesleki Yeterlilik Belgesi</option>
+            <option>Operatör Yetki Belgesi</option>
+            <option>Vinc Kullanim Yetki Belgesi</option>
+            <option>Saglik Raporu</option>
+          </optgroup>
           {% endif %}
+          <option value="LISTEDE YOK / MANUEL YAZ">Listede Yok / Manuel Yaz</option>
+
+          {% elif cat == 'Tesis' %}
+          {# TESIS - Sektore gore #}
+          <option value="">-- Seciniz --</option>
+
+          {% if sektor == 'otel' %}
+          <optgroup label="Ana Ruhsatlar">
+            <option>Turizm Isletme Belgesi</option>
+            <option>Belediye Ruhsati</option>
+            <option>Isyeri Acma ve Calisma Ruhsati</option>
+            <option>Itfaiye Uygunluk Raporu</option>
+            <option>Cevre Izinleri</option>
+          </optgroup>
+          <optgroup label="Konaklama & Gida Ruhsatlari">
+            <option>Yildiz Siniflandirma Belgesi</option>
+            <option>Kapasite Belgesi</option>
+            <option>Gida Isletme Kayit Belgesi</option>
+            <option>Mutfak Denetim Belgesi</option>
+            <option>Alkol Ruhsati</option>
+          </optgroup>
+          <optgroup label="Periyodik Kontrol & Teknik">
+            <option>Asansor Periyodik Kontrol Raporu</option>
+            <option>Asansor Bakim Sozlesmesi</option>
+            <option>Yangin Tupu Kontrolu</option>
+            <option>Sprinkler Bakim Raporu</option>
+            <option>Yangin Alarm Sistemi Bakimi</option>
+            <option>Havuz Su Analiz Raporu</option>
+            <option>Legionella Testi</option>
+            <option>Spa Hijyen Kontrolu</option>
+            <option>Jenerator Periyodik Kontrolu</option>
+            <option>Kazan Bakim Belgesi</option>
+            <option>Klima/HVAC Bakim Raporu</option>
+            <option>Topraklama Olcum Raporu</option>
+          </optgroup>
+
+          {% elif sektor == 'danismanlik' %}
+          <optgroup label="Yonetim Sistemi Belgeleri">
+            <option>ISO 9001 Kalite Yonetim Sistemi</option>
+            <option>ISO 14001 Cevre Yonetim Sistemi</option>
+            <option>ISO 45001 Is Sagligi ve Guvenligi</option>
+            <option>ISO 22000 Gida Guvenligi</option>
+            <option>ISO 27001 Bilgi Guvenligi</option>
+            <option>ISO 13485 Tibbi Cihaz</option>
+            <option>ISO 50001 Enerji Yonetimi</option>
+            <option>ISO 22301 Is Surrekligi</option>
+            <option>ISO 10002 Musteri Memnuniyeti</option>
+            <option>ISO 37001 Rüsvet Onleme</option>
+            <option>GMP (Iyi Uretim Uygulamalari)</option>
+            <option>GDP (Iyi Dagitim Uygulamalari)</option>
+            <option>IATF 16949 Otomotiv</option>
+            <option>AS/EN/JISQ 9100 Havacilik</option>
+          </optgroup>
+          <optgroup label="Tesis Uygunluk Belgeleri">
+            <option>Kapasite Raporu</option>
+            <option>Itfaiye Uygunluk Raporu</option>
+            <option>Sanayi Sicil Belgesi</option>
+            <option>Isyeri Acma ve Calisma Ruhsati</option>
+            <option>CED Raporu</option>
+            <option>Cevre Izin ve Lisans Belgesi</option>
+            <option>Sifir Atik Belgesi</option>
+            <option>Yangin Sertifikasi</option>
+            <option>Asansor Periyodik Kontrolu</option>
+            <option>Forklift Periyodik Kontrolu</option>
+          </optgroup>
+
+          {% elif sektor == 'isg' %}
+          <optgroup label="ISG Tesis Belgeleri">
+            <option>Isyeri Tehlike Sinifi Belgesi</option>
+            <option>Risk Degerlendirme Raporu</option>
+            <option>Acil Eylem Plani</option>
+            <option>Yangin Sertifikasi</option>
+            <option>Itfaiye Uygunluk Raporu</option>
+            <option>Asansor Periyodik Kontrolu</option>
+            <option>Forklift Periyodik Kontrolu</option>
+            <option>Basinçli Kap Periyodik Kontrolu</option>
+            <option>Elektrik Tesisati Topraklama Olcumu</option>
+            <option>Patlayici Ortam (ATEX) Degerlendirmesi</option>
+            <option>Cevre Gurultu Raporu</option>
+          </optgroup>
+
+          {% elif sektor == 'gida' %}
+          <optgroup label="Gida Tesis Belgeleri">
+            <option>Gida Isletme Kayit Belgesi</option>
+            <option>Gida Isletme Onay Belgesi</option>
+            <option>Itfaiye Uygunluk Raporu</option>
+            <option>Isyeri Acma ve Calisma Ruhsati</option>
+            <option>Kapasite Raporu</option>
+            <option>Sanayi Sicil Belgesi</option>
+            <option>Cevre Izin Belgesi</option>
+          </optgroup>
+
+          {% else %}
+          <optgroup label="Tesis Uygunluk Belgeleri">
+            <option>Kapasite Raporu</option>
+            <option>Itfaiye Uygunluk Raporu</option>
+            <option>Sanayi Sicil Belgesi</option>
+            <option>Isyeri Acma ve Calisma Ruhsati</option>
+            <option>CED Raporu</option>
+            <option>Cevre Izin ve Lisans Belgesi</option>
+            <option>Sifir Atik Belgesi</option>
+            <option>TABS Bildirimi</option>
+            <option>Yangin Sertifikasi</option>
+            <option>Asansor Periyodik Kontrolu</option>
+            <option>Forklift Periyodik Kontrolu</option>
+            <option>Kompresör Periyodik Kontrolu</option>
+          </optgroup>
+          {% endif %}
+          <option value="LISTEDE YOK / MANUEL YAZ">Listede Yok / Manuel Yaz</option>
+
+          {% else %}
+          {# URUN / KALİTE / GIDA SERTİFİKALARI - Sektore gore #}
+          <option value="">-- Seciniz --</option>
+
+          {% if sektor == 'otel' %}
+          <optgroup label="Kalite & Standart Sertifikalari">
+            <option>ISO 9001 Kalite Yonetim Sistemi</option>
+            <option>ISO 22000 Gida Guvenligi</option>
+            <option>ISO 14001 Cevre Yonetimi</option>
+            <option>ISO 45001 Is Sagligi ve Guvenligi</option>
+            <option>HACCP Sertifikasi</option>
+            <option>Helal Belgesi</option>
+            <option>Turizm Kalite Belgesi</option>
+            <option>Green Key Sertifikasi</option>
+            <option>Green Star Sertifikasi</option>
+            <option>Surdurulebilir Turizm Sertifikasi</option>
+            <option>Enerji Verimliligi Belgesi</option>
+          </optgroup>
+
+          {% elif sektor == 'gida' %}
+          <optgroup label="Gida & Urun Sertifikalari">
+            <option>HACCP Sertifikasi</option>
+            <option>ISO 22000</option>
+            <option>FSSC 22000</option>
+            <option>BRC Sertifikasi</option>
+            <option>IFS Food Sertifikasi</option>
+            <option>Helal Belgesi</option>
+            <option>Organik Tarim Sertifikasi</option>
+            <option>ACS (Saglik Uygunluk Sertifikasi)</option>
+            <option>Hijyen Sertifikasi</option>
+            <option>CE Isareti</option>
+            <option>ISO 9001</option>
+            <option>ISO 14001</option>
+          </optgroup>
+
+          {% elif sektor == 'danismanlik' %}
+          <optgroup label="Urun Uygunluk Belgeleri (AB & Uluslararasi)">
+            <option>CE Isareti</option>
+            <option>TSE Belgesi</option>
+            <option>G Isareti</option>
+            <option>UKCA (UK Uygunluk)</option>
+            <option>EAC Sertifikasi (Avrasya)</option>
+            <option>GS Sertifikasi</option>
+            <option>VDE Sertifikasi</option>
+            <option>ATEX Sertifikasi</option>
+            <option>EMC Sertifikasi</option>
+            <option>MDR (Tibbi Cihaz)</option>
+          </optgroup>
+          <optgroup label="Gida & Tarim Sertifikalari">
+            <option>HACCP Sertifikasi</option>
+            <option>BRC Sertifikasi</option>
+            <option>FSSC 22000</option>
+            <option>IFS Food</option>
+            <option>Helal Belgesi</option>
+            <option>Organik Tarim Sertifikasi</option>
+            <option>ACS (Saglik Uygunluk Sertifikasi)</option>
+            <option>Hijyen Sertifikasi</option>
+            <option>GMP Sertifikasi</option>
+            <option>GDP Sertifikasi</option>
+            <option>Iyi Tarim Uygulamalari</option>
+          </optgroup>
+          <optgroup label="Kalibrasyon & Test">
+            <option>Kalibrasyon Sertifikasi</option>
+            <option>ADR Sertifikalari</option>
+            <option>AD 2000 CODE</option>
+            <option>AS/EN/JISQ 9100</option>
+            <option>BASEC Sertifikasi</option>
+            <option>BENOR Sertifikasi</option>
+            <option>CB Sertifikasi</option>
+            <option>CCC Sertifikasi</option>
+            <option>CLASS Sertifikasi</option>
+            <option>EHEDG Sertifikasi</option>
+            <option>EN Serisi Sertifikalar</option>
+            <option>ENPLUS Sertifikasi</option>
+            <option>EUCERTPLAST Sertifikasi</option>
+            <option>F4 Star Belgesi</option>
+            <option>FM Approvals</option>
+            <option>ISCC Sertifikasi</option>
+            <option>KITEMARK Sertifikasi</option>
+            <option>KEYMARK Sertifikasi</option>
+            <option>NF Isareti</option>
+            <option>NSF Sertifikasi</option>
+            <option>Q-Mark Sertifikasi</option>
+            <option>RAL Belgesi</option>
+            <option>SIL Sertifikasi</option>
+            <option>TSI Sertifikalari</option>
+            <option>Type Approval</option>
+            <option>WRAS Sertifikasi</option>
+            <option>WATERMARK Sertifikasi</option>
+          </optgroup>
+          <optgroup label="Surdurulebilirlik & Cevre">
+            <option>Ecolabel Sertifikasi</option>
+            <option>Ecocert Sertifikasi</option>
+            <option>FSC Zincir Gozetim</option>
+            <option>MSC Zincir Gozetim</option>
+            <option>Nordic Swan Ecolabel</option>
+            <option>OK Biobased Sertifikasi</option>
+            <option>Organik Urun Sertifikasi</option>
+            <option>NON-GMO Sertifikasi</option>
+            <option>Recycled Claim Standard</option>
+            <option>Green Key Sertifikasi</option>
+            <option>LEED Sertifikasi</option>
+          </optgroup>
+
+          {% else %}
+          <optgroup label="Urun & Kalite Sertifikalari">
+            <option>CE Isareti</option>
+            <option>TSE Belgesi</option>
+            <option>ISO 9001</option>
+            <option>ISO 14001</option>
+            <option>ISO 22000</option>
+            <option>ISO 45001</option>
+            <option>ISO 27001</option>
+            <option>HACCP Sertifikasi</option>
+            <option>BRC Sertifikasi</option>
+            <option>Helal Belgesi</option>
+            <option>GMP Sertifikasi</option>
+            <option>ATEX Sertifikasi</option>
+            <option>Kalibrasyon Sertifikasi</option>
+            <option>ACS (Saglik Uygunluk Sertifikasi)</option>
+            <option>UKCA</option>
+            <option>EAC Sertifikasi</option>
+            <option>VDE Sertifikasi</option>
+            <option>Organik Tarim Sertifikasi</option>
+          </optgroup>
+          {% endif %}
+          <option value="LISTEDE YOK / MANUEL YAZ">Listede Yok / Manuel Yaz</option>
+          {% endif %}
+
         </select>
       </div>
 
       <div id="manualInputDiv" class="mb-4" style="display:none;">
-        <label class="fw-bold text-danger">Belge Adını Manuel Yazın</label>
+        <label class="fw-bold text-danger">Belge Adini Manuel Yazin</label>
         <input type="text" name="manual_title" id="manual_title"
                class="form-control form-control-lg border-danger"
-               placeholder="Örn: Özel Eğitim Sertifikası">
+               placeholder="Orn: Ozel Egitim Sertifikasi">
       </div>
 
       <div class="mb-4">
-        <label class="fw-bold text-danger"><i class="fas fa-calendar-times me-1"></i>Belge Bitiş Tarihi</label>
+        <label class="fw-bold text-danger"><i class="fas fa-calendar-times me-1"></i>Belge Bitis Tarihi</label>
         <input type="date" name="expiry_date" class="form-control form-control-lg border-danger" required>
       </div>
 
@@ -307,7 +502,7 @@
         <i class="fas fa-save me-2"></i>Verileri Kaydet ve Takibe Al
       </button>
       <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary w-100 btn-lg mt-2">
-        <i class="fas fa-arrow-left me-2"></i>İptal / Geri Dön
+        <i class="fas fa-arrow-left me-2"></i>Iptal / Geri Don
       </a>
     </form>
   </div>
