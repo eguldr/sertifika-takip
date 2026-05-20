@@ -163,19 +163,10 @@ def send_verification_mail(email, token):
 
 
 def cloudinary_belge_url(url, dosya_adi=None):
-    """PDF'leri tarayicida ac, Android icin dogru dosya adiyla indir"""
     if not url:
         return url
-    if not url.lower().endswith(".pdf") and 'raw/upload' not in url:
-        return url
-    # fl_inline: tarayicide ac; fl_attachment: indir
-    # Hem acmak hem indirmek icin fl_inline kullan, dosya adini ekle
     if "/fl_inline/" in url or "/fl_attachment/" in url:
         return url
-    if dosya_adi:
-        # Dosya adini URL-safe yap
-        temiz_ad = re.sub(r'[^a-zA-Z0-9._-]', '_', dosya_adi)
-        return re.sub(r'(/upload/)', r'\1fl_inline,fl_attachment:' + temiz_ad + '/', url, count=1)
     return re.sub(r'(/upload/)', r'\1fl_inline/', url, count=1)
 
 
