@@ -561,7 +561,7 @@ def import_pdf():
             'mime': mime, 'hash': d_hash
         })
 
-    if not islenecekler:
+    flash(f"islenecekler: {len(islenecekler)}, atlanan: {atlanan}", "info")
         flash(f"Tum dosyalar zaten sistemde. ({atlanan} atlandi)", "info")
         return redirect(url_for('dashboard'))
 
