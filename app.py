@@ -213,32 +213,38 @@ async def tek_pdf_isle(semaphore, dosya_verisi):
         ad   = dosya_verisi['ad']
         b64  = dosya_verisi['b64']
         mime = dosya_verisi['mime']
-        try:
-            response = await asyncio.to_thread(
-                client.models.generate_content,
-                model="gemini-2.5-flash",
-                contents=[{"parts": [
-                    {"inline_data": {"mime_type": mime, "data": b64}},
-                    {"text": PDF_PROMPT}
-                ]}]
-            )
-            yanit = response.text.strip().replace('```json', '').replace('```', '').strip()
-            try:
-                veri = json.loads(yanit)
-                return {"ad": ad, "hash": dosya_verisi['hash'],
-                        "icerik": dosya_verisi['icerik'], "veri": veri, "hata": None}
-            except json.JSONDecodeError:
-                return {"ad": ad, "hash": dosya_verisi['hash'],
-                        "icerik": dosya_verisi['icerik'], "hata": "json_parse"}
-        except Exception as e:
-            hata = str(e)
-            if '429' in hata or 'EXHAUSTED' in hata:
-                await asyncio.sleep(5)
-            elif '503' in hata or 'UNAVAILABLE' in hata:
-                await asyncio.sleep(10)
-            return {"ad": ad, "hash": dosya_verisi['hash'],
-                    "icerik": dosya_verisi['icerik'], "hata": hata}
 
+        for deneme in range(5):
+            try:
+                await asyncio.sleep(0.8)
+                response = await asyncio.to_thread(
+                    client.models.generate_content,
+                    model="gemini-2.5-flash",
+                    contents=[{"parts": [
+                        {"inline_data": {"mime_type": mime, "data": b64}},
+                        {"text": PDF_PROMPT}
+                    ]}]
+                )
+                yanit = response.text.strip().replace('```json', '').replace('```', '').strip()
+                try:
+                    veri = json.loads(yanit)
+                    return {"ad": ad, "hash": dosya_verisi['hash'],
+                            "icerik": dosya_verisi['icerik'], "veri": veri, "hata": None}
+                except json.JSONDecodeError:
+                    return {"ad": ad, "hash": dosya_verisi['hash'],
+                            "icerik": dosya_verisi['icerik'], "hata": "json_parse"}
+            except Exception as e:
+                hata = str(e)
+                print(f"GEMINI HATA deneme {deneme+1} ({ad}): {hata[:150]}")
+                if '429' in hata or 'EXHAUSTED' in hata:
+                    await asyncio.sleep(10 * (deneme + 1))
+                elif '503' in hata or 'UNAVAILABLE' in hata:
+                    await asyncio.sleep(8 * (deneme + 1))
+                else:
+                    break
+
+        return {"ad": ad, "hash": dosya_verisi['hash'],
+                "icerik": dosya_verisi['icerik'], "hata": "max_deneme_asildi"}
 
 async def toplu_pdf_isle(dosya_listesi, paralel_sayi=20):
     semaphore = asyncio.Semaphore(paralel_sayi)
