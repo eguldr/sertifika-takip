@@ -995,7 +995,7 @@ def rehber_excel_yukle():
         plaka_col    = col(['plaka','arac'])
         firma_col    = col(['firma','kurum','musteri','sirket'])
         wp_col       = col(['whatsapp','telefon','tel','gsm','personel_no','sorumlu'])
-        dan_col      = col(['amir','yonetici','danisman','isg','uzman','filo'])
+        dan_col      = col(['amir', 'yonetici', 'danisman', 'isg', 'uzman', 'filo'])
         acik_col     = col(['aciklama','not'])
 
         def val(row, c):
