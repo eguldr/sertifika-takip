@@ -362,12 +362,26 @@ function submitPdfForm() {
                 if (data.durum === 'tamamlandi') {
                     clearInterval(poll);
                     titleEl.textContent = 'Tamamlandi!';
-                    subEl.textContent   = data.eklenen + ' belge eklendi, ' + data.hatali + ' okunamadi.';
-                    bar.style.width = '100%';
-                    bar.style.background = '#059669';
-                    setTimeout(function() {
-                        window.location.href = '/dashboard';
-                    }, 2000);
+                    var msg = data.eklenen + ' belge eklendi.';
+                    if (data.hatali > 0 && data.hata_listesi && data.hata_listesi.length > 0) {
+                        msg += ' ' + data.hatali + ' dosya okunamadi.';
+                        subEl.textContent = msg;
+                        bar.style.width = '100%';
+                        bar.style.background = '#059669';
+                        setTimeout(function() {
+                            var uyari = data.hatali + ' dosya okunamadi. Bu dosyalari manuel olarak ekleyebilirsiniz:\n\n';
+                            uyari += data.hata_listesi.join('\n');
+                            alert(uyari);
+                            window.location.href = '/dashboard';
+                        }, 1000);
+                    } else {
+                        subEl.textContent = msg;
+                        bar.style.width = '100%';
+                        bar.style.background = '#059669';
+                        setTimeout(function() {
+                            window.location.href = '/dashboard';
+                        }, 2000);
+                    }
                 } else if (data.durum === 'hata') {
                     clearInterval(poll);
                     overlay.classList.remove('show');
