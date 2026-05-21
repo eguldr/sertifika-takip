@@ -221,7 +221,7 @@ def rehber_eslestir(user_id, veri):
         # 1. Plaka ile esles (arac belgeleri)
         if plaka:
             kayit = PersonelRehberi.query.filter(
-                PersonelRehberi.user_id == user_id,
+                
                 PersonelRehberi.is_active == True,
                 db.func.upper(PersonelRehberi.plaka) == plaka
             ).first()
