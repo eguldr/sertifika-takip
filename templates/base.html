@@ -74,6 +74,12 @@
             </a>
         </li>
 
+        <li class="{{ 'active' if request.endpoint == 'rehber' }}">
+            <a href="{{ url_for('rehber') }}">
+                <span class="nav-icon"><i class="fas fa-address-book"></i></span> Telefon Rehberi
+            </a>
+        </li>
+
         <li class="nav-section-label">Kategoriler</li>
 
         {% if sektor == 'lojistik' %}
