@@ -676,7 +676,7 @@ def arka_plan_isle(job_id, islenecekler, user_id, atlanan):
                 firma = str(veri.get('firma_adi') or '').replace('null', '').strip()
 
                 # Rehber eslestirme - telefon numarasini otomatik ata
-                r_whatsapp, r_danisman = rehber_eslestir(user_id, veri)
+                r_whatsapp, r_danisman = rehber_eslestir(int(user_id), veri)
 
                 try:
                     db.session.add(Entry(
