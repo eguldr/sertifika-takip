@@ -5,6 +5,7 @@ import json
 import base64
 import hashlib
 import asyncio
+import threading
 
 import cloudinary
 import cloudinary.uploader
@@ -129,24 +130,6 @@ def setup_db():
                     db.session.commit()
                 except Exception:
                     db.session.rollback()
-
-        # Bozuk Cloudinary URL'leri temizle (bir kez calisir)
-        try:
-            import re as re2
-            bozuk = Entry.query.filter(Entry.belge_url.isnot(None)).all()
-            for e in bozuk:
-                if e.belge_url and ('fl_attachment' in e.belge_url or e.belge_url.count('fl_inline') > 1):
-                    url = e.belge_url
-                    url = re2.sub(r'/fl_inline,fl_attachment[^/]*/', '/fl_inline/', url)
-                    url = re2.sub(r'(/fl_inline/)+', '/fl_inline/', url)
-                    e.belge_url = url
-            db.session.commit()
-            print("URL temizligi tamamlandi")
-        except Exception as url_err:
-            db.session.rollback()
-            print(f"URL temizlik hatasi: {url_err}")
-
-        
         app._db_init = True
 
 
@@ -181,11 +164,20 @@ def send_verification_mail(email, token):
 
 
 def cloudinary_belge_url(url, dosya_adi=None):
+    """PDF'leri tarayicida ac, Android icin dogru dosya adiyla indir"""
     if not url:
         return url
-    # Tum transformation flaglari kaldir, sade URL don
-    url = re.sub(r'/fl_[^/]+/', '/', url)
-    return url
+    if not url.lower().endswith(".pdf") and 'raw/upload' not in url:
+        return url
+    # fl_inline: tarayicide ac; fl_attachment: indir
+    # Hem acmak hem indirmek icin fl_inline kullan, dosya adini ekle
+    if "/fl_inline/" in url or "/fl_attachment/" in url:
+        return url
+    if dosya_adi:
+        # Dosya adini URL-safe yap
+        temiz_ad = re.sub(r'[^a-zA-Z0-9._-]', '_', dosya_adi)
+        return re.sub(r'(/upload/)', r'\1fl_inline,fl_attachment:' + temiz_ad + '/', url, count=1)
+    return re.sub(r'(/upload/)', r'\1fl_inline/', url, count=1)
 
 
 app.jinja_env.globals['cloudinary_belge_url'] = cloudinary_belge_url
@@ -221,39 +213,32 @@ async def tek_pdf_isle(semaphore, dosya_verisi):
         ad   = dosya_verisi['ad']
         b64  = dosya_verisi['b64']
         mime = dosya_verisi['mime']
-        
-        for deneme in range(3):  # max 3 deneme
+        try:
+            response = await asyncio.to_thread(
+                client.models.generate_content,
+                model="gemini-2.5-flash",
+                contents=[{"parts": [
+                    {"inline_data": {"mime_type": mime, "data": b64}},
+                    {"text": PDF_PROMPT}
+                ]}]
+            )
+            yanit = response.text.strip().replace('```json', '').replace('```', '').strip()
             try:
-                await asyncio.sleep(0.8)  # spike koruması
-                response = await asyncio.to_thread(
-                    client.models.generate_content,
-                    model="gemini-2.5-flash",
-                    contents=[{"parts": [
-                        {"inline_data": {"mime_type": mime, "data": b64}},
-                        {"text": PDF_PROMPT}
-                    ]}]
-                )
-                yanit = response.text.strip().replace('```json', '').replace('```', '').strip()
-                try:
-                    veri = json.loads(yanit)
-                    return {"ad": ad, "hash": dosya_verisi['hash'],
-                            "icerik": dosya_verisi['icerik'], "veri": veri, "hata": None}
-                except json.JSONDecodeError:
-                    return {"ad": ad, "hash": dosya_verisi['hash'],
-                            "icerik": dosya_verisi['icerik'], "hata": "json_parse"}
+                veri = json.loads(yanit)
+                return {"ad": ad, "hash": dosya_verisi['hash'],
+                        "icerik": dosya_verisi['icerik'], "veri": veri, "hata": None}
+            except json.JSONDecodeError:
+                return {"ad": ad, "hash": dosya_verisi['hash'],
+                        "icerik": dosya_verisi['icerik'], "hata": "json_parse"}
+        except Exception as e:
+            hata = str(e)
+            if '429' in hata or 'EXHAUSTED' in hata:
+                await asyncio.sleep(5)
+            elif '503' in hata or 'UNAVAILABLE' in hata:
+                await asyncio.sleep(10)
+            return {"ad": ad, "hash": dosya_verisi['hash'],
+                    "icerik": dosya_verisi['icerik'], "hata": hata}
 
-            except Exception as e:
-                hata = str(e)
-                print(f"GEMINI HATA deneme {deneme+1} ({ad}): {hata[:150]}")
-                if '429' in hata or 'EXHAUSTED' in hata:
-                    await asyncio.sleep(10 * (deneme + 1))  # 10s, 20s, 30s
-                elif '503' in hata or 'UNAVAILABLE' in hata:
-                    await asyncio.sleep(5 * (deneme + 1))   # 5s, 10s, 15s
-                else:
-                    break  # bilinmeyen hata, tekrar deneme
-
-        return {"ad": ad, "hash": dosya_verisi['hash'],
-                "icerik": dosya_verisi['icerik'], "hata": "max_deneme_asild"}
 
 async def toplu_pdf_isle(dosya_listesi, paralel_sayi=20):
     semaphore = asyncio.Semaphore(paralel_sayi)
@@ -535,7 +520,116 @@ def import_excel():
 
 
 # ============================================================
-# PDF TOPLU OKUMA - ASYNC / Tier 1
+# BACKGROUND THREAD - JOB TAKIP SISTEMI
+# ============================================================
+# { job_id: { 'durum': 'isleniyor'|'tamamlandi'|'hata',
+#             'toplam': N, 'tamamlanan': N,
+#             'eklenen': N, 'hatali': N, 'atlanan': N,
+#             'user_id': X } }
+pdf_jobs = {}
+pdf_jobs_lock = threading.Lock()
+
+
+def arka_plan_isle(job_id, islenecekler, user_id, atlanan):
+    """Background thread: Gemini'ye gonder, DB'ye kaydet."""
+    with app.app_context():
+        try:
+            # Async motoru thread icinde calistir
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            sonuclar = loop.run_until_complete(
+                toplu_pdf_isle(islenecekler, paralel_sayi=10)
+            )
+            loop.close()
+
+            eklenen = 0
+            hatali  = 0
+
+            for i, sonuc in enumerate(sonuclar):
+                # Progress guncelle
+                with pdf_jobs_lock:
+                    pdf_jobs[job_id]['tamamlanan'] = i + 1
+
+                if isinstance(sonuc, Exception) or sonuc.get('hata'):
+                    hatali += 1
+                    continue
+
+                veri   = sonuc.get('veri', {})
+                icerik = sonuc.get('icerik', b'')
+                d_hash = sonuc.get('hash', '')
+                ad     = sonuc.get('ad', '')
+
+                kat = veri.get('kategori', 'Urun')
+                if kat not in ['Arac', 'Personel', 'Tesis', 'Urun']:
+                    kat = akilli_analiz_motoru([veri.get('belge_turu', '')])
+
+                # Guven skoru
+                guven = 0
+                if veri.get('belge_turu') and str(veri.get('belge_turu')) != 'null': guven += 25
+                if veri.get('bitis_tarihi') and str(veri.get('bitis_tarihi')) != 'null': guven += 35
+                if kat in ['Arac', 'Personel', 'Tesis', 'Urun']: guven += 20
+                if veri.get('firma_adi') and str(veri.get('firma_adi')) != 'null': guven += 10
+                if veri.get('ad_soyad') or veri.get('plaka'): guven += 10
+                if guven < 60:
+                    print(f"DUSUK GUVEN ({guven}%): {ad}")
+                    veri['belge_turu'] = f"[KONTROL ET] {veri.get('belge_turu') or ad}"
+
+                notlar = []
+                for k, prefix in [('ad_soyad',''), ('tc_no','TC: '), ('plaka','Plaka: '),
+                                   ('arac_marka',''), ('arac_model',''), ('sase_no','Sase: ')]:
+                    v = veri.get(k)
+                    if v and str(v) != 'null':
+                        notlar.append(f"{prefix}{v}")
+
+                belge_url = None
+                dosya_adi_temiz = re.sub(r'[^a-zA-Z0-9._-]', '_', ad)
+                try:
+                    res = cloudinary.uploader.unsigned_upload(
+                        BytesIO(icerik), upload_preset='erhan_preset',
+                        resource_type='raw', public_id=f"belge_{d_hash[:8]}"
+                    )
+                    raw_url = res.get('secure_url', '')
+                    belge_url = cloudinary_belge_url(raw_url, dosya_adi_temiz) if raw_url else None
+                except Exception as ce:
+                    print(f"Cloudinary hatasi ({ad}): {ce}")
+
+                firma = str(veri.get('firma_adi') or '').replace('null', '').strip()
+
+                try:
+                    db.session.add(Entry(
+                        user_id=user_id, category=kat,
+                        title=veri.get('belge_turu') or ad,
+                        firma_adi=firma,
+                        expiry_date=tarih_parse(veri.get('bitis_tarihi')),
+                        note=' | '.join(notlar) if notlar else ad,
+                        belge_url=belge_url, dosya_hash=d_hash,
+                        dosya_adi=ad, is_active=True
+                    ))
+                    db.session.commit()
+                    eklenen += 1
+                except Exception as dbe:
+                    db.session.rollback()
+                    print(f"DB hatasi ({ad}): {dbe}")
+                    hatali += 1
+
+            with pdf_jobs_lock:
+                pdf_jobs[job_id].update({
+                    'durum': 'tamamlandi',
+                    'eklenen': eklenen,
+                    'hatali': hatali,
+                    'atlanan': atlanan,
+                    'tamamlanan': len(islenecekler)
+                })
+            print(f"Job {job_id} tamamlandi: {eklenen} eklendi, {hatali} hatali")
+
+        except Exception as e:
+            print(f"Arka plan hatasi (job {job_id}): {e}")
+            with pdf_jobs_lock:
+                pdf_jobs[job_id]['durum'] = 'hata'
+
+
+# ============================================================
+# PDF TOPLU OKUMA - BACKGROUND THREAD
 # ============================================================
 @app.route('/import_pdf', methods=['POST'])
 @login_required
@@ -560,8 +654,6 @@ def import_pdf():
             continue
         fname = dosya.filename.lower()
         mime  = 'image/png' if fname.endswith('.png') else ('image/jpeg' if fname.endswith(('.jpg', '.jpeg')) else 'application/pdf')
-        if len(icerik) > 5 * 1024 * 1024:
-            print(f"BUYUK DOSYA: {dosya.filename} - {len(icerik)/1024/1024:.1f} MB")
         islenecekler.append({
             'ad': dosya.filename, 'icerik': icerik,
             'b64': base64.standard_b64encode(icerik).decode(),
@@ -571,99 +663,46 @@ def import_pdf():
     if not islenecekler:
         flash(f"Tum dosyalar zaten sistemde. ({atlanan} atlandi)", "info")
         return redirect(url_for('dashboard'))
-    print(f"Async basladi: {len(islenecekler)} PDF")
 
-    try:
-        sonuclar = asyncio.run(toplu_pdf_isle(islenecekler, paralel_sayi=20))
-    except Exception as e:
-        print(f"ASYNC HATA: {e}")
-        sonuclar = []
+    # Job olustur
+    import uuid
+    job_id = str(uuid.uuid4())[:8]
+    with pdf_jobs_lock:
+        pdf_jobs[job_id] = {
+            'durum': 'isleniyor',
+            'toplam': len(islenecekler),
+            'tamamlanan': 0,
+            'eklenen': 0,
+            'hatali': 0,
+            'atlanan': atlanan,
+            'user_id': current_user.id
+        }
 
-    eklenen = 0
-    hatali  = 0
+    # Arka plan thread baslat
+    t = threading.Thread(
+        target=arka_plan_isle,
+        args=(job_id, islenecekler, current_user.id, atlanan),
+        daemon=True
+    )
+    t.start()
 
-    for sonuc in sonuclar:
-        if isinstance(sonuc, Exception) or sonuc.get('hata'):
-            hatali += 1
-            continue
-        veri   = sonuc.get('veri', {})
-        icerik = sonuc.get('icerik', b'')
-        d_hash = sonuc.get('hash', '')
-        ad     = sonuc.get('ad', '')
+    print(f"Job {job_id} basladi: {len(islenecekler)} PDF arka planda isleniyor")
+    flash(f"{len(islenecekler)} belge alindi, arka planda isleniyor. "
+          f"Birkas dakika sonra sayfayi yenileyin.", "info")
+    return redirect(url_for('dashboard', job_id=job_id))
 
-        kat = veri.get('kategori', 'Urun')
-        if kat not in ['Arac', 'Personel', 'Tesis', 'Urun']:
-            kat = akilli_analiz_motoru([veri.get('belge_turu', '')])
-            # Guven skoru hesapla
-        guven = 0
-        if veri.get('belge_turu') and str(veri.get('belge_turu')) != 'null': guven += 25
-        if veri.get('bitis_tarihi') and str(veri.get('bitis_tarihi')) != 'null': guven += 35
-        if kat in ['Arac', 'Personel', 'Tesis', 'Urun']: guven += 20
-        if veri.get('firma_adi') and str(veri.get('firma_adi')) != 'null': guven += 10
-        if veri.get('ad_soyad') or veri.get('plaka'): guven += 10
-        
-        if guven < 60:
-            print(f"DUSUK GUVEN ({guven}%): {ad}")
-            veri['belge_turu'] = f"[KONTROL ET] {veri.get('belge_turu') or ad}"
-        # Not alani: kisi/plaka/marka/model/sase bilgileri
-        notlar = []
-        if veri.get('ad_soyad') and str(veri['ad_soyad']) != 'null':
-            notlar.append(str(veri['ad_soyad']))
-        if veri.get('tc_no') and str(veri['tc_no']) != 'null':
-            notlar.append(f"TC: {veri['tc_no']}")
-        if veri.get('plaka') and str(veri['plaka']) != 'null':
-            notlar.append(f"Plaka: {veri['plaka']}")
-        if veri.get('arac_marka') and str(veri['arac_marka']) != 'null':
-            notlar.append(str(veri['arac_marka']))
-        if veri.get('arac_model') and str(veri['arac_model']) != 'null':
-            notlar.append(str(veri['arac_model']))
-        if veri.get('sase_no') and str(veri['sase_no']) != 'null':
-            notlar.append(f"Sase: {veri['sase_no']}")
 
-        # Cloudinary'ye yukle — dosya adi ile
-        belge_url = None
-        dosya_adi_temiz = re.sub(r'[^a-zA-Z0-9._-]', '_', ad)
-        try:
-            res = cloudinary.uploader.unsigned_upload(
-                BytesIO(icerik), upload_preset='erhan_preset',
-                resource_type='raw', public_id=f"belge_{d_hash[:8]}"
-            )
-            raw_url = res.get('secure_url', '')
-            belge_url = cloudinary_belge_url(raw_url, dosya_adi_temiz) if raw_url else None
-        except Exception as ce:
-            print(f"Cloudinary hatasi ({ad}): {ce}")
-
-        firma = str(veri.get('firma_adi') or '').replace('null', '').strip()
-
-        db.session.add(Entry(
-            user_id=current_user.id, category=kat,
-            title=veri.get('belge_turu') or ad,
-            firma_adi=firma,
-            expiry_date=tarih_parse(veri.get('bitis_tarihi')),
-            note=' | '.join(notlar) if notlar else ad,
-            belge_url=belge_url, dosya_hash=d_hash,
-            dosya_adi=ad, is_active=True
-        ))
-        eklenen += 1
-
-    try:
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        flash(f"Veritabani hatasi: {e}", "danger")
-        return redirect(url_for('dashboard'))
-
-    parcalar = []
-    if eklenen > 0:
-        parcalar.append(f"{eklenen} belge eklendi")
-    if hatali > 0:
-        parcalar.append(f"{hatali} okunamadi")
-    if atlanan > 0:
-        parcalar.append(f"{atlanan} zaten mevcuttu")
-
-    seviye = "success" if eklenen > 0 and hatali == 0 else ("warning" if eklenen > 0 else "danger")
-    flash(" | ".join(parcalar) if parcalar else "Islem tamamlandi.", seviye)
-    return redirect(url_for('dashboard'))
+@app.route('/job_durum/<job_id>')
+@login_required
+def job_durum(job_id):
+    """Progress API - dashboard polling icin"""
+    with pdf_jobs_lock:
+        job = pdf_jobs.get(job_id)
+    if not job:
+        return jsonify({'durum': 'bulunamadi'})
+    if job.get('user_id') != current_user.id:
+        return jsonify({'durum': 'yetkisiz'})
+    return jsonify(job)
 
 
 # ============================================================
@@ -724,7 +763,6 @@ def update_payment(uid):
     if u:
         if request.method == 'POST':
             u.company_name = request.form.get('company_name', '')
-            u.sektor = request.form.get('sektor', 'genel')
             u.is_paid      = request.form.get('is_paid') in ['true', 'True', 'Odendi']
             u.admin_note   = request.form.get('admin_note', '')
         else:
