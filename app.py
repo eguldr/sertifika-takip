@@ -206,6 +206,7 @@ def rehber_eslestir(user_id, veri):
         ad_soyad = str(veri.get('ad_soyad') or '').replace('null','').strip().upper()
         tc_no    = str(veri.get('tc_no') or '').replace('null','').strip()
         firma    = str(veri.get('firma_adi') or '').replace('null','').strip().upper()
+        print(f"REHBER ARAMA: plaka={plaka} ad={ad_soyad} tc={tc_no}")
 
         kayit = None
 
