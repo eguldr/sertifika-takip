@@ -209,7 +209,11 @@ def rehber_eslestir(user_id, veri):
         print(f"REHBER ARAMA: plaka={plaka} ad={ad_soyad} tc={tc_no}")
 
         kayit = None
-
+        if plaka:
+            print(f"PLAKA SORGU: '{plaka}'")
+            tum_rehber = PersonelRehberi.query.filter_by(user_id=user_id, is_active=True).all()
+            print(f"REHBERDEKI PLAKALAR: {[r.plaka for r in tum_rehber]}")
+            kayit = PersonelRehberi.query.filter(
         # 1. Plaka ile esles (arac belgeleri)
         if plaka:
             kayit = PersonelRehberi.query.filter(
