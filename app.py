@@ -542,8 +542,9 @@ def arka_plan_isle(job_id, islenecekler, user_id, atlanan):
             )
             loop.close()
 
-            eklenen = 0
-            hatali  = 0
+            eklenen     = 0
+            hatali      = 0
+            hata_listesi = []
 
             for i, sonuc in enumerate(sonuclar):
                 # Progress guncelle
@@ -552,6 +553,7 @@ def arka_plan_isle(job_id, islenecekler, user_id, atlanan):
 
                 if isinstance(sonuc, Exception) or sonuc.get('hata'):
                     hatali += 1
+                    hata_listesi.append(sonuc.get('ad', 'Bilinmeyen dosya'))
                     continue
 
                 veri   = sonuc.get('veri', {})
@@ -617,6 +619,7 @@ def arka_plan_isle(job_id, islenecekler, user_id, atlanan):
                     'durum': 'tamamlandi',
                     'eklenen': eklenen,
                     'hatali': hatali,
+                    'hata_listesi': hata_listesi,
                     'atlanan': atlanan,
                     'tamamlanan': len(islenecekler)
                 })
