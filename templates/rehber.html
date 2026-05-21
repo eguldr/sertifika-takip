@@ -284,3 +284,23 @@ th { font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; color:#647
   </div>
 </div>
 {% endblock %}
+# Mevcut kaydi bul - varsa guncelle, yoksa ekle
+mevcut = PersonelRehberi.query.filter_by(
+    user_id=current_user.id,
+    is_active=True
+).filter(
+    db.or_(
+        PersonelRehberi.plaka == val(row, plaka_col),
+        PersonelRehberi.tc_no == val(row, tc_col),
+        PersonelRehberi.firma_adi == val(row, firma_col)
+    )
+).first()
+
+if mevcut:
+    # Guncelle
+    mevcut.whatsapp_no = val(row, wp_col) or mevcut.whatsapp_no
+    mevust.danisman_no = val(row, dan_col) or mevcut.danisman_no
+    mevcut.aciklama    = val(row, acik_col) or mevcut.aciklama
+else:
+    # Yeni ekle
+    db.session.add(PersonelRehberi(...))
