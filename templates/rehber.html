@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+{% block content %}
+{% set sektor = current_user.sektor %}
+<style>
+.rehber-card { background:white; border-radius:14px; box-shadow:0 4px 20px rgba(0,0,0,0.07); overflow:hidden; }
+.rehber-header { background:linear-gradient(135deg,#1a1c4b,#2d2f6b); color:white; padding:24px 28px; }
+.rehber-header h4 { font-weight:800; margin:0; }
+.rehber-header p  { color:rgba(255,255,255,0.6); font-size:0.85rem; margin:4px 0 0; }
+.badge-esleme { font-size:0.72rem; padding:3px 10px; border-radius:20px; font-weight:600; }
+.badge-plaka    { background:#fef3c7; color:#92400e; }
+.badge-personel { background:#e0f2fe; color:#075985; }
+.badge-firma    { background:#f0fdf4; color:#166534; }
+th { font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; color:#64748b; font-weight:700; }
+</style>
+
+<div class="container-fluid py-3">
+
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+      <h3 style="color:#1a1c4b;font-weight:800;margin:0;">
+        <i class="fas fa-address-book me-2" style="color:#c5a059;"></i>Telefon Rehberi
+      </h3>
+      <p class="text-muted small mb-0">
+        PDF toplu yuklemede belgeler bu rehberle otomatik eslesir.
+        {% if sektor == 'lojistik' %}Plaka veya surucu adi ile eslestirin.
+        {% elif sektor in ['isg','danismanlik'] %}Musteri firma adi ile eslestirin.
+        {% else %}Ad soyad veya TC ile eslestirin.{% endif %}
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm fw-bold px-3" style="background:#1a1c4b;color:white;border-radius:8px;"
+              data-bs-toggle="modal" data-bs-target="#ekleModal">
+        <i class="fas fa-plus me-1"></i> Manuel Ekle
+      </button>
+      <button class="btn btn-sm fw-bold px-3" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:8px;"
+              data-bs-toggle="modal" data-bs-target="#excelModal">
+        <i class="fas fa-file-excel me-1"></i> Excel Yukle
+      </button>
+      {% if kayitlar %}
+      <a href="{{ url_for('rehber_sifirla') }}"
+         onclick="return confirm('Tum rehber kayitlari silinecek. Emin misiniz?')"
+         class="btn btn-sm btn-outline-danger px-3" style="border-radius:8px;">
+        <i class="fas fa-trash me-1"></i> Temizle
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  {# BILGI KUTUSU - Sektore gore #}
+  <div class="alert border-0 mb-4" style="background:#f0f4ff;border-left:4px solid #1a1c4b !important;border-radius:10px;">
+    <i class="fas fa-lightbulb me-2" style="color:#c5a059;"></i>
+    {% if sektor == 'lojistik' %}
+    <strong>Nasil calisir?</strong> Plaka ekleyin → araç belgesi yüklenince şoför ve filo yöneticisi otomatik atanır.
+    Ad/TC ekleyin → SRC, pasaport gibi personel belgelerinde de otomatik eşleşir.
+    {% elif sektor == 'isg' %}
+    <strong>Nasil calisir?</strong> Musteri firma adini ekleyin → o firmaya ait belge yuklenince firmanin yetkilisi ve ISG uzmaniniz otomatik atanir.
+    {% elif sektor == 'danismanlik' %}
+    <strong>Nasil calisir?</strong> Musteri firma adini ekleyin → o firmaya ait belge yuklenince firmanin ilgilisi ve danismaniniz otomatik atanir.
+    {% elif sektor == 'otel' %}
+    <strong>Nasil calisir?</strong> Personel adini veya TC'sini ekleyin → hijyen, vize gibi belgeler yuklenince personelin ve amirinizin telefonu otomatik atanir.
+    {% else %}
+    <strong>Nasil calisir?</strong> Ad/TC/Plaka/Firma ekleyin → PDF toplu yuklemede otomatik telefon eslesmesi yapilir.
+    {% endif %}
+  </div>
+
+  {# REHBER TABLOSU #}
+  <div class="rehber-card">
+    <div class="rehber-header">
+      <h4><i class="fas fa-address-book me-2"></i>Rehber Kayitlari
+        <span class="badge ms-2" style="background:#c5a059;color:#1a1c4b;font-size:0.7rem;">{{ kayitlar|length }} kayit</span>
+      </h4>
+      <p>Asagidaki kayitlar PDF toplu yuklemede otomatik eslestirilir.</p>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead style="background:#f8fafc;">
+          <tr>
+            <th class="ps-4 py-3">Esleme Anahtari</th>
+            <th>
+              {% if sektor == 'lojistik' %}Surucu / Sorumlu WhatsApp
+              {% elif sektor in ['isg','danismanlik'] %}Firma Yetkilisi WhatsApp
+              {% else %}Kisi WhatsApp{% endif %}
+            </th>
+            <th>
+              {% if sektor == 'lojistik' %}Filo Yoneticisi
+              {% elif sektor == 'isg' %}ISG Uzmani
+              {% elif sektor == 'danismanlik' %}Danisман
+              {% else %}Amir / Sorumlu{% endif %}
+            </th>
+            <th>Aciklama</th>
+            <th class="text-center">Islem</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for k in kayitlar %}
+          <tr>
+            <td class="ps-4">
+              {% if k.plaka %}
+              <span class="badge-esleme badge-plaka me-1"><i class="fas fa-truck me-1"></i>{{ k.plaka }}</span>
+              {% endif %}
+              {% if k.ad_soyad %}
+              <span class="badge-esleme badge-personel me-1"><i class="fas fa-user me-1"></i>{{ k.ad_soyad }}</span>
+              {% endif %}
+              {% if k.tc_no %}
+              <small class="text-muted">TC: {{ k.tc_no }}</small>
+              {% endif %}
+              {% if k.firma_adi %}
+              <span class="badge-esleme badge-firma"><i class="fas fa-building me-1"></i>{{ k.firma_adi }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if k.whatsapp_no %}
+              <a href="https://wa.me/{{ k.whatsapp_no }}" target="_blank"
+                 class="text-success fw-bold text-decoration-none">
+                <i class="fab fa-whatsapp me-1"></i>{{ k.whatsapp_no }}
+              </a>
+              {% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+            <td>
+              {% if k.danisman_no %}
+              <span class="fw-bold" style="color:#0891b2;">
+                <i class="fas fa-user-shield me-1"></i>{{ k.danisman_no }}
+              </span>
+              {% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+            <td><small class="text-muted">{{ k.aciklama or '—' }}</small></td>
+            <td class="text-center">
+              <a href="{{ url_for('rehber_sil', rid=k.id) }}"
+                 onclick="return confirm('Bu kaydi silmek istediginize emin misiniz?')"
+                 class="btn btn-sm btn-outline-danger px-2" style="border-radius:6px;">
+                <i class="fas fa-trash"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+          {% if not kayitlar %}
+          <tr>
+            <td colspan="5" class="text-center py-5">
+              <i class="fas fa-address-book fa-3x mb-3 d-block" style="color:#e2e8f0;"></i>
+              <span class="text-muted">Henuz rehber kaydi yok. Excel yukleyerek veya manuel ekleyerek baslayin.</span>
+            </td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# EXCEL SABLONU INDIRME #}
+  <div class="mt-3 p-3 rounded" style="background:#f8fafc;border:1px dashed #cbd5e1;">
+    <small class="text-muted">
+      <i class="fas fa-info-circle me-1 text-primary"></i>
+      <strong>Excel sutun basliklari:</strong>
+      {% if sektor == 'lojistik' %}
+      <code>plaka</code>, <code>ad_soyad</code>, <code>tc_no</code>, <code>whatsapp_no</code> (surucu), <code>amir_no</code> (filo yoneticisi), <code>aciklama</code>
+      {% elif sektor in ['isg','danismanlik'] %}
+      <code>firma_adi</code>, <code>whatsapp_no</code> (firma yetkilisi), <code>amir_no</code> (ISG uzmani/danisман), <code>aciklama</code>
+      {% else %}
+      <code>ad_soyad</code>, <code>tc_no</code>, <code>plaka</code>, <code>firma_adi</code>, <code>whatsapp_no</code>, <code>amir_no</code>, <code>aciklama</code>
+      {% endif %}
+    </small>
+  </div>
+</div>
+
+{# MANUEL EKLE MODAL #}
+<div class="modal fade" id="ekleModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content border-0 shadow-lg" style="border-radius:14px;">
+      <div class="modal-header" style="background:#1a1c4b;border-radius:14px 14px 0 0;">
+        <h5 class="modal-title text-white fw-bold">
+          <i class="fas fa-user-plus me-2"></i>Manuel Rehber Kaydi Ekle
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('rehber_ekle') }}">
+        <div class="modal-body p-4">
+          <div class="row g-3">
+
+            {% if sektor not in ['isg','danismanlik'] %}
+            <div class="col-md-6">
+              <label class="fw-bold small">Ad Soyad</label>
+              <input type="text" name="ad_soyad" class="form-control"
+                     placeholder="Ornek: MEHMET YILMAZ (buyuk harf onerilir)">
+            </div>
+            <div class="col-md-6">
+              <label class="fw-bold small">TC Kimlik No</label>
+              <input type="text" name="tc_no" class="form-control" placeholder="12345678901">
+            </div>
+            {% endif %}
+
+            {% if sektor == 'lojistik' %}
+            <div class="col-md-6">
+              <label class="fw-bold small">Arac Plakasi</label>
+              <input type="text" name="plaka" class="form-control" placeholder="34 ABC 123">
+            </div>
+            {% endif %}
+
+            {% if sektor in ['isg','danismanlik'] %}
+            <div class="col-md-12">
+              <label class="fw-bold small">Musteri Firma Adi</label>
+              <input type="text" name="firma_adi" class="form-control"
+                     placeholder="Firma adinin ayni sekilde yazilmasi eslesmeyi kolaylastirir">
+            </div>
+            {% endif %}
+
+            <div class="col-md-6">
+              <label class="fw-bold small text-success">
+                <i class="fab fa-whatsapp me-1"></i>
+                {% if sektor == 'lojistik' %}Surucu / Zimmetli WhatsApp
+                {% elif sektor in ['isg','danismanlik'] %}Firma Yetkilisi WhatsApp
+                {% else %}Kisi WhatsApp{% endif %}
+              </label>
+              <input type="text" name="whatsapp_no" class="form-control" placeholder="905xxxxxxxxx">
+            </div>
+
+            <div class="col-md-6">
+              <label class="fw-bold small text-primary">
+                <i class="fas fa-user-shield me-1"></i>
+                {% if sektor == 'lojistik' %}Filo Yoneticisi WhatsApp
+                {% elif sektor == 'isg' %}ISG Uzmani WhatsApp
+                {% elif sektor == 'danismanlik' %}Danisман WhatsApp
+                {% else %}Amir / Sorumlu WhatsApp{% endif %}
+              </label>
+              <input type="text" name="danisman_no" class="form-control" placeholder="905xxxxxxxxx">
+            </div>
+
+            <div class="col-md-12">
+              <label class="fw-bold small">Aciklama (Opsiyonel)</label>
+              <input type="text" name="aciklama" class="form-control"
+                     placeholder="Ornek: 3. Ambar Soforu, Depo Sorumlusu vb.">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Iptal</button>
+          <button type="submit" class="btn fw-bold px-4" style="background:#1a1c4b;color:white;">
+            <i class="fas fa-save me-1"></i> Kaydet
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# EXCEL YUKLE MODAL #}
+<div class="modal fade" id="excelModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content border-0 shadow-lg" style="border-radius:14px;">
+      <div class="modal-header" style="background:#2e7d32;border-radius:14px 14px 0 0;">
+        <h5 class="modal-title text-white fw-bold">
+          <i class="fas fa-file-excel me-2"></i>Excel ile Toplu Yukle
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('rehber_excel_yukle') }}" enctype="multipart/form-data">
+        <div class="modal-body p-4">
+          <p class="text-muted small mb-3">
+            Excel dosyanizda asagidaki sutun basliklarini kullanin
+            (tam eslesme gerekmez, sistem otomatik tanir):
+          </p>
+          <div class="p-3 rounded mb-3" style="background:#f0fdf4;border:1px solid #bbf7d0;font-size:0.82rem;">
+            {% if sektor == 'lojistik' %}
+            <code>plaka | ad_soyad | tc_no | whatsapp_no | amir_no | aciklama</code>
+            {% elif sektor in ['isg','danismanlik'] %}
+            <code>firma_adi | whatsapp_no | amir_no | aciklama</code>
+            {% else %}
+            <code>ad_soyad | tc_no | plaka | firma_adi | whatsapp_no | amir_no | aciklama</code>
+            {% endif %}
+          </div>
+          <input type="file" name="rehber_excel" class="form-control" accept=".xlsx,.xls" required>
+          <small class="text-muted mt-2 d-block">
+            <i class="fas fa-info-circle me-1"></i>
+            Mevcut kayitlar silinmez, yeni kayitlar eklenir.
+          </small>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Iptal</button>
+          <button type="submit" class="btn fw-bold px-4" style="background:#2e7d32;color:white;">
+            <i class="fas fa-upload me-1"></i> Yukle
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
