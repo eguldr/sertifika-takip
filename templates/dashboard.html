@@ -33,6 +33,11 @@ body { background:#f0f4f8; }
 .btn-action { border:none; background:none; padding:6px 8px; border-radius:8px; transition:0.2s; cursor:pointer; }
 .btn-action:hover { background:#f1f5f9; }
 .btn-action.danger-hover:hover { background:#fef2f2; color:var(--danger); }
+.checkbox-col { width:40px; }
+input.row-check { width:16px; height:16px; cursor:pointer; accent-color:var(--navy); }
+.bulk-bar { display:none; position:sticky; top:0; z-index:100; background:#1a1c4b; color:white; padding:10px 20px; border-radius:10px; margin-bottom:12px; align-items:center; justify-content:space-between; box-shadow:0 4px 16px rgba(0,0,0,0.2); }
+.bulk-bar.show { display:flex; }
+.hata-kutu { background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:14px 18px; margin-bottom:16px; }
 .progress-overlay { display:none; position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(15,16,53,0.7); z-index:9999; align-items:center; justify-content:center; flex-direction:column; }
 .progress-overlay.show { display:flex; }
 .progress-box { background:white; border-radius:16px; padding:40px 48px; text-align:center; min-width:320px; box-shadow:0 24px 60px rgba(0,0,0,0.3); }
@@ -52,6 +57,25 @@ body { background:#f0f4f8; }
 </div>
 
 <div class="container-fluid py-2">
+
+  <!-- Toplu silme bari -->
+  <div class="bulk-bar" id="bulkBar">
+    <span id="seciliSayac" class="fw-bold">0 belge secildi</span>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-light" onclick="tumunuSec()">Tumunu Sec</button>
+      <button class="btn btn-sm btn-danger fw-bold" onclick="secilileriSil()">
+        <i class="fas fa-trash me-1"></i> Secilileri Sil
+      </button>
+      <button class="btn btn-sm btn-outline-light" onclick="secimIptal()">Iptal</button>
+    </div>
+  </div>
+
+  <!-- Okunamamayan dosyalar kutusu -->
+  <div id="hataKutusu" class="hata-kutu" style="display:none;">
+    <strong><i class="fas fa-exclamation-triangle me-2 text-warning"></i><span id="hataBaslik"></span></strong>
+    <ul id="hataListesi" class="mt-2 mb-0 small"></ul>
+    <button class="btn btn-sm btn-outline-secondary mt-2" onclick="document.getElementById('hataKutusu').style.display='none'">Kapat</button>
+  </div>
 
   {% set bu_hafta = sertifikalar | selectattr('expiry_date', 'le', bugun + timedelta(days=7)) | list %}
   {% if bu_hafta | length > 0 %}
@@ -163,7 +187,8 @@ body { background:#f0f4f8; }
       <table class="table table-hover" id="sertifikaTable">
         <thead>
           <tr>
-            <th class="ps-4" style="width:38%;">Belge / Tanım</th>
+            <th class="checkbox-col ps-3"><input type="checkbox" id="checkAll" onchange="tumunuToggle(this)"></th>
+            <th style="width:36%;">Belge / Tanım</th>
             <th>Bitiş Tarihi</th>
             <th>Kalan Gün</th>
             <th class="text-center">Hızlı Aksiyon</th>
@@ -176,9 +201,10 @@ body { background:#f0f4f8; }
           {% if s.expiry_date %}
           {% set kalan = (s.expiry_date - bugun).days %}
           {% set status = 'danger' if kalan <= 30 else ('warning' if kalan <= 90 else 'success') %}
-          <tr class="table-row" data-status="{{ status }}">
+          <tr class="table-row" data-status="{{ status }}" data-id="{{ s.id }}">
 
-            <td class="ps-4">
+            <td class="ps-3"><input type="checkbox" class="row-check" value="{{ s.id }}" onchange="checkGuncelle()"></td>
+            <td>
               <div class="belge-title">{{ s.title }}</div>
               <div class="belge-meta">
                 <i class="fas fa-tag me-1"></i>
@@ -316,6 +342,71 @@ function filterTable(status) {
         row.style.display = (status === 'all' || row.dataset.status === status) ? '' : 'none';
     });
 }
+
+// ---- TOPLU SECIM & SIL ----
+function checkGuncelle() {
+    var secili = document.querySelectorAll('.row-check:checked').length;
+    var bar    = document.getElementById('bulkBar');
+    var sayac  = document.getElementById('seciliSayac');
+    if (secili > 0) {
+        bar.classList.add('show');
+        sayac.textContent = secili + ' belge secildi';
+    } else {
+        bar.classList.remove('show');
+    }
+}
+function tumunuToggle(cb) {
+    document.querySelectorAll('.row-check').forEach(function(c) { c.checked = cb.checked; });
+    checkGuncelle();
+}
+function tumunuSec() {
+    document.querySelectorAll('.row-check').forEach(function(c) { c.checked = true; });
+    document.getElementById('checkAll').checked = true;
+    checkGuncelle();
+}
+function secimIptal() {
+    document.querySelectorAll('.row-check').forEach(function(c) { c.checked = false; });
+    document.getElementById('checkAll').checked = false;
+    checkGuncelle();
+}
+function secilileriSil() {
+    var secili = Array.from(document.querySelectorAll('.row-check:checked')).map(function(c) { return c.value; });
+    if (secili.length === 0) return;
+    if (!confirm(secili.length + ' belgeyi silmek istediginize emin misiniz?')) return;
+    fetch('/toplu_sil', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ids: secili})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        if (d.ok) {
+            alert(d.silinen + ' belge silindi.');
+            window.location.reload();
+        } else {
+            alert('Silme hatasi: ' + (d.hata || 'Bilinmeyen'));
+        }
+    });
+}
+
+// ---- OKUNAMAMAYAN DOSYALAR ----
+(function() {
+    var params = new URLSearchParams(window.location.search);
+    var hataListesi = params.get('hata_listesi');
+    if (!hataListesi) return;
+    var dosyalar = decodeURIComponent(hataListesi).split('||').filter(Boolean);
+    if (dosyalar.length === 0) return;
+    var kutu    = document.getElementById('hataKutusu');
+    var baslik  = document.getElementById('hataBaslik');
+    var liste   = document.getElementById('hataListesi');
+    baslik.textContent = dosyalar.length + ' dosya okunamadi. Manuel olarak ekleyebilirsiniz:';
+    dosyalar.forEach(function(d) {
+        var li = document.createElement('li');
+        li.textContent = d;
+        liste.appendChild(li);
+    });
+    kutu.style.display = 'block';
+})();
 function submitPdfForm() {
     var input = document.getElementById('pdf_input');
     if (!input.files.length) return;
@@ -369,10 +460,8 @@ function submitPdfForm() {
                         bar.style.width = '100%';
                         bar.style.background = '#059669';
                         setTimeout(function() {
-                            var uyari = data.hatali + ' dosya okunamadi. Bu dosyalari manuel olarak ekleyebilirsiniz:\n\n';
-                            uyari += data.hata_listesi.join('\n');
-                            alert(uyari);
-                            window.location.href = '/dashboard';
+                            var enc = encodeURIComponent(data.hata_listesi.join('||'));
+                            window.location.href = '/dashboard?hata_listesi=' + enc;
                         }, 1000);
                     } else {
                         subEl.textContent = msg;
