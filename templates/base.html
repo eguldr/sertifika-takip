@@ -3,221 +3,420 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EG Optimal | Sertifika Takip Sistemi</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <title>EG Optimal | Belge & Risk Yönetimi</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --p-dark:#1a1c4b; --accent:#c5a059; --sidebar-w:240px; }
-        body { background:#f0f4f8; font-family:'Inter',sans-serif; margin:0; overflow-x:hidden; color:#1e293b; }
-        .wrapper { display:flex; width:100%; align-items:stretch; }
-        #sidebar {
-            min-width:var(--sidebar-w); max-width:var(--sidebar-w);
-            background:linear-gradient(180deg,#0f1035 0%,#1a1c4b 60%,#1e2255 100%);
-            color:#fff; min-height:100vh; transition:all 0.3s;
-            box-shadow:4px 0 20px rgba(0,0,0,0.25); flex-shrink:0;
-            display:flex; flex-direction:column;
+        :root {
+            --navy:      #0d0f2e;
+            --navy-mid:  #161849;
+            --navy-soft: #1e2160;
+            --gold:      #c9a84c;
+            --gold-soft: #e8c96a;
+            --gold-dim:  rgba(201,168,76,0.18);
+            --surface:   #f4f6fb;
+            --card:      #ffffff;
+            --text:      #1a1d35;
+            --muted:     #7b83a6;
+            --border:    #e8ecf4;
+            --danger:    #e53e3e;
+            --warn:      #d97706;
+            --success:   #059669;
+            --sidebar-w: 260px;
         }
-        .sidebar-header { padding:28px 20px 20px; background:rgba(0,0,0,0.25); text-align:center; border-bottom:1px solid rgba(255,255,255,0.07); }
-        .sidebar-header .brand-name { color:var(--accent); font-weight:800; letter-spacing:2px; font-size:1.3rem; margin:0; line-height:1; }
-        .sidebar-header .brand-sub { color:rgba(255,255,255,0.4); font-size:0.65rem; letter-spacing:1px; text-transform:uppercase; margin-top:4px; }
-        .sektor-badge { margin:12px 16px 0; padding:6px 12px; background:rgba(197,160,89,0.15); border:1px solid rgba(197,160,89,0.3); border-radius:20px; font-size:0.72rem; color:var(--accent); text-align:center; font-weight:600; letter-spacing:0.5px; }
-        #sidebar ul.components { padding:12px 0; flex:1; }
-        .nav-section-label { padding:14px 20px 4px; font-size:0.62rem; color:rgba(255,255,255,0.3); text-transform:uppercase; letter-spacing:1.5px; font-weight:600; }
-        #sidebar ul li a { padding:11px 20px; font-size:0.875rem; font-weight:500; display:flex; align-items:center; gap:10px; color:rgba(255,255,255,0.6); text-decoration:none; transition:all 0.2s; border-left:3px solid transparent; margin:1px 0; }
-        #sidebar ul li a .nav-icon { width:22px; text-align:center; font-size:0.95rem; opacity:0.8; }
-        #sidebar ul li a:hover, #sidebar ul li.active > a { color:#fff; background:rgba(255,255,255,0.07); border-left-color:var(--accent); }
-        #sidebar ul li.active > a .nav-icon { opacity:1; color:var(--accent); }
-        .sidebar-divider { border-color:rgba(255,255,255,0.08); margin:8px 20px; }
-        #content { width:100%; padding:32px 36px; min-height:100vh; }
-        .alert { border-radius:10px; border:none; font-weight:500; margin-bottom:16px; }
-        @media(max-width:768px){
-            .wrapper{flex-direction:column!important;}
-            #sidebar{min-width:100%!important;max-width:100%!important;min-height:auto!important;}
-            #sidebar ul.components{display:flex;flex-wrap:wrap;padding:8px;}
-            #sidebar ul li a{padding:8px 10px;font-size:0.78rem;border-left:none!important;border-bottom:2px solid transparent;border-radius:6px;}
-            #sidebar ul li a:hover,#sidebar ul li.active > a{border-bottom-color:var(--accent);background:rgba(255,255,255,0.06);}
-            #content{padding:16px;}
-            .nav-section-label,.sidebar-divider{display:none;}
+
+        * { box-sizing: border-box; }
+
+        body {
+            background: var(--surface);
+            font-family: 'DM Sans', sans-serif;
+            margin: 0;
+            overflow-x: hidden;
+            color: var(--text);
+        }
+
+        /* ── WRAPPER ── */
+        .wrapper { display: flex; min-height: 100vh; }
+
+        /* ── SIDEBAR ── */
+        #sidebar {
+            width: var(--sidebar-w);
+            min-width: var(--sidebar-w);
+            background: var(--navy);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Dekoratif arka plan desen */
+        #sidebar::before {
+            content: '';
+            position: absolute;
+            top: -80px; right: -80px;
+            width: 260px; height: 260px;
+            background: radial-gradient(circle, rgba(201,168,76,0.12) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        #sidebar::after {
+            content: '';
+            position: absolute;
+            bottom: -60px; left: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(100,120,255,0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        /* Logo alanı */
+        .sidebar-brand {
+            padding: 28px 24px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            position: relative;
+        }
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+        .brand-icon {
+            width: 38px; height: 38px;
+            background: linear-gradient(135deg, var(--gold), #f0d070);
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem; color: var(--navy);
+            box-shadow: 0 4px 12px rgba(201,168,76,0.35);
+            flex-shrink: 0;
+        }
+        .brand-text .name {
+            font-family: 'Sora', sans-serif;
+            font-weight: 800;
+            font-size: 1.05rem;
+            color: #fff;
+            letter-spacing: 1.5px;
+            line-height: 1.1;
+        }
+        .brand-text .sub {
+            font-size: 0.6rem;
+            color: rgba(255,255,255,0.35);
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+        }
+
+        /* Sektör etiketi */
+        .sektor-pill {
+            margin: 14px 20px 0;
+            padding: 7px 14px;
+            background: var(--gold-dim);
+            border: 1px solid rgba(201,168,76,0.25);
+            border-radius: 30px;
+            font-size: 0.72rem;
+            color: var(--gold-soft);
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .sektor-pill .dot {
+            width: 6px; height: 6px;
+            background: var(--gold);
+            border-radius: 50%;
+            animation: pulse-dot 2s infinite;
+        }
+        @keyframes pulse-dot {
+            0%,100% { opacity:1; transform:scale(1); }
+            50% { opacity:0.5; transform:scale(1.3); }
+        }
+
+        /* Nav */
+        .nav-wrap { flex: 1; padding: 16px 0 12px; overflow-y: auto; }
+        .nav-wrap::-webkit-scrollbar { width: 0; }
+
+        .nav-group-label {
+            padding: 16px 24px 5px;
+            font-size: 0.6rem;
+            color: rgba(255,255,255,0.22);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 700;
+        }
+
+        .nav-item-link {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 10px 20px 10px 22px;
+            margin: 1px 10px;
+            border-radius: 10px;
+            font-size: 0.855rem;
+            font-weight: 500;
+            color: rgba(255,255,255,0.5);
+            text-decoration: none;
+            transition: all 0.18s ease;
+            border-left: 3px solid transparent;
+            position: relative;
+        }
+        .nav-item-link .ni {
+            width: 20px;
+            text-align: center;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+        .nav-item-link:hover {
+            color: rgba(255,255,255,0.9);
+            background: rgba(255,255,255,0.05);
+            border-left-color: var(--gold);
+        }
+        .nav-item-link.active {
+            color: #fff;
+            background: rgba(255,255,255,0.07);
+            border-left-color: var(--gold);
+        }
+        .nav-item-link.active .ni { color: var(--gold); }
+
+        .nav-divider {
+            height: 1px;
+            background: rgba(255,255,255,0.06);
+            margin: 10px 20px;
+        }
+
+        /* Çıkış butonu */
+        .sidebar-footer {
+            padding: 12px 16px 20px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+
+        /* ── CONTENT ── */
+        #content {
+            flex: 1;
+            padding: 28px 32px;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Alert */
+        .alert {
+            border-radius: 12px;
+            border: none;
+            font-weight: 500;
+            font-size: 0.88rem;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .alert-success { background: #f0fdf4; color: #166534; border-left: 4px solid #16a34a !important; }
+        .alert-danger  { background: #fef2f2; color: #991b1b; border-left: 4px solid #dc2626 !important; }
+        .alert-warning { background: #fffbeb; color: #92400e; border-left: 4px solid #d97706 !important; }
+        .alert-info    { background: #eff6ff; color: #1e40af; border-left: 4px solid #3b82f6 !important; }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 768px) {
+            .wrapper { flex-direction: column; }
+            #sidebar {
+                width: 100%;
+                min-width: 100%;
+            }
+            .nav-wrap {
+                display: flex;
+                flex-wrap: wrap;
+                padding: 8px;
+                gap: 4px;
+            }
+            .nav-group-label, .nav-divider { display: none; }
+            .nav-item-link {
+                padding: 8px 12px;
+                margin: 0;
+                font-size: 0.78rem;
+                border-left: none;
+                border-bottom: 2px solid transparent;
+            }
+            .nav-item-link:hover, .nav-item-link.active {
+                border-left-color: transparent;
+                border-bottom-color: var(--gold);
+            }
+            #content { padding: 16px; }
         }
     </style>
 </head>
 <body>
 <div class="wrapper">
 
+<!-- ════════════════ SIDEBAR ════════════════ -->
 <nav id="sidebar">
-    <div class="sidebar-header">
-        <p class="brand-name">EG OPTIMAL</p>
-        <p class="brand-sub">Belge & Risk Yonetimi</p>
+
+    <div class="sidebar-brand">
+        <a class="brand-logo" href="{{ url_for('dashboard') }}">
+            <div class="brand-icon"><i class="fas fa-shield-halved"></i></div>
+            <div class="brand-text">
+                <div class="name">EG OPTIMAL</div>
+                <div class="sub">Belge & Risk Yönetimi</div>
+            </div>
+        </a>
     </div>
 
     {% if current_user.is_authenticated %}
-    <div class="sektor-badge">
-        {% set s = current_user.sektor %}
-        {% if s == 'lojistik' %}Lojistik & Tasimacilk
-        {% elif s == 'gida' %}Gida & Uretim
-        {% elif s == 'danismanlik' %}Sertifika Danismanligi
-        {% elif s == 'isg' %}ISG & Tesis
-        {% elif s == 'otel' %}Otel & Konaklama
-        {% else %}Genel Panel{% endif %}
+    {% set sektor = current_user.sektor %}
+
+    <div class="sektor-pill">
+        <span class="dot"></span>
+        {% if sektor == 'lojistik' %}<i class="fas fa-truck-fast me-1"></i>Lojistik & Taşımacılık
+        {% elif sektor == 'gida' %}<i class="fas fa-leaf me-1"></i>Gıda & Üretim
+        {% elif sektor == 'danismanlik' %}<i class="fas fa-certificate me-1"></i>Sertifika Danışmanlığı
+        {% elif sektor == 'isg' %}<i class="fas fa-hard-hat me-1"></i>İSG & Tesis
+        {% elif sektor == 'otel' %}<i class="fas fa-hotel me-1"></i>Otel & Konaklama
+        {% else %}<i class="fas fa-building me-1"></i>Genel Panel{% endif %}
+    </div>
+
+    <div class="nav-wrap">
+
+        <div class="nav-group-label">Genel Bakış</div>
+
+        <a href="{{ url_for('dashboard') }}"
+           class="nav-item-link {% if request.endpoint == 'dashboard' and (current_cat is not defined or current_cat == 'all') %}active{% endif %}">
+            <span class="ni"><i class="fas fa-chart-line"></i></span> Dashboard
+        </a>
+
+        <a href="{{ url_for('rehber') }}"
+           class="nav-item-link {% if request.endpoint == 'rehber' %}active{% endif %}">
+            <span class="ni"><i class="fas fa-address-book"></i></span> Telefon Rehberi
+        </a>
+
+        <div class="nav-group-label">Kategoriler</div>
+
+        {% if sektor == 'lojistik' %}
+            <a href="{{ url_for('dashboard', cat='Arac') }}"
+               class="nav-item-link {% if current_cat is defined and current_cat == 'Arac' %}active{% endif %}">
+                <span class="ni"><i class="fas fa-truck-fast"></i></span> Araç & Filo
+            </a>
+            <a href="{{ url_for('dashboard', cat='Personel') }}"
+               class="nav-item-link {% if current_cat is defined and current_cat == 'Personel' %}active{% endif %}">
+                <span class="ni"><i class="fas fa-id-badge"></i></span> Personel
+            </a>
+
+        {% elif sektor == 'gida' %}
+            <a href="{{ url_for('dashboard', cat='Urun') }}"
+               class="nav-item-link {% if current_cat is defined and current_cat == 'Urun' %}active{% endif %}">
+                <span class="ni"><i class="fas fa-leaf"></i></span> Ürün & Gıda Sertifikaları
+            </a>
+            <a href="{{ url_for('dashboard', cat='Tesis') }}"
+               class="nav-item-link {% if current_cat is defined and current_cat == 'Tesis' %}active{% endif %}">
+                <span class="ni"><i class="fas fa-industry"></i></span> Tesis & Üretim
+            </a>
+            <a href="{{ url_for('dashboard', cat='Personel') }}"
+               class="nav-item-link {% if current_cat is defined and current_cat == 'Personel' %}active{% endif %}">
+                <span class="ni"><i class="fas fa-id-badge"></i></span> Personel
+            </a>
+
+        {% elif sektor == 'danismanlik' %}
+            <a href="{{ url_for('dashboard', cat='Urun') }}"
+               class="nav-item-link {% if current_cat is defined and current_cat == 'Urun' %}active{% endif %}">
+                <span class="ni"><i class="fas fa-certificate"></i></span> Ürün Sertifikaları
+            </a>
+            <a href="{{ url_for('dashboard', cat='Tesis') }}"
+               class="nav-item-link {% if current_cat is defined and current_cat == 'Tesis' %}active{% endif %}">
+                <span class="ni"><i class="fas fa-building-shield"></i></span> Yönetim Sistemi
+            </a>
+            <a href="{{ url_for('dashboard', cat='Personel') }}"
+               class="nav-item-link {% if current_cat is defined and current_cat == 'Personel' %}active{% endif %}">
+                <span class="ni"><i class="fas fa-id-badge"></i></span> Personel Belgeleri
+            </a>
+
+        {% elif sektor == 'isg' %}
+            <a href="{{ url_for('dashboard', cat='Tesis') }}"
+               class="nav-item-link {% if current_cat is defined and current_cat == 'Tesis' %}active{% endif %}">
+                <span class="ni"><i class="fas fa-building-shield"></i></span> Tesis & Mekan
+            </a>
+            <a href="{{ url_for('dashboard', cat='Personel') }}"
+               class="nav-item-link {% if current_cat is defined and current_cat == 'Personel' %}active{% endif %}">
+                <span class="ni"><i class="fas fa-id-badge"></i></span> Personel
+            </a>
+            <a href="{{ url_for('dashboard', cat='Arac') }}"
+               class="nav-item-link {% if current_cat is defined and current_cat == 'Arac' %}active{% endif %}">
+                <span class="ni"><i class="fas fa-truck-fast"></i></span> Araç & Filo
+            </a>
+
+        {% elif sektor == 'otel' %}
+            <a href="{{ url_for('dashboard', cat='Tesis') }}"
+               class="nav-item-link {% if current_cat is defined and current_cat == 'Tesis' %}active{% endif %}">
+                <span class="ni"><i class="fas fa-hotel"></i></span> Tesis & Lisans
+            </a>
+            <a href="{{ url_for('dashboard', cat='Personel') }}"
+               class="nav-item-link {% if current_cat is defined and current_cat == 'Personel' %}active{% endif %}">
+                <span class="ni"><i class="fas fa-id-badge"></i></span> Personel Belgeleri
+            </a>
+            <a href="{{ url_for('dashboard', cat='Urun') }}"
+               class="nav-item-link {% if current_cat is defined and current_cat == 'Urun' %}active{% endif %}">
+                <span class="ni"><i class="fas fa-star"></i></span> Kalite & Standart
+            </a>
+
+        {% else %}
+            <a href="{{ url_for('dashboard', cat='Urun') }}"
+               class="nav-item-link {% if current_cat is defined and current_cat == 'Urun' %}active{% endif %}">
+                <span class="ni"><i class="fas fa-box-archive"></i></span> Üretim & Ürün
+            </a>
+            <a href="{{ url_for('dashboard', cat='Arac') }}"
+               class="nav-item-link {% if current_cat is defined and current_cat == 'Arac' %}active{% endif %}">
+                <span class="ni"><i class="fas fa-truck-fast"></i></span> Araç & Filo
+            </a>
+            <a href="{{ url_for('dashboard', cat='Personel') }}"
+               class="nav-item-link {% if current_cat is defined and current_cat == 'Personel' %}active{% endif %}">
+                <span class="ni"><i class="fas fa-id-badge"></i></span> Personel
+            </a>
+            <a href="{{ url_for('dashboard', cat='Tesis') }}"
+               class="nav-item-link {% if current_cat is defined and current_cat == 'Tesis' %}active{% endif %}">
+                <span class="ni"><i class="fas fa-building-shield"></i></span> Tesis & Mekan
+            </a>
+        {% endif %}
+
+        {% if current_user.email == 'erhanadea@gmail.com' %}
+        <div class="nav-divider"></div>
+        <div class="nav-group-label">Yönetim</div>
+        <a href="{{ url_for('admin_panel') }}"
+           class="nav-item-link {% if request.endpoint == 'admin_panel' %}active{% endif %}"
+           style="color:#fbbf24;">
+            <span class="ni"><i class="fas fa-user-shield"></i></span> Admin Paneli
+        </a>
+        {% endif %}
+
+    </div>
+
+    <div class="sidebar-footer">
+        <div class="nav-group-label" style="padding:0 4px 8px;">Hesap</div>
+        <a href="{{ url_for('logout') }}"
+           class="nav-item-link"
+           style="color:#fca5a5; margin:0;">
+            <span class="ni"><i class="fas fa-power-off"></i></span> Güvenli Çıkış
+        </a>
+    </div>
+
+    {% else %}
+    <div class="nav-wrap">
+        <a href="/login" class="nav-item-link">
+            <span class="ni"><i class="fas fa-sign-in-alt"></i></span> Giriş Yap
+        </a>
+        <a href="/register" class="nav-item-link">
+            <span class="ni"><i class="fas fa-user-plus"></i></span> Kayıt Ol
+        </a>
     </div>
     {% endif %}
 
-    <ul class="list-unstyled components">
-        {% if current_user.is_authenticated %}
-        {% set sektor = current_user.sektor %}
-
-        <li class="nav-section-label">Genel Bakis</li>
-        <li class="{{ 'active' if request.endpoint == 'dashboard' and (current_cat is not defined or current_cat == 'all') }}">
-            <a href="{{ url_for('dashboard') }}">
-                <span class="nav-icon"><i class="fas fa-table-columns"></i></span> Dashboard
-            </a>
-        </li>
-
-        <li class="{{ 'active' if request.endpoint == 'rehber' }}">
-            <a href="{{ url_for('rehber') }}">
-                <span class="nav-icon"><i class="fas fa-address-book"></i></span> Telefon Rehberi
-            </a>
-        </li>
-
-        <li class="nav-section-label">Kategoriler</li>
-
-        {% if sektor == 'lojistik' %}
-            <li class="{{ 'active' if current_cat is defined and current_cat == 'Arac' }}">
-                <a href="{{ url_for('dashboard', cat='Arac') }}">
-                    <span class="nav-icon"><i class="fas fa-truck-fast"></i></span> Arac & Filo
-                </a>
-            </li>
-            <li class="{{ 'active' if current_cat is defined and current_cat == 'Personel' }}">
-                <a href="{{ url_for('dashboard', cat='Personel') }}">
-                    <span class="nav-icon"><i class="fas fa-id-badge"></i></span> Personel
-                </a>
-            </li>
-
-        {% elif sektor == 'gida' %}
-            <li class="{{ 'active' if current_cat is defined and current_cat == 'Urun' }}">
-                <a href="{{ url_for('dashboard', cat='Urun') }}">
-                    <span class="nav-icon"><i class="fas fa-leaf"></i></span> Urun & Gida Sertifikalari
-                </a>
-            </li>
-            <li class="{{ 'active' if current_cat is defined and current_cat == 'Tesis' }}">
-                <a href="{{ url_for('dashboard', cat='Tesis') }}">
-                    <span class="nav-icon"><i class="fas fa-industry"></i></span> Tesis & Uretim Belgeleri
-                </a>
-            </li>
-            <li class="{{ 'active' if current_cat is defined and current_cat == 'Personel' }}">
-                <a href="{{ url_for('dashboard', cat='Personel') }}">
-                    <span class="nav-icon"><i class="fas fa-id-badge"></i></span> Personel
-                </a>
-            </li>
-
-        {% elif sektor == 'danismanlik' %}
-            <li class="{{ 'active' if current_cat is defined and current_cat == 'Urun' }}">
-                <a href="{{ url_for('dashboard', cat='Urun') }}">
-                    <span class="nav-icon"><i class="fas fa-certificate"></i></span> Urun Sertifikalari
-                </a>
-            </li>
-            <li class="{{ 'active' if current_cat is defined and current_cat == 'Tesis' }}">
-                <a href="{{ url_for('dashboard', cat='Tesis') }}">
-                    <span class="nav-icon"><i class="fas fa-building-shield"></i></span> Yonetim Sistemi
-                </a>
-            </li>
-            <li class="{{ 'active' if current_cat is defined and current_cat == 'Personel' }}">
-                <a href="{{ url_for('dashboard', cat='Personel') }}">
-                    <span class="nav-icon"><i class="fas fa-id-badge"></i></span> Personel Belgeleri
-                </a>
-            </li>
-
-        {% elif sektor == 'isg' %}
-            <li class="{{ 'active' if current_cat is defined and current_cat == 'Tesis' }}">
-                <a href="{{ url_for('dashboard', cat='Tesis') }}">
-                    <span class="nav-icon"><i class="fas fa-building-shield"></i></span> Tesis & Mekan
-                </a>
-            </li>
-            <li class="{{ 'active' if current_cat is defined and current_cat == 'Personel' }}">
-                <a href="{{ url_for('dashboard', cat='Personel') }}">
-                    <span class="nav-icon"><i class="fas fa-id-badge"></i></span> Personel
-                </a>
-            </li>
-            <li class="{{ 'active' if current_cat is defined and current_cat == 'Arac' }}">
-                <a href="{{ url_for('dashboard', cat='Arac') }}">
-                    <span class="nav-icon"><i class="fas fa-truck-fast"></i></span> Arac & Filo
-                </a>
-            </li>
-
-        {% elif sektor == 'otel' %}
-            <li class="{{ 'active' if current_cat is defined and current_cat == 'Tesis' }}">
-                <a href="{{ url_for('dashboard', cat='Tesis') }}">
-                    <span class="nav-icon"><i class="fas fa-hotel"></i></span> Tesis & Lisans Belgeleri
-                </a>
-            </li>
-            <li class="{{ 'active' if current_cat is defined and current_cat == 'Personel' }}">
-                <a href="{{ url_for('dashboard', cat='Personel') }}">
-                    <span class="nav-icon"><i class="fas fa-id-badge"></i></span> Personel Belgeleri
-                </a>
-            </li>
-            <li class="{{ 'active' if current_cat is defined and current_cat == 'Urun' }}">
-                <a href="{{ url_for('dashboard', cat='Urun') }}">
-                    <span class="nav-icon"><i class="fas fa-star"></i></span> Kalite & Standart Sertifikalari
-                </a>
-            </li>
-
-        {% else %}
-            <li class="{{ 'active' if current_cat is defined and current_cat == 'Urun' }}">
-                <a href="{{ url_for('dashboard', cat='Urun') }}">
-                    <span class="nav-icon"><i class="fas fa-box-archive"></i></span> Uretim & Urun
-                </a>
-            </li>
-            <li class="{{ 'active' if current_cat is defined and current_cat == 'Arac' }}">
-                <a href="{{ url_for('dashboard', cat='Arac') }}">
-                    <span class="nav-icon"><i class="fas fa-truck-fast"></i></span> Arac & Filo
-                </a>
-            </li>
-            <li class="{{ 'active' if current_cat is defined and current_cat == 'Personel' }}">
-                <a href="{{ url_for('dashboard', cat='Personel') }}">
-                    <span class="nav-icon"><i class="fas fa-id-badge"></i></span> Personel
-                </a>
-            </li>
-            <li class="{{ 'active' if current_cat is defined and current_cat == 'Tesis' }}">
-                <a href="{{ url_for('dashboard', cat='Tesis') }}">
-                    <span class="nav-icon"><i class="fas fa-building-shield"></i></span> Tesis & Mekan
-                </a>
-            </li>
-        {% endif %}
-
-        <hr class="sidebar-divider">
-
-        {% if current_user.email == 'erhanadea@gmail.com' %}
-        <li class="nav-section-label">Yonetim</li>
-        <li class="{{ 'active' if request.endpoint == 'admin_panel' }}">
-            <a href="{{ url_for('admin_panel') }}" style="color:#fbbf24;">
-                <span class="nav-icon"><i class="fas fa-user-shield"></i></span> Admin Paneli
-            </a>
-        </li>
-        {% endif %}
-
-        <li class="nav-section-label">Hesap</li>
-        <li>
-            <a href="{{ url_for('logout') }}" style="color:#fda4af;">
-                <span class="nav-icon"><i class="fas fa-power-off"></i></span> Guvenli Cikis
-            </a>
-        </li>
-
-        {% else %}
-        <li><a href="/login"><span class="nav-icon"><i class="fas fa-sign-in-alt"></i></span> Giris Yap</a></li>
-        <li><a href="/register"><span class="nav-icon"><i class="fas fa-user-plus"></i></span> Kayit Ol</a></li>
-        {% endif %}
-    </ul>
 </nav>
+<!-- ════════════════ / SIDEBAR ════════════════ -->
 
+<!-- ════════════════ CONTENT ════════════════ -->
 <div id="content">
     <div class="container-fluid">
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             {% for category, message in messages %}
-              <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show shadow-sm" role="alert">
-                <i class="fas fa-circle-info me-2"></i> {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show" role="alert">
+                <i class="fas {% if category == 'success' %}fa-circle-check{% elif category == 'danger' %}fa-circle-xmark{% elif category == 'warning' %}fa-triangle-exclamation{% else %}fa-circle-info{% endif %} me-1"></i>
+                {{ message }}
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
               </div>
             {% endfor %}
           {% endif %}
@@ -225,32 +424,35 @@
         {% block content %}{% endblock %}
     </div>
 </div>
+<!-- ════════════════ / CONTENT ════════════════ -->
+
 </div>
 
+<!-- KVKK Modal -->
 <div class="modal fade" id="kvkkModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-scrollable modal-lg">
-        <div class="modal-content border-0 shadow-lg" style="border-radius:14px;">
-            <div class="modal-header" style="background:#1a1c4b;border-radius:14px 14px 0 0;">
-                <h5 class="modal-title text-white fw-bold">
-                    <i class="fas fa-shield-halved me-2" style="color:#c5a059;"></i>KVKK Aydinlatma Metni
+        <div class="modal-content border-0 shadow-lg" style="border-radius:16px;">
+            <div class="modal-header" style="background:var(--navy);border-radius:16px 16px 0 0;border:none;">
+                <h5 class="modal-title text-white fw-bold" style="font-family:'Sora',sans-serif;">
+                    <i class="fas fa-shield-halved me-2" style="color:var(--gold);"></i>KVKK Aydınlatma Metni
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4" style="font-size:0.9rem;line-height:1.7;">
-                <p><strong>Veri Sorumlusu:</strong> EG Optimal Danismanlik</p><hr>
-                <h6 class="fw-bold">1. Toplanan Kisisel Veriler</h6>
-                <p>E-posta adresi, firma/kurum adi, belge bilgileri, WhatsApp iletisim numaralari.</p>
-                <h6 class="fw-bold">2. Islenme Amaci</h6>
-                <p>Veriler yalnizca belge takip hizmetinin sunulmasi ve otomatik hatirlatma bildirimi gonderilmesi amaciyla islenmektedir.</p>
-                <h6 class="fw-bold">3. Aktarim</h6>
-                <p>Kisisel verileriniz hicbir ucuncu kisi veya kurulusla ticari amacla paylasilmamaktadir.</p>
-                <h6 class="fw-bold">4. Saklama Suresi</h6>
-                <p>Hesabiniz aktif oldugu surece saklanir. Hesap silindiginde tum veriler kalici olarak silinir.</p>
-                <h6 class="fw-bold">5. Haklariniz (KVKK Madde 11)</h6>
-                <p>Verilerinizin duzeltilmesini veya silinmesini talep edebilirsiniz.<br>
-                Iletisim: <strong>eguldr@gmail.com</strong></p>
+            <div class="modal-body p-4" style="font-size:0.9rem;line-height:1.7;color:var(--text);">
+                <p><strong>Veri Sorumlusu:</strong> EG Optimal Danışmanlık</p><hr>
+                <h6 class="fw-bold">1. Toplanan Kişisel Veriler</h6>
+                <p>E-posta adresi, firma/kurum adı, belge bilgileri, WhatsApp iletişim numaraları.</p>
+                <h6 class="fw-bold">2. İşlenme Amacı</h6>
+                <p>Veriler yalnızca belge takip hizmetinin sunulması ve otomatik hatırlatma bildirimi gönderilmesi amacıyla işlenmektedir.</p>
+                <h6 class="fw-bold">3. Aktarım</h6>
+                <p>Kişisel verileriniz hiçbir üçüncü kişi veya kuruluşla ticari amaçla paylaşılmamaktadır.</p>
+                <h6 class="fw-bold">4. Saklama Süresi</h6>
+                <p>Hesabınız aktif olduğu sürece saklanır. Hesap silindiğinde tüm veriler kalıcı olarak silinir.</p>
+                <h6 class="fw-bold">5. Haklarınız (KVKK Madde 11)</h6>
+                <p>Verilerinizin düzeltilmesini veya silinmesini talep edebilirsiniz.<br>
+                İletişim: <strong>eguldr@gmail.com</strong></p>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" style="border-top:1px solid var(--border);">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
             </div>
         </div>
@@ -260,8 +462,11 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     setTimeout(function() {
-        document.querySelectorAll('.alert').forEach(function(a) { new bootstrap.Alert(a).close(); });
+        document.querySelectorAll('.alert').forEach(function(a) {
+            try { new bootstrap.Alert(a).close(); } catch(e) {}
+        });
     }, 5000);
 </script>
 </body>
 </html>
+
