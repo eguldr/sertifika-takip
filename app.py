@@ -862,7 +862,13 @@ def toplu_sil():
         db.session.rollback()
         return jsonify({'ok': False, 'hata': str(ex)})
 
-
+# ============================================================
+# BELGE AC - PDF PROXY
+# ============================================================
+@app.route('/belge_ac/<int:entry_id>')
+@login_required
+def belge_ac(entry_id):
+    ...
 # ============================================================
 # KATEGORI GUNCELLE
 # ============================================================
