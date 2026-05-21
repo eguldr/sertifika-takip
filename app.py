@@ -841,6 +841,30 @@ def check_reminders():
 
 
 # ============================================================
+# TOPLU SIL
+# ============================================================
+@app.route('/toplu_sil', methods=['POST'])
+@login_required
+def toplu_sil():
+    try:
+        data = request.get_json()
+        ids  = [int(i) for i in data.get('ids', [])]
+        if not ids:
+            return jsonify({'ok': False, 'hata': 'Secili belge yok'})
+        silinen = 0
+        for entry_id in ids:
+            e = Entry.query.get(entry_id)
+            if e and (e.user_id == current_user.id or current_user.email == 'erhanadea@gmail.com'):
+                e.is_active = False
+                silinen += 1
+        db.session.commit()
+        return jsonify({'ok': True, 'silinen': silinen})
+    except Exception as ex:
+        db.session.rollback()
+        return jsonify({'ok': False, 'hata': str(ex)})
+
+
+# ============================================================
 # KATEGORI GUNCELLE
 # ============================================================
 @app.route('/kategori_guncelle/<int:id>/<string:yeni_kat>')
