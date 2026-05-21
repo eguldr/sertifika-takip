@@ -238,23 +238,29 @@ input.row-check { width:16px; height:16px; cursor:pointer; accent-color:var(--na
             </td>
 
             <td class="text-center">
-              {% if kalan <= 30 %}
+              {% if s.whatsapp_no or s.danisman_no %}
               <div class="d-flex justify-content-center gap-1">
-                {% if s.danisman_no %}
-                <a href="https://wa.me/{{ s.danisman_no }}?text=Merhaba,%0A%0A'{{ s.title }}' belgesinin suresi 30 gunun altina dusmustur. Lutfen gerekli aksiyonu alin.%0ABitis: {{ s.expiry_date.strftime('%d.%m.%Y') }}%0A%0AEG Optimal"
-                   target="_blank" class="btn-action" title="Amire / Sorumluya Hatırlat" style="color:#0891b2;">
-                  <i class="fas fa-user-clock"></i>
-                </a>
-                {% endif %}
                 {% if s.whatsapp_no %}
                 <a href="https://wa.me/{{ s.whatsapp_no }}?text=Sayın ilgili,%0A%0A'{{ s.title }}' belgenizin suresi dolmak uzeredir.%0ABitis: {{ s.expiry_date.strftime('%d.%m.%Y') }}%0A%0A{{ current_user.company_name or 'EG Optimal' }}"
-                   target="_blank" class="btn-action" title="Personele / Müşteriye Hatırlat" style="color:#16a34a;">
+                   target="_blank" class="btn-action" 
+                   title="{% if kalan <= 30 %}Personele Hatırlat — KRİTİK{% else %}Personele Hatırlat ({{ kalan }} gün kaldı){% endif %}"
+                   style="color:{% if kalan <= 30 %}#16a34a{% else %}#cbd5e1{% endif %};">
                   <i class="fab fa-whatsapp"></i>
                 </a>
                 {% endif %}
-              </div>
-              {% else %}<span class="text-muted small">—</span>{% endif %}
-            </td>
+                {% if s.danisman_no %}
+                <a href="https://wa.me/{{ s.danisman_no }}?text=Merhaba,%0A%0A'{{ s.title }}' belgesinin suresi dolmak uzeredir.%0ABitis: {{ s.expiry_date.strftime('%d.%m.%Y') }}%0A%0AEG Optimal"
+                   target="_blank" class="btn-action"
+                   title="{% if kalan <= 30 %}Amire Hatırlat — KRİTİK{% else %}Amire Hatırlat ({{ kalan }} gün kaldı){% endif %}"
+                   style="color:{% if kalan <= 30 %}#0891b2{% else %}#cbd5e1{% endif %};">
+                  <i class="fas fa-user-clock"></i>
+                </a>
+                {% endif %}
+            </div>
+            {% else %}
+            <span class="text-muted small" title="Telefon rehberinde kayıt yok">—</span>
+            {% endif %}
+          </td>
 
             <td class="text-center">
               {% if s.belge_url %}
