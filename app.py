@@ -253,7 +253,7 @@ def rehber_eslestir(user_id, veri):
         if kayit:
             whatsapp = kayit.whatsapp_no
             danisman = kayit.danisman_no
-            print(f"Rehber eslesti: {kayit.ad_soyad or kayit.plaka or kayit.firma_adi}")
+            
             print(f"Rehber eslesti: {kayit.ad_soyad or kayit.plaka} -> wp={kayit.whatsapp_no} dan={kayit.danisman_no}")
     except Exception as e:
         print(f"Rehber eslestirme hatasi: {e}")
