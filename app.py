@@ -1046,7 +1046,32 @@ def toplu_sil():
         db.session.rollback()
         return jsonify({'ok': False, 'hata': str(ex)})
 
-
+# ============================================================
+# BELGE AC - PDF PROXY
+# ============================================================
+@app.route('/belge_ac/<int:entry_id>')
+@login_required
+def belge_ac(entry_id):
+    e = Entry.query.get_or_404(entry_id)
+    if e.user_id != current_user.id and current_user.email != 'erhanadea@gmail.com':
+        return "Yetki hatasi", 403
+    if not e.belge_url:
+        return "Belge bulunamadi", 404
+    try:
+        temiz_url = re.sub(r'/fl_[^/]+/', '/', e.belge_url)
+        temiz_url = re.sub(r'https:\/+', 'https://', temiz_url)
+        r = requests.get(temiz_url, timeout=30)
+        if r.status_code != 200:
+            return f"Cloudinary hatasi: {r.status_code}", 500
+        dosya_adi = (e.dosya_adi or 'belge.pdf').encode('ascii', 'ignore').decode()
+        return send_file(
+            BytesIO(r.content),
+            mimetype='application/pdf',
+            as_attachment=False,
+            download_name=dosya_adi
+        )
+    except Exception as ex:
+        return f"Hata: {str(ex)}", 500
 # ============================================================
 # KATEGORI GUNCELLE
 # ============================================================
