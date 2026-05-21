@@ -214,14 +214,14 @@ def rehber_eslestir(user_id, veri):
             tum_rehber = PersonelRehberi.query.filter_by(user_id=user_id, is_active=True).all()
             print(f"REHBERDEKI PLAKALAR: {[r.plaka for r in tum_rehber]}")
             kayit = PersonelRehberi.query.filter(
-                
+                PersonelRehberi.user_id == user_id,
                 PersonelRehberi.is_active == True,
                 db.func.upper(PersonelRehberi.plaka) == plaka
             ).first()
         # 1. Plaka ile esles (arac belgeleri)
         if plaka:
             kayit = PersonelRehberi.query.filter(
-                
+                PersonelRehberi.user_id == user_id,
                 PersonelRehberi.is_active == True,
                 db.func.upper(PersonelRehberi.plaka) == plaka
             ).first()
@@ -229,7 +229,7 @@ def rehber_eslestir(user_id, veri):
         # 2. TC ile esles
         if not kayit and tc_no and len(tc_no) >= 10:
             kayit = PersonelRehberi.query.filter(
-                
+                PersonelRehberi.user_id == user_id,
                 PersonelRehberi.is_active == True,
                 PersonelRehberi.tc_no == tc_no
             ).first()
@@ -237,7 +237,7 @@ def rehber_eslestir(user_id, veri):
         # 3. Ad soyad ile esles
         if not kayit and ad_soyad and len(ad_soyad) > 3:
             kayit = PersonelRehberi.query.filter(
-                
+                PersonelRehberi.user_id == user_id,
                 PersonelRehberi.is_active == True,
                 db.func.upper(PersonelRehberi.ad_soyad).contains(ad_soyad[:8])
             ).first()
