@@ -842,15 +842,10 @@ def update_payment(uid):
             u.company_name = request.form.get('company_name', '')
             u.is_paid      = request.form.get('is_paid') in ['true', 'True', 'Odendi']
             u.admin_note   = request.form.get('admin_note', '')
-        else:
-            u.is_paid = not u.is_paid
-        if request.method == 'POST':
-            u.company_name = request.form.get('company_name', '')
-            u.is_paid      = request.form.get('is_paid') in ['true', 'True', 'Odendi']
-            u.admin_note   = request.form.get('admin_note', '')
             u.sektor       = request.form.get('sektor', 'genel')
             print(f"SEKTOR GUNCELLE: {u.email} -> {u.sektor}")
-    db.session.commit()
+        else:
+            u.is_paid = not u.is_paid
         db.session.commit()
         flash(f"{u.email} guncellendi.", "success")
     return redirect(url_for('admin_panel'))
