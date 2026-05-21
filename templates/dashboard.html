@@ -324,14 +324,58 @@ function submitPdfForm() {
     var bar     = document.getElementById('progressBar');
     var countEl = document.getElementById('progressCount');
     overlay.classList.add('show');
-    document.getElementById('progressTitle').textContent = total + ' PDF Analiz Ediliyor';
-    var pct = 0;
-    var interval = setInterval(function() {
-        pct = Math.min(pct + Math.random() * 8, 90);
-        bar.style.width = pct + '%';
-        countEl.textContent = Math.floor(pct / 100 * total) + ' / ' + total + ' belge işlendi';
-    }, 600);
+    document.getElementById('progressTitle').textContent = total + ' PDF Yukleniyor...';
+    document.getElementById('progressSub').textContent = 'Dosyalar sunucuya aktariliyor, lutfen bekleyin...';
+    bar.style.width = '30%';
     document.getElementById('pdfForm').submit();
 }
+
+// Job progress polling
+(function() {
+    var params = new URLSearchParams(window.location.search);
+    var jobId  = params.get('job_id');
+    if (!jobId) return;
+
+    var overlay = document.getElementById('pdfProgress');
+    var bar     = document.getElementById('progressBar');
+    var countEl = document.getElementById('progressCount');
+    var titleEl = document.getElementById('progressTitle');
+    var subEl   = document.getElementById('progressSub');
+
+    overlay.classList.add('show');
+    titleEl.textContent = 'Belgeler AI tarafindan okunuyor...';
+    subEl.textContent   = 'Gemini her belgeyi analiz ediyor, sayfayi kapatmayiniz.';
+
+    var poll = setInterval(function() {
+        fetch('/job_durum/' + jobId)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.durum === 'bulunamadi' || data.durum === 'yetkisiz') {
+                    clearInterval(poll);
+                    overlay.classList.remove('show');
+                    return;
+                }
+                var pct = data.toplam > 0 ? Math.round(data.tamamlanan / data.toplam * 100) : 0;
+                bar.style.width = pct + '%';
+                countEl.textContent = data.tamamlanan + ' / ' + data.toplam + ' belge islendi';
+
+                if (data.durum === 'tamamlandi') {
+                    clearInterval(poll);
+                    titleEl.textContent = 'Tamamlandi!';
+                    subEl.textContent   = data.eklenen + ' belge eklendi, ' + data.hatali + ' okunamadi.';
+                    bar.style.width = '100%';
+                    bar.style.background = '#059669';
+                    setTimeout(function() {
+                        window.location.href = '/dashboard';
+                    }, 2000);
+                } else if (data.durum === 'hata') {
+                    clearInterval(poll);
+                    overlay.classList.remove('show');
+                    alert('Islem sirasinda hata olustu. Lutfen tekrar deneyin.');
+                }
+            })
+            .catch(function() { /* sessizce devam et */ });
+    }, 2000);
+})();
 </script>
 {% endblock %}
