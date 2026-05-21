@@ -99,6 +99,20 @@ class Entry(db.Model):
     dosya_adi   = db.Column(db.String(200))
 
 
+class PersonelRehberi(db.Model):
+    """Personel/firma telefon rehberi - PDF eslesme icin"""
+    id          = db.Column(db.Integer, primary_key=True)
+    user_id     = db.Column(db.Integer, nullable=False)
+    ad_soyad    = db.Column(db.String(150))
+    tc_no       = db.Column(db.String(20))
+    plaka       = db.Column(db.String(20))
+    firma_adi   = db.Column(db.String(150))
+    whatsapp_no = db.Column(db.String(20))
+    danisman_no = db.Column(db.String(20))
+    aciklama    = db.Column(db.String(200))
+    is_active   = db.Column(db.Boolean, default=True)
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -164,16 +178,78 @@ def send_verification_mail(email, token):
 
 
 def cloudinary_belge_url(url, dosya_adi=None):
+    """PDF'leri tarayicida ac, Android icin dogru dosya adiyla indir"""
     if not url:
         return url
-    # Tum transformation flaglari kaldir
-    url = re.sub(r'/fl_[^/]+/', '/', url)
-    url = re.sub(r'//+', '/', url)
-    url = url.replace('https:/', 'https://')
-    return url
+    if not url.lower().endswith(".pdf") and 'raw/upload' not in url:
+        return url
+    # fl_inline: tarayicide ac; fl_attachment: indir
+    # Hem acmak hem indirmek icin fl_inline kullan, dosya adini ekle
+    if "/fl_inline/" in url or "/fl_attachment/" in url:
+        return url
+    if dosya_adi:
+        # Dosya adini URL-safe yap
+        temiz_ad = re.sub(r'[^a-zA-Z0-9._-]', '_', dosya_adi)
+        return re.sub(r'(/upload/)', r'\1fl_inline,fl_attachment:' + temiz_ad + '/', url, count=1)
+    return re.sub(r'(/upload/)', r'\1fl_inline/', url, count=1)
 
 
 app.jinja_env.globals['cloudinary_belge_url'] = cloudinary_belge_url
+
+
+def rehber_eslestir(user_id, veri):
+    """PDF verisindeki isim/plaka/firma ile rehberi eslestirir, telefon dondurur"""
+    whatsapp = None
+    danisman = None
+    try:
+        plaka    = str(veri.get('plaka') or '').replace('null','').strip().upper()
+        ad_soyad = str(veri.get('ad_soyad') or '').replace('null','').strip().upper()
+        tc_no    = str(veri.get('tc_no') or '').replace('null','').strip()
+        firma    = str(veri.get('firma_adi') or '').replace('null','').strip().upper()
+
+        kayit = None
+
+        # 1. Plaka ile esles (arac belgeleri)
+        if plaka:
+            kayit = PersonelRehberi.query.filter(
+                PersonelRehberi.user_id == user_id,
+                PersonelRehberi.is_active == True,
+                db.func.upper(PersonelRehberi.plaka) == plaka
+            ).first()
+
+        # 2. TC ile esles
+        if not kayit and tc_no and len(tc_no) >= 10:
+            kayit = PersonelRehberi.query.filter(
+                PersonelRehberi.user_id == user_id,
+                PersonelRehberi.is_active == True,
+                PersonelRehberi.tc_no == tc_no
+            ).first()
+
+        # 3. Ad soyad ile esles
+        if not kayit and ad_soyad and len(ad_soyad) > 3:
+            kayit = PersonelRehberi.query.filter(
+                PersonelRehberi.user_id == user_id,
+                PersonelRehberi.is_active == True,
+                db.func.upper(PersonelRehberi.ad_soyad).contains(ad_soyad[:8])
+            ).first()
+
+        # 4. Firma adi ile esles (ISG/sertifika)
+        if not kayit and firma and len(firma) > 3:
+            kayit = PersonelRehberi.query.filter(
+                PersonelRehberi.user_id == user_id,
+                PersonelRehberi.is_active == True,
+                db.func.upper(PersonelRehberi.firma_adi).contains(firma[:10])
+            ).first()
+
+        if kayit:
+            whatsapp = kayit.whatsapp_no
+            danisman = kayit.danisman_no
+            print(f"Rehber eslesti: {kayit.ad_soyad or kayit.plaka or kayit.firma_adi}")
+
+    except Exception as e:
+        print(f"Rehber eslestirme hatasi: {e}")
+
+    return whatsapp, danisman
 
 
 def akilli_analiz_motoru(satir):
@@ -206,38 +282,32 @@ async def tek_pdf_isle(semaphore, dosya_verisi):
         ad   = dosya_verisi['ad']
         b64  = dosya_verisi['b64']
         mime = dosya_verisi['mime']
-
-        for deneme in range(5):
+        try:
+            response = await asyncio.to_thread(
+                client.models.generate_content,
+                model="gemini-2.5-flash",
+                contents=[{"parts": [
+                    {"inline_data": {"mime_type": mime, "data": b64}},
+                    {"text": PDF_PROMPT}
+                ]}]
+            )
+            yanit = response.text.strip().replace('```json', '').replace('```', '').strip()
             try:
-                await asyncio.sleep(0.8)
-                response = await asyncio.to_thread(
-                    client.models.generate_content,
-                    model="gemini-2.5-flash",
-                    contents=[{"parts": [
-                        {"inline_data": {"mime_type": mime, "data": b64}},
-                        {"text": PDF_PROMPT}
-                    ]}]
-                )
-                yanit = response.text.strip().replace('```json', '').replace('```', '').strip()
-                try:
-                    veri = json.loads(yanit)
-                    return {"ad": ad, "hash": dosya_verisi['hash'],
-                            "icerik": dosya_verisi['icerik'], "veri": veri, "hata": None}
-                except json.JSONDecodeError:
-                    return {"ad": ad, "hash": dosya_verisi['hash'],
-                            "icerik": dosya_verisi['icerik'], "hata": "json_parse"}
-            except Exception as e:
-                hata = str(e)
-                print(f"GEMINI HATA deneme {deneme+1} ({ad}): {hata[:150]}")
-                if '429' in hata or 'EXHAUSTED' in hata:
-                    await asyncio.sleep(10 * (deneme + 1))
-                elif '503' in hata or 'UNAVAILABLE' in hata:
-                    await asyncio.sleep(8 * (deneme + 1))
-                else:
-                    break
+                veri = json.loads(yanit)
+                return {"ad": ad, "hash": dosya_verisi['hash'],
+                        "icerik": dosya_verisi['icerik'], "veri": veri, "hata": None}
+            except json.JSONDecodeError:
+                return {"ad": ad, "hash": dosya_verisi['hash'],
+                        "icerik": dosya_verisi['icerik'], "hata": "json_parse"}
+        except Exception as e:
+            hata = str(e)
+            if '429' in hata or 'EXHAUSTED' in hata:
+                await asyncio.sleep(5)
+            elif '503' in hata or 'UNAVAILABLE' in hata:
+                await asyncio.sleep(10)
+            return {"ad": ad, "hash": dosya_verisi['hash'],
+                    "icerik": dosya_verisi['icerik'], "hata": hata}
 
-        return {"ad": ad, "hash": dosya_verisi['hash'],
-                "icerik": dosya_verisi['icerik'], "hata": "max_deneme_asildi"}
 
 async def toplu_pdf_isle(dosya_listesi, paralel_sayi=20):
     semaphore = asyncio.Semaphore(paralel_sayi)
@@ -596,6 +666,9 @@ def arka_plan_isle(job_id, islenecekler, user_id, atlanan):
 
                 firma = str(veri.get('firma_adi') or '').replace('null', '').strip()
 
+                # Rehber eslestirme - telefon numarasini otomatik ata
+                r_whatsapp, r_danisman = rehber_eslestir(user_id, veri)
+
                 try:
                     db.session.add(Entry(
                         user_id=user_id, category=kat,
@@ -604,7 +677,9 @@ def arka_plan_isle(job_id, islenecekler, user_id, atlanan):
                         expiry_date=tarih_parse(veri.get('bitis_tarihi')),
                         note=' | '.join(notlar) if notlar else ad,
                         belge_url=belge_url, dosya_hash=d_hash,
-                        dosya_adi=ad, is_active=True
+                        dosya_adi=ad, is_active=True,
+                        whatsapp_no=r_whatsapp,
+                        danisman_no=r_danisman
                     ))
                     db.session.commit()
                     eklenen += 1
@@ -839,6 +914,115 @@ def check_reminders():
         return jsonify({"durum": "HATA", "mesaj": str(e)}), 500
 
 
+
+# ============================================================
+# PERSONEL / FIRMA REHBERI
+# ============================================================
+@app.route('/rehber')
+@login_required
+def rehber():
+    kayitlar = PersonelRehberi.query.filter_by(
+        user_id=current_user.id, is_active=True
+    ).order_by(PersonelRehberi.ad_soyad).all()
+    return render_template('rehber.html', kayitlar=kayitlar)
+
+
+@app.route('/rehber/ekle', methods=['POST'])
+@login_required
+def rehber_ekle():
+    try:
+        db.session.add(PersonelRehberi(
+            user_id     = current_user.id,
+            ad_soyad    = request.form.get('ad_soyad','').strip() or None,
+            tc_no       = request.form.get('tc_no','').strip() or None,
+            plaka       = request.form.get('plaka','').strip().upper() or None,
+            firma_adi   = request.form.get('firma_adi','').strip() or None,
+            whatsapp_no = request.form.get('whatsapp_no','').strip() or None,
+            danisman_no = request.form.get('danisman_no','').strip() or None,
+            aciklama    = request.form.get('aciklama','').strip() or None,
+            is_active   = True
+        ))
+        db.session.commit()
+        flash("Rehber kaydi eklendi.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Hata: {e}", "danger")
+    return redirect(url_for('rehber'))
+
+
+@app.route('/rehber/sil/<int:rid>')
+@login_required
+def rehber_sil(rid):
+    r = PersonelRehberi.query.get_or_404(rid)
+    if r.user_id == current_user.id:
+        r.is_active = False
+        db.session.commit()
+        flash("Kayit silindi.", "success")
+    return redirect(url_for('rehber'))
+
+
+@app.route('/rehber/excel', methods=['POST'])
+@login_required
+def rehber_excel_yukle():
+    """Excel ile toplu rehber yukleme"""
+    f = request.files.get('rehber_excel')
+    if not f:
+        flash("Dosya secilmedi.", "warning")
+        return redirect(url_for('rehber'))
+    try:
+        df = pd.read_excel(f)
+        df.columns = [str(c).strip().lower() for c in df.columns]
+
+        def col(keys):
+            for c in df.columns:
+                if any(k in c for k in keys):
+                    return c
+            return None
+
+        ad_col       = col(['ad','isim','name','personel'])
+        tc_col       = col(['tc','kimlik'])
+        plaka_col    = col(['plaka','arac'])
+        firma_col    = col(['firma','kurum','musteri','sirket'])
+        wp_col       = col(['whatsapp','telefon','tel','gsm','personel_no','sorumlu'])
+        dan_col      = col(['amir','yonetici','danisman','isg','uzman','filo'])
+        acik_col     = col(['aciklama','not'])
+
+        def val(row, c):
+            if c and pd.notna(row.get(c)):
+                v = str(row[c]).strip()
+                return v if v and v.lower() != 'nan' else None
+            return None
+
+        eklenen = 0
+        for _, row in df.iterrows():
+            db.session.add(PersonelRehberi(
+                user_id     = current_user.id,
+                ad_soyad    = val(row, ad_col),
+                tc_no       = val(row, tc_col),
+                plaka       = val(row, plaka_col).upper() if val(row, plaka_col) else None,
+                firma_adi   = val(row, firma_col),
+                whatsapp_no = val(row, wp_col),
+                danisman_no = val(row, dan_col),
+                aciklama    = val(row, acik_col),
+                is_active   = True
+            ))
+            eklenen += 1
+        db.session.commit()
+        flash(f"{eklenen} rehber kaydi yuklendi.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Excel hatasi: {e}", "danger")
+    return redirect(url_for('rehber'))
+
+
+@app.route('/rehber/sifirla')
+@login_required
+def rehber_sifirla():
+    PersonelRehberi.query.filter_by(user_id=current_user.id).update({'is_active': False})
+    db.session.commit()
+    flash("Tum rehber kayitlari silindi.", "info")
+    return redirect(url_for('rehber'))
+
 # ============================================================
 # TOPLU SIL
 # ============================================================
@@ -862,32 +1046,7 @@ def toplu_sil():
         db.session.rollback()
         return jsonify({'ok': False, 'hata': str(ex)})
 
-# ============================================================
-# BELGE AC - PDF PROXY
-# ============================================================
-@app.route('/belge_ac/<int:entry_id>')
-@login_required
-def belge_ac(entry_id):
-    e = Entry.query.get_or_404(entry_id)
-    if e.user_id != current_user.id and current_user.email != 'erhanadea@gmail.com':
-        return "Yetki hatasi", 403
-    if not e.belge_url:
-        return "Belge bulunamadi", 404
-    try:
-        temiz_url = re.sub(r'/fl_[^/]+/', '/', e.belge_url)
-        temiz_url = re.sub(r'https:\/+', 'https://', temiz_url)
-        r = requests.get(temiz_url, timeout=30)
-        if r.status_code != 200:
-            return f"Cloudinary hatasi: {r.status_code}", 500
-        dosya_adi = (e.dosya_adi or 'belge.pdf').encode('ascii', 'ignore').decode()
-        return send_file(
-            BytesIO(r.content),
-            mimetype='application/pdf',
-            as_attachment=False,
-            download_name=dosya_adi
-        )
-    except Exception as ex:
-        return f"Hata: {str(ex)}", 500
+
 # ============================================================
 # KATEGORI GUNCELLE
 # ============================================================
