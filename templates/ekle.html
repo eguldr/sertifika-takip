@@ -31,12 +31,12 @@
             <i class="fab fa-whatsapp"></i>
             {% if cat == 'Personel' %}Personel WhatsApp No
             {% elif cat == 'Arac' %}Arac Sorumlusu WhatsApp
-            {% elif sektor in ['danismanlik','isg'] %}Musteri / Yetkili WhatsApp
-            {% elif sektor == 'otel' %}Ilgili Personel WhatsApp
+            {% elif sektor in ['danismanlik','isg'] %}Müşteri / Yetkili WhatsApp
+            {% elif sektor == 'otel' %}İlgili Personel WhatsApp
             {% else %}Sorumlu WhatsApp{% endif %}
           </label>
           <input type="text" name="whatsapp_no" class="form-control form-control-lg" placeholder="905xxxxxxxxx">
-          <small class="text-muted">{% if cat == 'Personel' %}Calisanin numarasi{% elif cat == 'Arac' %}Surucu / Sorumlu numarasi{% else %}Birinci sorumlu numarasi{% endif %}</small>
+          <small class="text-muted">{% if cat == 'Personel' %}Çalışanın numarası{% elif cat == 'Arac' %}Surucu / Sorumlu numarasi{% else %}Birinci sorumlu numarası{% endif %}</small>
         </div>
 
         <div class="col-md-4 mb-3">
@@ -45,23 +45,23 @@
             {% if cat == 'Personel' %}Idari Amir WhatsApp
             {% elif cat == 'Arac' %}Filo Yoneticisi WhatsApp
             {% elif sektor == 'danismanlik' %}Danisман / Takipci No
-            {% elif sektor == 'isg' %}ISG Uzmani No
-            {% elif sektor == 'otel' %}Bolum Yoneticisi WhatsApp
+            {% elif sektor == 'isg' %}İSG Uzmanı No
+            {% elif sektor == 'otel' %}Bölüm Yöneticisi WhatsApp
             {% else %}Sorumlu Amir No{% endif %}
           </label>
           <input type="text" name="danisman_no" class="form-control form-control-lg" placeholder="905xxxxxxxxx">
-          <small class="text-muted">{% if cat == 'Personel' %}Amirin numarasi{% elif cat == 'Arac' %}Filo yoneticisi{% else %}Takip eden kisinin numarasi{% endif %}</small>
+          <small class="text-muted">{% if cat == 'Personel' %}Amirin numarası{% elif cat == 'Arac' %}Filo yöneticisi{% else %}Takip eden kişinin numarası{% endif %}</small>
         </div>
 
         {% if sektor not in ['lojistik','otel'] %}
         <div class="col-md-4 mb-3">
           <label class="fw-bold text-dark">
-            {% if sektor == 'danismanlik' %}Musteri Firma Adi
+            {% if sektor == 'danismanlik' %}Müşteri Firma Adı
             {% elif sektor == 'isg' %}Hizmet Verilen Firma
-            {% elif sektor == 'gida' %}Firma / Tesis Adi
-            {% else %}Firma / Kurum Adi{% endif %}
+            {% elif sektor == 'gida' %}Firma / Tesis Adı
+            {% else %}Firma / Kurum Adı{% endif %}
           </label>
-          <input type="text" name="firma_adi" class="form-control form-control-lg" placeholder="Firma adini yazin" required>
+          <input type="text" name="firma_adi" class="form-control form-control-lg" placeholder="Firma adını yazın" required>
         </div>
         {% else %}
         <input type="hidden" name="firma_adi" value="{{ current_user.company_name }}">
@@ -71,17 +71,17 @@
       <div class="row bg-light p-3 rounded mb-4 shadow-sm border">
         <div class="col-md-12">
           {% if cat == 'Arac' %}
-          <label class="fw-bold text-primary"><i class="fas fa-car me-1"></i>Arac Detaylari (Plaka / Marka / Model)</label>
+          <label class="fw-bold text-primary"><i class="fas fa-car me-1"></i>Araç Detayları (Plaka / Marka / Model)</label>
           <input type="text" name="note" class="form-control form-control-lg" placeholder="Orn: 34 ABC 123 - Mercedes Axor" required>
           {% elif cat == 'Personel' %}
           <label class="fw-bold text-primary"><i class="fas fa-id-card me-1"></i>Personel Bilgileri (Ad Soyad / TC No)</label>
           <input type="text" name="note" class="form-control form-control-lg" placeholder="Orn: Mehmet Yilmaz - 12345678901" required>
           {% elif cat == 'Tesis' and sektor == 'otel' %}
-          <label class="fw-bold text-primary"><i class="fas fa-hotel me-1"></i>Tesis / Bolum Bilgisi</label>
+          <label class="fw-bold text-primary"><i class="fas fa-hotel me-1"></i>Tesis / Bölüm Bilgisi</label>
           <input type="text" name="note" class="form-control form-control-lg" placeholder="Orn: Ana Bina - Havuz Alani">
           {% else %}
-          <label class="fw-bold text-primary"><i class="fas fa-sticky-note me-1"></i>Tanimlayici Bilgi / Belge Notu</label>
-          <input type="text" name="note" class="form-control form-control-lg" placeholder="Ayirt edici bir not girin">
+          <label class="fw-bold text-primary"><i class="fas fa-sticky-note me-1"></i>Tanımlayıcı Bilgi / Belge Notu</label>
+          <input type="text" name="note" class="form-control form-control-lg" placeholder="Ayırt edici bir not girin">
           {% endif %}
         </div>
       </div>
@@ -196,7 +196,7 @@
             <option>Mesleki Yeterlilik Belgesi</option>
             <option>Egitim Sertifikasi</option>
             <option>Yetki Belgesi</option>
-            <option>Imza Sirkuteri</option>
+            <option>İmza Sirküleri</option>
             <option>Saglik Raporu</option>
           </optgroup>
 
@@ -487,14 +487,14 @@
       </div>
 
       <div id="manualInputDiv" class="mb-4" style="display:none;">
-        <label class="fw-bold text-danger">Belge Adini Manuel Yazin</label>
+        <label class="fw-bold text-danger">Belge Adını Manuel Yazın</label>
         <input type="text" name="manual_title" id="manual_title"
                class="form-control form-control-lg border-danger"
                placeholder="Orn: Ozel Egitim Sertifikasi">
       </div>
 
       <div class="mb-4">
-        <label class="fw-bold text-danger"><i class="fas fa-calendar-times me-1"></i>Belge Bitis Tarihi</label>
+        <label class="fw-bold text-danger"><i class="fas fa-calendar-times me-1"></i>Belge Bitiş Tarihi</label>
         <input type="date" name="expiry_date" class="form-control form-control-lg border-danger" required>
       </div>
 
@@ -502,7 +502,7 @@
         <i class="fas fa-save me-2"></i>Verileri Kaydet ve Takibe Al
       </button>
       <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary w-100 btn-lg mt-2">
-        <i class="fas fa-arrow-left me-2"></i>Iptal / Geri Don
+        <i class="fas fa-arrow-left me-2"></i>İptal / Geri Dön
       </a>
     </form>
   </div>
@@ -528,4 +528,3 @@ function checkManual(select) {
 }
 </script>
 {% endblock %}
-
