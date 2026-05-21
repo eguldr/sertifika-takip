@@ -258,7 +258,7 @@ input.row-check { width:16px; height:16px; cursor:pointer; accent-color:var(--na
 
             <td class="text-center">
               {% if s.belge_url %}
-              <a href="https://docs.google.com/viewer?url={{ request.host_url }}belge_ac/{{ s.id }}&embedded=true" target="_blank"
+              <a href="{{ url_for('belge_ac', entry_id=s.id) }}" target="_blank"
                  class="btn btn-sm fw-bold px-3"
                  style="background:#f0f4ff;color:#1a1c4b;border:1px solid #c7d2fe;border-radius:8px;font-size:0.78rem;">
                 <i class="fas fa-file-pdf me-1 text-danger"></i> Aç
